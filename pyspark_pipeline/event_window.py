@@ -24,7 +24,7 @@ sp500 = spark.read \
     .option("mergeSchema", "true") \
     .option("datetimeRebaseMode", "CORRECTED") \
     .option("int96RebaseMode", "CORRECTED") \
-    .parquet("hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500/")
+    .parquet("hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/")
 
 # Melt wide format (date x tickers) to long format (date, ticker, close)
 # sp500 columns: date index + ticker columns
