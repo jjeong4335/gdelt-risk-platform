@@ -52,14 +52,15 @@ df = df.withColumn(
 print(f"Total valid rows: {df.count()}")
 
 # ── 4. Daily Geo-Tension Index per category ───────────────────────
-# tension_score = avg_negativity * log(event_count + 1)
+# tension_score = (avg_negativity / 100) * log(event_count + 1)
+# neg_score is in percentage units, divide by 100 to normalize
 geo_tension_by_category = df.groupBy("date", "category").agg(
     F.count("*").alias("event_count"),
     F.avg("neg_score").alias("avg_negativity"),
     F.avg("avg_tone").alias("avg_tone")
 ).withColumn(
     "tension_score",
-    F.col("avg_negativity") * F.log(F.col("event_count") + 1)
+    (F.col("avg_negativity") / 100) * F.log(F.col("event_count") + 1)
 )
 
 # ── 5. Overall daily tension index ───────────────────────────────
