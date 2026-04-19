@@ -7,6 +7,11 @@ import zipfile
 import io
 from datetime import datetime, timedelta
 
+# Auto-refresh every 15 minutes
+st.markdown(
+    '<meta http-equiv="refresh" content="900">',
+    unsafe_allow_html=True
+)
 # ── Page config ───────────────────────────────────────────────────
 st.set_page_config(
     page_title="Geopolitical Risk Dashboard",
@@ -139,7 +144,7 @@ st.caption("VIX tells you how scared the market is. This tells you why — and h
 # Live indicator
 col_live, _ = st.columns([1, 5])
 with col_live:
-    st.caption("🔄 Updates every 15 minutes via GDELT")
+    st.caption("🔄 Auto-refreshes every 15 minutes via GDELT")
 
 st.divider()
 
