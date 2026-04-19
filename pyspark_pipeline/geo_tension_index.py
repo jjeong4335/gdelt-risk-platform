@@ -46,7 +46,10 @@ df = df.withColumn(
     "neg_score",
     F.split(F.col("tone"), ",").getItem(2).cast(DoubleType())
 ).filter(
-    F.col("avg_tone").isNotNull() & F.col("neg_score").isNotNull()
+    F.col("avg_tone").isNotNull() & 
+    F.col("neg_score").isNotNull() &
+    (F.col("neg_score") >= 0) &
+    (F.col("neg_score") <= 100)  # filter out corrupted rows with out-of-range values
 )
 
 print(f"Total valid rows: {df.count()}")
