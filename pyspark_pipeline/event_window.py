@@ -17,14 +17,26 @@ spike_events = spark.read.parquet(
 print(f"Total spike events: {spike_events.count()}")
 
 # ── 2. Load S&P 500 price data ────────────────────────────────────
-# Read S&P 500 parquet files
+# Read each year's parquet folder explicitly
+# mergeSchema: handles column differences across years
 # datetimeRebaseMode/int96RebaseMode: handle nanosecond timestamp incompatibility
-# between pandas-generated parquet and Spark 3.x reader
 sp500 = spark.read \
     .option("mergeSchema", "true") \
     .option("datetimeRebaseMode", "CORRECTED") \
     .option("int96RebaseMode", "CORRECTED") \
-    .parquet("hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/")
+    .parquet(
+        "hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/sp500_2016.parquet",
+        "hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/sp500_2017.parquet",
+        "hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/sp500_2018.parquet",
+        "hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/sp500_2019.parquet",
+        "hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/sp500_2020.parquet",
+        "hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/sp500_2021.parquet",
+        "hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/sp500_2022.parquet",
+        "hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/sp500_2023.parquet",
+        "hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/sp500_2024.parquet",
+        "hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/sp500_2025.parquet",
+        "hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/sp500_2026.parquet"
+    )
 
 # Melt wide format (date x tickers) to long format (date, ticker, close)
 # sp500 columns: date index + ticker columns
