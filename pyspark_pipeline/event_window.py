@@ -11,7 +11,7 @@ spark = SparkSession.builder \
 # ── 1. Load spike events ──────────────────────────────────────────
 spike_events = spark.read.parquet(
     "hdfs:///user/jj4335_nyu_edu/gdelt_project/spike_events/"
-).select("date", "geo_tension_index", "category") \
+).select("date", "geo_tension_index") \
  .withColumnRenamed("date", "spike_date")
 
 print(f"Total spike events: {spike_events.count()}")
