@@ -19,12 +19,13 @@ DATA_DIR = "/home/jj4335_nyu_edu/dashboard_data"
 def load_geo_tension():
     df = pd.read_parquet(f"{DATA_DIR}/geo_tension_index.parquet")
     df["date"] = pd.to_datetime(df["date"])
+    df = df[df["date"].dt.year.between(2016, 2026)]  # filter valid years
     return df.sort_values("date")
 
 @st.cache_data
 def load_spike_events():
     df = pd.read_parquet(f"{DATA_DIR}/spike_events.parquet")
-    df["date"] = pd.to_datetime(df["date"])
+    df["date"] = pd.to_datetime(df["date"]).dt.date  # date only, no time
     return df
 
 @st.cache_data
