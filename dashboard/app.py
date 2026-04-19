@@ -121,7 +121,7 @@ def load_ticker_summary():
 @st.cache_data(ttl=900)
 def fetch_vix():
     try:
-        vix = yf.download("^VIX", period="35d", auto_adjust=True, progress=False)
+        vix = yf.download("^VIX", start="2016-01-01", auto_adjust=True, progress=False)
         vix = vix[["Close"]].reset_index()
         vix.columns = ["date", "vix"]
         vix["date"] = pd.to_datetime(vix["date"])
@@ -140,7 +140,7 @@ def fetch_latest_gdelt_news():
         fname = z.namelist()[0]
         with z.open(fname) as f:
             df = pd.read_csv(f, sep="\t", header=None, on_bad_lines="skip",
-                           usecols=[0, 4, 6], names=["date", "source", "themes"])
+                           usecols=[1, 3, 7], names=["date", "source", "themes"])
         keywords = "MILITARY|WAR|WEAPON|MISSILE|SANCTION|EMBARGO|COUP|PROTEST|DIPLOMATIC|NUCLEAR|CYBERATTACK"
         df = df[df["themes"].str.contains(keywords, na=False, case=False)]
 
@@ -268,7 +268,7 @@ with tab1:
     col_chart, col_news = st.columns([1, 1])
 
     with col_chart:
-        recent = geo_tension.tail(30)
+        recent = geo_tension
         fig = go.Figure()
 
         # Geo-Tension Index
