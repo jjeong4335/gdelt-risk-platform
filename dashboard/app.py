@@ -79,22 +79,72 @@ DATA_DIR = "/home/jj4335_nyu_edu/dashboard_data"
 
 # ── Spike event labels ────────────────────────────────────────────
 SPIKE_LABELS = {
+    # 2016 - Dallas Police Shooting
     "2016-07-08": "Dallas Police Shooting",
-    "2016-06-23": "Brexit Referendum",
-    "2016-11-10": "Trump Election",
-    "2016-11-12": "Trump Election Aftermath",
+    "2016-07-09": "Dallas Police Shooting Aftermath",
+    "2016-07-10": "Dallas Police Shooting Aftermath",
+    "2016-07-11": "Dallas Police Shooting Aftermath",
+    "2016-07-12": "Dallas Police Shooting Aftermath",
+    # 2017 - Trump Inauguration
     "2017-01-20": "Trump Inauguration",
+    "2017-01-21": "Trump Inauguration Protests",
+    "2017-01-30": "Trump Travel Ban",
+    "2017-01-31": "Trump Travel Ban",
+    "2017-02-02": "Trump Travel Ban",
+    # 2018
     "2018-01-02": "North Korea Tensions",
-    "2019-07-05": "Iran Strait of Hormuz",
-    "2019-09-19": "Saudi Oil Attack",
-    "2020-01-07": "Soleimani Assassination",
-    "2020-06-01": "George Floyd Protests",
-    "2020-06-08": "BLM Protests Peak",
+    "2018-04-16": "Syria Airstrikes",
+    "2018-05-15": "Gaza Border Protests",
+    # 2019
+    "2019-07-01": "Iran Strait of Hormuz",
+    "2019-08-13": "Hong Kong Protests",
+    "2019-10-03": "Hong Kong Protests Peak",
+    "2019-10-04": "Hong Kong Protests Peak",
+    # 2020 - BLM Protests
+    "2020-05-30": "George Floyd Protests",
+    "2020-05-31": "George Floyd Protests",
+    "2020-06-01": "George Floyd Protests Peak",
+    "2020-06-02": "George Floyd Protests Peak",
+    "2020-06-03": "George Floyd Protests Peak",
+    "2020-06-04": "George Floyd Protests Peak",
+    "2020-06-05": "George Floyd Protests Peak",
+    "2020-06-07": "George Floyd Protests Peak",
+    "2020-06-08": "George Floyd Protests Peak",
+    # 2021 - US Capitol Riot
     "2021-01-07": "US Capitol Riot",
-    "2022-02-24": "Russia-Ukraine War",
-    "2023-10-07": "Hamas Attack on Israel",
-    "2024-04-14": "Iran Attack on Israel",
+    "2021-01-08": "US Capitol Riot Aftermath",
+    "2021-01-13": "Trump Impeachment",
+    # 2022 - Russia-Ukraine
+    "2022-01-06": "Russia-Ukraine Tensions",
+    "2022-02-13": "Russia-Ukraine Escalation",
+    "2022-02-18": "Russia-Ukraine Escalation",
+    "2022-02-25": "Russia-Ukraine War",
+    "2022-07-09": "Sri Lanka Political Crisis",
+    # 2023
+    "2023-03-28": "Nashville School Shooting",
+    "2023-05-04": "Sudan Civil War",
+    "2023-10-18": "Israel-Hamas War",
+    "2023-11-24": "Israel-Hamas Ceasefire",
+    # 2024 - Iran-Israel
+    "2024-04-26": "Iran-Israel Tensions",
+    "2024-04-29": "Iran-Israel Tensions",
+    "2024-04-30": "Iran-Israel Tensions",
+    "2024-05-01": "Iran-Israel Tensions",
+    "2024-05-02": "Iran-Israel Tensions",
+    "2024-08-01": "Middle East Escalation",
+    "2024-08-05": "Middle East Escalation",
+    # 2025
+    "2025-06-09": "Iran War",
+    "2025-06-10": "Iran War",
+    "2025-06-11": "Iran War",
+    "2025-06-12": "Iran War",
+    "2025-09-09": "Geopolitical Tensions",
+    "2025-10-02": "Geopolitical Tensions",
+    # 2026
+    "2026-01-12": "Iran War Escalation",
+    "2026-01-14": "Iran War Escalation",
 }
+
 
 # ── Load data ─────────────────────────────────────────────────────
 @st.cache_data
