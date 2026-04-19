@@ -72,16 +72,19 @@ daily_tension = geo_tension_by_category.groupBy("date").agg(
     F.sum("event_count").alias("total_events")
 ).orderBy("date")
 
-# ── 6. Detect spike events (threshold = mean + 3*std) ────────────
-stats = daily_tension.agg(
-    F.mean("geo_tension_index").alias("mean"),
-    F.stddev("geo_tension_index").alias("std")
-).collect()[0]
+# ── 6. Detect spike events using per-year threshold (mean + 3*std per year) ──
+# Per-year thresholds capture relative tension within each year's context
+year_stats = daily_tension.withColumn("year", F.year(F.col("date"))) \
+    .groupBy("year").agg(
+        F.mean("geo_tension_index").alias("year_mean"),
+        F.stddev("geo_tension_index").alias("year_std")
+    )
 
-threshold = stats["mean"] + 3 * stats["std"]
-print(f"Spike threshold: {threshold:.4f}")
+daily_tension_with_year = daily_tension \
+    .withColumn("year", F.year(F.col("date"))) \
+    .join(year_stats, on="year", how="left") \
+    .withColumn("threshold", F.col("year_mean") + 3 * F.col("year_std"))
 
-# Get dominant category per spike day (category with highest tension_score)
 from pyspark.sql.window import Window
 
 window = Window.partitionBy("date").orderBy(F.col("tension_score").desc())
@@ -92,10 +95,11 @@ dominant_category = geo_tension_by_category \
     .select("date", "category") \
     .withColumnRenamed("category", "dominant_category")
 
-spike_events = daily_tension.filter(
-    F.col("geo_tension_index") > threshold
+spike_events = daily_tension_with_year.filter(
+    F.col("geo_tension_index") > F.col("threshold")
 ).withColumn("is_spike", F.lit(True)) \
- .join(dominant_category, on="date", how="left")
+ .join(dominant_category, on="date", how="left") \
+ .drop("year", "year_mean", "year_std")
 
 print(f"Total spike events: {spike_events.count()}")
 spike_events.show(20)
