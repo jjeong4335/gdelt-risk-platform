@@ -1,0 +1,85 @@
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+from pyspark.sql.types import *
+
+spark = SparkSession.builder \
+    .appName("GeoTensionIndex") \
+    .getOrCreate()
+
+# ── 1. Load GDELT filtered data ──────────────────────────────────
+schema = StructType([
+    StructField("record_id", StringType()),
+    StructField("date",      StringType()),
+    StructField("source",    StringType()),
+    StructField("url",       StringType()),
+    StructField("themes",    StringType()),
+    StructField("tone",      StringType()),
+    StructField("category",  StringType()),
+])
+
+df = spark.read.csv(
+    "hdfs:///user/jj4335_nyu_edu/gdelt_project/gdelt/gdelt_filtered_full.tsv",
+    sep="\t",
+    schema=schema
+)
+
+# ── 2. Parse date ─────────────────────────────────────────────────
+df = df.withColumn("date", F.to_date(F.col("date").substr(1, 8), "yyyyMMdd"))
+
+# ── 3. Parse tone score ───────────────────────────────────────────
+# GDELT tone field: avg_tone, pos_score, neg_score, polarity, ...
+df = df.withColumn(
+    "avg_tone",
+    F.split(F.col("tone"), ",").getItem(0).cast(DoubleType())
+).withColumn(
+    "neg_score",
+    F.split(F.col("tone"), ",").getItem(2).cast(DoubleType())
+)
+
+# ── 4. Daily Geo-Tension Index per category ───────────────────────
+# tension_score = avg_negativity * log(event_count + 1)
+geo_tension_by_category = df.groupBy("date", "category").agg(
+    F.count("*").alias("event_count"),
+    F.avg("neg_score").alias("avg_negativity"),
+    F.avg("avg_tone").alias("avg_tone")
+).withColumn(
+    "tension_score",
+    F.col("avg_negativity") * F.log(F.col("event_count") + 1)
+)
+
+# ── 5. Overall daily tension index ───────────────────────────────
+daily_tension = geo_tension_by_category.groupBy("date").agg(
+    F.sum("tension_score").alias("geo_tension_index"),
+    F.sum("event_count").alias("total_events")
+)
+
+# ── 6. Detect spike events (threshold = mean + 2*std) ────────────
+stats = daily_tension.agg(
+    F.mean("geo_tension_index").alias("mean"),
+    F.stddev("geo_tension_index").alias("std")
+).collect()[0]
+
+threshold = stats["mean"] + 2 * stats["std"]
+print(f"Spike threshold: {threshold:.4f}")
+
+spike_events = daily_tension.filter(
+    F.col("geo_tension_index") > threshold
+).withColumn("is_spike", F.lit(True))
+
+print(f"Total spike events: {spike_events.count()}")
+
+# ── 7. Save results to HDFS ───────────────────────────────────────
+daily_tension.write.mode("overwrite").parquet(
+    "hdfs:///user/jj4335_nyu_edu/gdelt_project/geo_tension_index/"
+)
+
+geo_tension_by_category.write.mode("overwrite").parquet(
+    "hdfs:///user/jj4335_nyu_edu/gdelt_project/geo_tension_by_category/"
+)
+
+spike_events.write.mode("overwrite").parquet(
+    "hdfs:///user/jj4335_nyu_edu/gdelt_project/spike_events/"
+)
+
+print("Done!")
+spark.stop()
