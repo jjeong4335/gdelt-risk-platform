@@ -4,6 +4,7 @@ from pyspark.sql.types import *
 
 spark = SparkSession.builder \
     .appName("GeoTensionIndex") \
+    .config("spark.sql.legacy.timeParserPolicy", "LEGACY") \
     .getOrCreate()
 
 # ── 1. Load GDELT filtered data ──────────────────────────────────
@@ -23,8 +24,18 @@ df = spark.read.csv(
     schema=schema
 )
 
-# ── 2. Parse date ─────────────────────────────────────────────────
-df = df.withColumn("date", F.to_date(F.col("date").substr(1, 8), "yyyyMMdd"))
+# ── 2. Parse date safely ──────────────────────────────────────────
+# Some rows have corrupted date strings (e.g. '2016031#') due to gzip errors
+df = df.withColumn(
+    "date",
+    F.to_date(
+        F.when(
+            F.length(F.col("date")) >= 8,
+            F.col("date").substr(1, 8)
+        ),
+        "yyyyMMdd"
+    )
+).filter(F.col("date").isNotNull())
 
 # ── 3. Parse tone score ───────────────────────────────────────────
 # GDELT tone field: avg_tone, pos_score, neg_score, polarity, ...
@@ -34,7 +45,11 @@ df = df.withColumn(
 ).withColumn(
     "neg_score",
     F.split(F.col("tone"), ",").getItem(2).cast(DoubleType())
+).filter(
+    F.col("avg_tone").isNotNull() & F.col("neg_score").isNotNull()
 )
+
+print(f"Total valid rows: {df.count()}")
 
 # ── 4. Daily Geo-Tension Index per category ───────────────────────
 # tension_score = avg_negativity * log(event_count + 1)
@@ -51,7 +66,7 @@ geo_tension_by_category = df.groupBy("date", "category").agg(
 daily_tension = geo_tension_by_category.groupBy("date").agg(
     F.sum("tension_score").alias("geo_tension_index"),
     F.sum("event_count").alias("total_events")
-)
+).orderBy("date")
 
 # ── 6. Detect spike events (threshold = mean + 2*std) ────────────
 stats = daily_tension.agg(
@@ -67,6 +82,7 @@ spike_events = daily_tension.filter(
 ).withColumn("is_spike", F.lit(True))
 
 print(f"Total spike events: {spike_events.count()}")
+spike_events.show(20)
 
 # ── 7. Save results to HDFS ───────────────────────────────────────
 daily_tension.write.mode("overwrite").parquet(
