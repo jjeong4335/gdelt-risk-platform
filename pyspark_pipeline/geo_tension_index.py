@@ -82,12 +82,15 @@ threshold = stats["mean"] + 3 * stats["std"]
 print(f"Spike threshold: {threshold:.4f}")
 
 # Get dominant category per spike day (category with highest tension_score)
-dominant_category = geo_tension_by_category.groupBy("date").agg(
-    F.first(
-        F.col("category"),
-        ignorenulls=True
-    ).alias("dominant_category")
-)
+from pyspark.sql.window import Window
+
+window = Window.partitionBy("date").orderBy(F.col("tension_score").desc())
+
+dominant_category = geo_tension_by_category \
+    .withColumn("rank", F.rank().over(window)) \
+    .filter(F.col("rank") == 1) \
+    .select("date", "category") \
+    .withColumnRenamed("category", "dominant_category")
 
 spike_events = daily_tension.filter(
     F.col("geo_tension_index") > threshold
