@@ -74,7 +74,6 @@ SECTOR_MAP = {
     "Semiconductors":  ["AMD", "INTC", "QCOM", "NXPI", "AMAT", "LRCX", "MCHP", "TXN"],
     "Airlines":        ["AAL", "UAL", "DAL", "LUV", "NCLH", "RCL", "CCL"],
 }
-TICKER_SECTOR = {t: s for s, tickers in SECTOR_MAP.items() for t in tickers}
 
 DATA_DIR = "/home/jj4335_nyu_edu/dashboard_data"
 
@@ -86,7 +85,6 @@ SPIKE_LABELS = {
     "2016-11-12": "Trump Election Aftermath",
     "2017-01-20": "Trump Inauguration",
     "2018-01-02": "North Korea Tensions",
-    "2018-08-15": "Turkey Currency Crisis",
     "2019-07-05": "Iran Strait of Hormuz",
     "2019-09-19": "Saudi Oil Attack",
     "2020-01-07": "Soleimani Assassination",
@@ -140,7 +138,10 @@ def fetch_latest_gdelt_news():
         fname = z.namelist()[0]
         with z.open(fname) as f:
             df = pd.read_csv(f, sep="\t", header=None, on_bad_lines="skip",
-                           usecols=[1, 3, 7], names=["date", "source", "themes"])
+                           usecols=[1, 3, 4, 7],
+                           names=["date", "source", "url", "themes"])
+
+        # Filter geopolitical keywords
         keywords = "MILITARY|WAR|WEAPON|MISSILE|SANCTION|EMBARGO|COUP|PROTEST|DIPLOMATIC|NUCLEAR|CYBERATTACK"
         df = df[df["themes"].str.contains(keywords, na=False, case=False)]
 
@@ -158,12 +159,22 @@ def fetch_latest_gdelt_news():
                 return "Political"
             return "Other"
 
+        def extract_title(url):
+            try:
+                parts = str(url).rstrip("/").split("/")
+                slug = parts[-1].split(".")[0]
+                title = slug.replace("-", " ").replace("_", " ").title()
+                return title[:60] if title else str(url)[:60]
+            except:
+                return str(url)[:60]
+
         df["category"] = df["themes"].apply(get_category)
+        df["title"] = df["url"].apply(extract_title)
         df["time"] = pd.to_datetime(df["date"].astype(str), format="%Y%m%d%H%M%S", errors="coerce")
         df = df.dropna(subset=["time"]).sort_values("time", ascending=False)
-        return df.head(10)[["time", "source", "category"]].reset_index(drop=True)
-    except:
-        return pd.DataFrame(columns=["time", "source", "category"])
+        return df.head(10)[["time", "title", "source", "category"]].reset_index(drop=True)
+    except Exception as e:
+        return pd.DataFrame(columns=["time", "title", "source", "category"])
 
 # Load all data
 geo_tension = load_geo_tension()
@@ -224,7 +235,7 @@ with tab1:
         st.markdown("## 🌍 Geopolitical Risk Dashboard")
         st.caption("VIX tells you how scared the market is. This tells you why — and how exposed your portfolio is.")
     with col_badge:
-        st.markdown(f"""
+        st.markdown("""
         <div style='text-align:right; padding-top:12px'>
             <span class='live-badge'>● Live — auto-refreshes every 15 min</span>
         </div>
@@ -268,19 +279,18 @@ with tab1:
     col_chart, col_news = st.columns([1, 1])
 
     with col_chart:
-        recent = geo_tension
         fig = go.Figure()
 
-        # Geo-Tension Index
+        # Geo-Tension Index (full period)
         fig.add_trace(go.Scatter(
-            x=recent["date"], y=recent["geo_tension_index"],
+            x=geo_tension["date"], y=geo_tension["geo_tension_index"],
             mode="lines", fill="tozeroy", name="Geo-Tension Index",
             line=dict(color="#3b82f6", width=2),
             fillcolor="rgba(59,130,246,0.1)",
             yaxis="y1"
         ))
 
-        # VIX
+        # VIX (full period)
         if len(vix_df) > 0:
             fig.add_trace(go.Scatter(
                 x=vix_df["date"], y=vix_df["vix"],
@@ -292,14 +302,14 @@ with tab1:
         fig.update_layout(
             height=240,
             margin=dict(l=0, r=40, t=10, b=0),
-            xaxis=dict(showgrid=False, tickformat="%b %d"),
+            xaxis=dict(showgrid=False, tickformat="%Y"),
             yaxis=dict(showgrid=True, gridcolor="#f0f0f0", title="Tension", side="left"),
             yaxis2=dict(overlaying="y", side="right", title="VIX", showgrid=False),
             plot_bgcolor="white", paper_bgcolor="white",
             legend=dict(orientation="h", y=1.1, x=0)
         )
 
-        st.markdown("<div class='card'><div class='chart-title'>Geo-Tension Index vs VIX — last 30 days</div>", unsafe_allow_html=True)
+        st.markdown("<div class='card'><div class='chart-title'>Geo-Tension Index vs VIX (2016–2026)</div>", unsafe_allow_html=True)
         st.plotly_chart(fig, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -315,10 +325,11 @@ with tab1:
                 time_str = row["time"].strftime("%H:%M UTC") if pd.notna(row["time"]) else ""
                 cat = row["category"]
                 tag_cls = tag_classes.get(cat, "tag-other")
-                source = str(row["source"])[:45] if pd.notna(row["source"]) else "Unknown"
+                title = str(row["title"]) if pd.notna(row["title"]) else "Unknown"
+                source = str(row["source"]) if pd.notna(row["source"]) else ""
                 news_html += f"""<div class='news-item'>
-                    <div class='news-time'>{time_str}</div>
-                    <span class='tag {tag_cls}'>{cat}</span>{source}
+                    <div class='news-time'>{time_str} · {source}</div>
+                    <span class='tag {tag_cls}'>{cat}</span>{title}
                 </div>"""
         else:
             news_html += "<p style='color:#888;font-size:13px'>No recent events found.</p>"
@@ -389,7 +400,6 @@ with tab2:
     st.markdown("## 📅 Historical Geopolitical Spike Events")
     st.caption("45 major geopolitical events detected from GDELT news sentiment (2016–2026)")
 
-    # Full geo tension chart with spike markers
     fig_hist = go.Figure()
     fig_hist.add_trace(go.Scatter(
         x=geo_tension["date"], y=geo_tension["geo_tension_index"],
@@ -414,7 +424,6 @@ with tab2:
     )
     st.plotly_chart(fig_hist, use_container_width=True)
 
-    # Spike events table
     st.subheader("🚨 Top Spike Events")
     display_df = spike_events[["date", "label", "geo_tension_index", "total_events"]].copy()
     display_df["date"] = display_df["date"].dt.strftime("%Y-%m-%d")
@@ -424,7 +433,6 @@ with tab2:
 
     st.divider()
 
-    # Top gainers/losers
     st.subheader("📈 Ticker Reaction Patterns During Spike Events")
     col_g, col_l = st.columns(2)
 
