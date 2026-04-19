@@ -81,9 +81,18 @@ stats = daily_tension.agg(
 threshold = stats["mean"] + 3 * stats["std"]
 print(f"Spike threshold: {threshold:.4f}")
 
+# Get dominant category per spike day (category with highest tension_score)
+dominant_category = geo_tension_by_category.groupBy("date").agg(
+    F.first(
+        F.col("category"),
+        ignorenulls=True
+    ).alias("dominant_category")
+)
+
 spike_events = daily_tension.filter(
     F.col("geo_tension_index") > threshold
-).withColumn("is_spike", F.lit(True))
+).withColumn("is_spike", F.lit(True)) \
+ .join(dominant_category, on="date", how="left")
 
 print(f"Total spike events: {spike_events.count()}")
 spike_events.show(20)
