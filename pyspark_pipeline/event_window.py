@@ -38,22 +38,20 @@ sp500 = spark.read \
         "hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/sp500_2026.parquet"
     )
 
-# Melt wide format (date x tickers) to long format (date, ticker, close)
-# sp500 columns: date index + ticker columns
-print("SP500 columns (first 5):", sp500.columns[:5])
-sp500.show(3)
-ticker_cols = [c for c in sp500.columns if c != "Date" and c != "__index_level_0__"]
+# Date column contains nanosecond timestamp - convert to date
+# ticker columns are all other columns except Date
+ticker_cols = [c for c in sp500.columns if c != "Date"]
 
-# Stack all ticker columns into long format
+# Stack wide format to long format (date, ticker, close)
 sp500_long = sp500.select(
-    F.col("Date").alias("date"),
+    F.to_date(
+        (F.col("Date") / 1e9).cast("timestamp")
+    ).alias("date"),
     F.explode(F.create_map(*[
         x for ticker in ticker_cols
         for x in (F.lit(ticker), F.col(f"`{ticker}`"))
     ])).alias("ticker", "close")
-).filter(F.col("close").isNotNull())
-
-sp500_long = sp500_long.withColumn("date", F.to_date(F.col("date")))
+).filter(F.col("close").isNotNull() & F.col("date").isNotNull())
 
 print(f"Total S&P 500 rows: {sp500_long.count()}")
 sp500_long.show(5)
