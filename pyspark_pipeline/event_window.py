@@ -40,6 +40,8 @@ sp500 = spark.read \
 
 # Melt wide format (date x tickers) to long format (date, ticker, close)
 # sp500 columns: date index + ticker columns
+print("SP500 columns (first 5):", sp500.columns[:5])
+sp500.show(3)
 ticker_cols = [c for c in sp500.columns if c != "Date" and c != "__index_level_0__"]
 
 # Stack all ticker columns into long format
