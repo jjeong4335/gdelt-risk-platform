@@ -139,7 +139,7 @@ st.caption("VIX tells you how scared the market is. This tells you why — and h
 # Live indicator
 col_live, _ = st.columns([1, 5])
 with col_live:
-    st.markdown(f"🟢 **Live** — updated {datetime.utcnow().strftime('%H:%M')} UTC")
+    st.markdown(f"🟢 **Data as of** {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC")
 
 st.divider()
 
