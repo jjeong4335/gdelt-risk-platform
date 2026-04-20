@@ -122,7 +122,7 @@ SPIKE_LABELS = {
     "2022-02-25": "Russia-Ukraine War",
     "2022-07-09": "Sri Lanka Political Crisis",
     # 2023
-    "2023-03-28": "Nashville School Shooting",
+    "2023-03-28": "Russia-Ukraine · NATO · Israel",
     "2023-05-04": "Sudan Civil War",
     "2023-10-18": "Israel-Hamas War",
     "2023-11-24": "Israel-Hamas Ceasefire",
@@ -160,7 +160,27 @@ def load_spike_events():
     df = pd.read_parquet(f"{DATA_DIR}/spike_events.parquet")
     df["date"] = pd.to_datetime(df["date"])
     df["date_str"] = df["date"].dt.strftime("%Y-%m-%d")
-    df["label"] = df["date_str"].map(SPIKE_LABELS).fillna("Geopolitical Event")
+    # Auto-label from spike_news keywords if not in SPIKE_LABELS
+    try:
+        spike_news_df = pd.read_parquet(f"{DATA_DIR}/spike_news/")
+        import collections, re
+        STOPWORDS = {"the","and","for","are","was","has","had","with","that","this",
+                     "from","have","been","will","its","not","but","they","their",
+                     "said","says","over","after","more","also","than","into","about"}
+        def auto_label(date_str):
+            if date_str in SPIKE_LABELS:
+                return SPIKE_LABELS[date_str]
+            import datetime
+            dt = datetime.date.fromisoformat(date_str)
+            news = spike_news_df[spike_news_df["article_date"].apply(lambda d: abs((d-dt).days)<=3)]
+            titles = " ".join(news["title"].dropna().tolist()).lower()
+            words = re.findall(r"[a-z]{4,}", titles)
+            freq = collections.Counter(w for w in words if w not in STOPWORDS)
+            top = [w.capitalize() for w, _ in freq.most_common(3)]
+            return " · ".join(top) if top else "Geopolitical Event"
+        df["label"] = df["date_str"].apply(auto_label)
+    except:
+        df["label"] = df["date_str"].map(SPIKE_LABELS).fillna("Geopolitical Event")
     return df.sort_values("geo_tension_index", ascending=False)
 
 @st.cache_data
@@ -631,7 +651,8 @@ with tab2:
                     (~news_filtered["title"].str.contains(r"#|\.com|\.org|\.net", na=False)) &
                     (~news_filtered["title"].str.contains(r"[A-Fa-f0-9]{6,}", regex=True, na=False)) &
                     (news_filtered["title"].str.contains(" ", na=False)) &
-                    (news_filtered["title"].str.replace(r"[^a-zA-Z]", "", regex=True).str.len() > 15)
+                    (news_filtered["title"].str.replace(r"[^a-zA-Z]", "", regex=True).str.len() > 15) &
+                    (~news_filtered["title"].str.contains(r"^Article [A-Z][a-z]+ [A-Z][a-z]+", regex=True, na=False))
                 )
                 news_filtered = news_filtered[mask].head(6)
                 news_html = "<div class='card'><div class='chart-title'>Supporting News — GDELT Archive</div>"
