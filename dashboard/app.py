@@ -192,9 +192,12 @@ def fetch_latest_gdelt_news():
                            usecols=[1, 3, 4, 7],
                            names=["date", "source", "url", "themes"])
 
-        # Filter geopolitical keywords
+        # Filter geopolitical keywords - more specific themes
         keywords = "MILITARY|WAR|WEAPON|MISSILE|SANCTION|EMBARGO|COUP|PROTEST|DIPLOMATIC|NUCLEAR|CYBERATTACK"
         df = df[df["themes"].str.contains(keywords, na=False, case=False)]
+        # Additional title-level filter: must contain geopolitical keywords
+        title_keywords = "war|attack|sanction|missile|nuclear|military|conflict|invasion|protest|coup|strike|troops|weapon|crisis|threat|bomb|terror|drone|ceasefire|diplomacy|nato|un |iran|russia|china|israel|ukraine|gaza|korea"
+        df = df[df["url"].str.lower().str.contains(title_keywords, na=False)]
 
         def get_category(themes):
             t = str(themes)
@@ -331,66 +334,98 @@ with tab1:
 
     with col_chart:
         fig = go.Figure()
-
-        # Geo-Tension Index (full period)
-        fig.add_trace(go.Scatter(
-            x=geo_tension["date"], y=geo_tension["geo_tension_index"],
-            mode="lines", fill="tozeroy", name="Geo-Tension Index",
-            line=dict(color="#3b82f6", width=2),
-            fillcolor="rgba(59,130,246,0.1)",
-            yaxis="y1"
-        ))
-
-        # VIX (full period)
-        if len(vix_df) > 0:
-            fig.add_trace(go.Scatter(
-                x=vix_df["date"], y=vix_df["vix"],
-                mode="lines", name="VIX",
-                line=dict(color="#f59e0b", width=2, dash="dot"),
-                yaxis="y2"
-            ))
-
-        fig.update_layout(
-            height=240,
-            margin=dict(l=0, r=40, t=10, b=0),
-            xaxis=dict(showgrid=False, tickformat="%Y"),
-            yaxis=dict(showgrid=True, gridcolor="#f0f0f0", title="Tension", side="left"),
-            yaxis2=dict(overlaying="y", side="right", title="VIX", showgrid=False),
-            plot_bgcolor="white", paper_bgcolor="white",
-            legend=dict(orientation="h", y=1.1, x=0)
+        # Check if US market is open (Mon-Fri 9:30-16:00 ET)
+        from datetime import datetime
+        import pytz
+        et = pytz.timezone("America/New_York")
+        now_et = datetime.now(et)
+        market_open = (
+            now_et.weekday() < 5 and
+            (now_et.hour, now_et.minute) >= (9, 30) and
+            now_et.hour < 16
         )
-
-        st.markdown("<div class='card'><div class='chart-title'>Geo-Tension Index vs VIX (2016–2026)</div>", unsafe_allow_html=True)
+        if market_open:
+            # Live mode: show today's GDELT tension + VIX
+            import sqlite3
+            DB_PATH = "/home/jj4335_nyu_edu/dashboard_data/live_tension.db"
+            try:
+                conn = sqlite3.connect(DB_PATH)
+                live_df = pd.read_sql(
+                    "SELECT timestamp, tension_score FROM live_tension WHERE timestamp >= date('now') ORDER BY timestamp",
+                    conn, parse_dates=["timestamp"]
+                )
+                conn.close()
+            except:
+                live_df = pd.DataFrame(columns=["timestamp", "tension_score"])
+            if len(live_df) > 0:
+                fig.add_trace(go.Scatter(
+                    x=live_df["timestamp"], y=live_df["tension_score"],
+                    mode="lines+markers", fill="tozeroy", name="Geo-Tension Index",
+                    line=dict(color="#3b82f6", width=2),
+                    fillcolor="rgba(59,130,246,0.1)",
+                    yaxis="y1"
+                ))
+            # VIX intraday
+            try:
+                import yfinance as yf
+                vix_live = yf.download("^VIX", period="1d", interval="5m", progress=False)
+                if len(vix_live) > 0:
+                    vix_live = vix_live["Close"].reset_index()
+                    vix_live.columns = ["datetime", "vix"]
+                    vix_live["datetime"] = pd.to_datetime(vix_live["datetime"], utc=True).dt.tz_localize(None)
+                    fig.add_trace(go.Scatter(
+                        x=vix_live["datetime"], y=vix_live["vix"],
+                        mode="lines", name="VIX",
+                        line=dict(color="#f59e0b", width=2, dash="dot"),
+                        yaxis="y2"
+                    ))
+            except:
+                pass
+            n_points = len(live_df)
+            chart_title = f"Geo-Tension Index — Today ({n_points} readings, updates every 15 min)"
+            fig.update_layout(
+                height=250, margin=dict(l=0, r=40, t=10, b=0),
+                xaxis=dict(showgrid=False, tickformat="%H:%M"),
+                yaxis=dict(showgrid=True, gridcolor="#f0f0f0", title="Tension", side="left"),
+                yaxis2=dict(overlaying="y", side="right", title="VIX", showgrid=False),
+                plot_bgcolor="white", paper_bgcolor="white",
+                legend=dict(orientation="h", y=1.1, x=0)
+            )
+        else:
+            # Market closed: show historical chart
+            cutoff_5d = pd.Timestamp.now() - pd.Timedelta(days=5)
+            geo_5d = geo_tension[geo_tension["date"] >= cutoff_5d]
+            vix_5d = vix_df[vix_df["date"] >= cutoff_5d] if len(vix_df) > 0 else vix_df
+            fig.add_trace(go.Scatter(
+                x=geo_5d["date"], y=geo_5d["geo_tension_index"],
+                mode="lines+markers", fill="tozeroy", name="Geo-Tension Index",
+                line=dict(color="#3b82f6", width=2),
+                fillcolor="rgba(59,130,246,0.1)",
+                yaxis="y1"
+            ))
+            if len(vix_5d) > 0:
+                fig.add_trace(go.Scatter(
+                    x=vix_5d["date"], y=vix_5d["vix"],
+                    mode="lines+markers", name="VIX",
+                    line=dict(color="#f59e0b", width=2, dash="dot"),
+                    yaxis="y2"
+                ))
+            chart_title = "Geo-Tension Index vs VIX — Last 5 Days (Market Closed)"
+            fig.update_layout(
+                height=250, margin=dict(l=0, r=40, t=10, b=0),
+                xaxis=dict(showgrid=False, tickformat="%m/%d"),
+                yaxis=dict(showgrid=True, gridcolor="#f0f0f0", title="Tension", side="left"),
+                yaxis2=dict(overlaying="y", side="right", title="VIX", showgrid=False),
+                plot_bgcolor="white", paper_bgcolor="white",
+                legend=dict(orientation="h", y=1.1, x=0)
+            )
+        st.markdown(f"<div class='card'><div class='chart-title'>{chart_title}</div>", unsafe_allow_html=True)
         st.plotly_chart(fig, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
+        # Sector + Portfolio
 
-    with col_news:
-        tag_classes = {
-            "Military": "tag-military", "Sanctions": "tag-sanctions",
-            "Diplomatic": "tag-diplomatic", "Nuclear": "tag-nuclear",
-            "Political": "tag-political", "Other": "tag-other"
-        }
-        news_html = "<div class='card'><div class='chart-title'>Latest news events</div>"
-        if len(news_df) > 0:
-            for _, row in news_df.head(5).iterrows():
-                time_str = row["time"].strftime("%H:%M UTC") if pd.notna(row["time"]) else ""
-                cat = row["category"]
-                tag_cls = tag_classes.get(cat, "tag-other")
-                title = str(row["title"]) if pd.notna(row["title"]) else "Unknown"
-                source = str(row["source"]) if pd.notna(row["source"]) else ""
-                news_html += f"""<div class='news-item'>
-                    <div class='news-time'>{time_str} · {source}</div>
-                    <span class='tag {tag_cls}'>{cat}</span>{title}
-                </div>"""
-        else:
-            news_html += "<p style='color:#888;font-size:13px'>No recent events found.</p>"
-        news_html += "</div>"
-        st.markdown(news_html, unsafe_allow_html=True)
 
-    # Sector + Portfolio
-    col_sector, col_port = st.columns([1, 1])
 
-    with col_sector:
         max_abs = sector_df["avg"].abs().max()
         sector_html = "<div class='card'><div class='chart-title'>Sector reaction — past similar events (avg 5-day)</div>"
         for _, row in sector_df.iterrows():
@@ -407,40 +442,31 @@ with tab1:
         sector_html += "</div>"
         st.markdown(sector_html, unsafe_allow_html=True)
 
-    with col_port:
-        port_html = "<div class='card'><div class='chart-title'>Portfolio risk calculator</div>"
-        for _, row in port_df.iterrows():
-            r5 = row["r5"]
-            ret_cls = "port-return-pos" if r5 >= 0 else "port-return-neg"
-            sign = "+" if r5 >= 0 else ""
-            port_html += f"""<div class='port-row'>
-                <div class='port-ticker'>{row['ticker']}</div>
-                <div class='port-sector'>{row['sector']}</div>
-                <div class='port-weight'>{row['weight']}%</div>
-                <div class='{ret_cls}'>{sign}{r5:.1f}%</div>
-            </div>"""
 
-        wd_sign = "+" if weighted_5d >= 0 else ""
-        most_exp_risk = "risk-high" if risk_level == "High" else "risk-medium" if risk_level == "Medium" else "risk-low"
-        port_html += f"""<div style='margin-top:12px'>
-            <div class='summary-row'>
-                <span class='summary-label'>Hist. avg change</span>
-                <span class='summary-val-{"pos" if weighted_5d >= 0 else "neg"}'>{wd_sign}{weighted_5d:.1f}%</span>
-            </div>
-            <div class='summary-row'>
-                <span class='summary-label'>Worst drawdown</span>
-                <span class='summary-val-neg'>{weighted_wd:.1f}%</span>
-            </div>
-            <div class='summary-row'>
-                <span class='summary-label'>Most exposed holding</span>
-                <span style='font-weight:600'>{most_exposed}</span>
-            </div>
-            <div class='summary-row'>
-                <span class='summary-label'>Current tension level</span>
-                <span class='{most_exp_risk}'>{risk_level} ({current_score:.0f})</span>
-            </div>
-        </div></div>"""
-        st.markdown(port_html, unsafe_allow_html=True)
+    with col_news:
+        tag_classes = {
+            "Military": "tag-military", "Sanctions": "tag-sanctions",
+            "Diplomatic": "tag-diplomatic", "Nuclear": "tag-nuclear",
+            "Political": "tag-political", "Other": "tag-other"
+        }
+        news_html = "<div class='card' style='height:100%'><div class='chart-title'>Latest news events</div>"
+        # Filter out numeric-only or very short titles
+        news_df_filtered = news_df[news_df["title"].str.replace(r"[\d\s]", "", regex=True).str.len() > 5] if len(news_df) > 0 else news_df
+        if len(news_df_filtered) > 0:
+            for _, row in news_df_filtered.head(6).iterrows():
+                time_str = row["time"].strftime("%H:%M UTC") if pd.notna(row["time"]) else ""
+                cat = row["category"]
+                tag_cls = tag_classes.get(cat, "tag-other")
+                title = str(row["title"]) if pd.notna(row["title"]) else "Unknown"
+                source = str(row["source"]) if pd.notna(row["source"]) else ""
+                news_html += f"""<div class='news-item'>
+                    <div class='news-time'>{time_str} · {source}</div>
+                    <span class='tag {tag_cls}'>{cat}</span>{title}
+                </div>"""
+        elif len(news_df) == 0:
+            news_html += "<p style='color:#888;font-size:13px'>No recent events found.</p>"
+        news_html += "</div>"
+        st.markdown(news_html, unsafe_allow_html=True)
 
     st.caption("Source: GDELT (live) + S&P 500 2016–2026 | NYU Big Data Project")
 
@@ -477,6 +503,7 @@ with tab2:
 
     st.subheader("🚨 Top Spike Events")
     display_df = spike_events[["date", "label", "geo_tension_index", "total_events"]].copy()
+    display_df = display_df.sort_values("date", ascending=False)
     display_df["date"] = display_df["date"].dt.strftime("%Y-%m-%d")
     display_df.columns = ["Date", "Event", "Tension Score", "News Volume"]
     display_df["Tension Score"] = display_df["Tension Score"].round(2)
@@ -553,17 +580,16 @@ with tab2:
         top = Counter(words).most_common(top_n)
         return " · ".join([w.title() for w, _ in top]) if top else "Geopolitical Event"
 
-    # Spike selector
-    spike_dates  = spike_events["date"].dt.strftime("%Y-%m-%d").tolist()
-    spike_labels = (spike_events["date"].dt.strftime("%Y-%m-%d") + " | " +
-                    spike_events["dominant_category"]).tolist()
-
+    # Spike selector - sorted by date descending
+    spike_sorted   = spike_events.sort_values("date", ascending=False).reset_index(drop=True)
+    spike_dates    = spike_sorted["date"].dt.strftime("%Y-%m-%d").tolist()
+    spike_labels   = (spike_sorted["date"].dt.strftime("%Y-%m-%d") + " | " +
+                      spike_sorted["label"]).tolist()
     selected_label = st.selectbox("Select Spike Event", spike_labels, key="rag_spike")
     selected_idx   = spike_labels.index(selected_label)
     selected_date  = spike_dates[selected_idx]
-    selected_cat   = spike_events.iloc[selected_idx]["dominant_category"]
-    tension_score  = spike_events.iloc[selected_idx]["geo_tension_index"]
-
+    selected_cat   = spike_sorted.iloc[selected_idx]["dominant_category"]
+    tension_score  = spike_sorted.iloc[selected_idx]["geo_tension_index"]
     if st.button("🔍 Analyze Event"):
         col_left, col_right = st.columns([1, 1])
 
@@ -614,7 +640,7 @@ with tab2:
         with col_right:
             st.markdown("#### 📰 Supporting News Evidence")
             with st.spinner("Fetching news from GDELT..."):
-                query    = CATEGORY_QUERIES.get(selected_cat, "geopolitical crisis")
+                query    = spike_events.iloc[selected_idx]["label"]  # Use event label as search query
                 articles = fetch_gdelt_news(query, selected_date, window_days=3, max_records=20)
 
             if not articles:
