@@ -523,22 +523,17 @@ with tab2:
         legend=dict(orientation="h", y=1.05),
         hovermode="closest"
     )
-    event_click = st.plotly_chart(fig_hist, use_container_width=True, on_select="rerun", key="hist_chart")
-
-    st.caption("💡 Click on a spike point to explore Geo-Tension chart, sector impact, and supporting news.")
-
-    # ── Event Analysis on Chart Click ────────────────────────────────────
-    selected_rows = event_click.selection.points if event_click and event_click.selection else []
-    if selected_rows:
-        row_idx = selected_rows[0].get("point_index", 0)
-        spike_events_sorted = spike_events.sort_values("date").reset_index(drop=True)
-        import sys, datetime
-        sys.path.append(os.path.expanduser("~/gdelt-risk-platform"))
-        from rag.gdelt_rag import fetch_gdelt_news
-
-        selected_date  = spike_events_sorted.iloc[row_idx]["date"].strftime("%Y-%m-%d")
-        selected_event = spike_events_sorted.iloc[row_idx]["label"]
-
+    st.plotly_chart(fig_hist, use_container_width=True)
+    st.divider()
+    st.subheader("🔍 Explore Spike Event")
+    spike_options = (spike_events.sort_values("date", ascending=False)
+                     .apply(lambda r: f"{r['date'].strftime('%Y-%m-%d')} | {r['label']}", axis=1)
+                     .tolist())
+    selected_option = st.selectbox("Select a spike event to analyze", spike_options)
+    selected_date  = selected_option.split(" | ")[0]
+    selected_event = selected_option.split(" | ")[1]
+    import datetime
+    if selected_date:
         st.divider()
         st.markdown(f"### 📌 {selected_event} ({selected_date})")
 
@@ -596,28 +591,8 @@ with tab2:
                     nearest = min(available, key=lambda d: abs((d - spike_date_d).days))
                     spike_data = reaction_df[reaction_df["spike_date"] == nearest].copy()
                     st.caption(f"ℹ️ No trading data for {selected_date}. Showing nearest date: {nearest}")
-                TICKER_SECTOR = {
-                    'XOM':'Energy','CVX':'Energy','COP':'Energy','EOG':'Energy','SLB':'Energy',
-                    'MPC':'Energy','PSX':'Energy','VLO':'Energy','PXD':'Energy','OXY':'Energy',
-                    'JPM':'Financials','BAC':'Financials','WFC':'Financials','GS':'Financials',
-                    'MS':'Financials','BLK':'Financials','AXP':'Financials','SPGI':'Financials',
-                    'AAPL':'Technology','MSFT':'Technology','NVDA':'Technology','AVGO':'Technology',
-                    'ORCL':'Technology','CSCO':'Technology','ACN':'Technology','AMD':'Technology',
-                    'UNH':'Healthcare','JNJ':'Healthcare','LLY':'Healthcare','ABBV':'Healthcare',
-                    'MRK':'Healthcare','TMO':'Healthcare','ABT':'Healthcare','DHR':'Healthcare',
-                    'CAT':'Industrials','GE':'Industrials','HON':'Industrials','UPS':'Industrials',
-                    'BA':'Industrials','RTX':'Industrials','LMT':'Industrials','DE':'Industrials',
-                    'AMZN':'Consumer Disc.','TSLA':'Consumer Disc.','HD':'Consumer Disc.',
-                    'MCD':'Consumer Disc.','NKE':'Consumer Disc.','LOW':'Consumer Disc.',
-                    'PG':'Consumer Staples','KO':'Consumer Staples','PEP':'Consumer Staples',
-                    'COST':'Consumer Staples','WMT':'Consumer Staples','PM':'Consumer Staples',
-                    'NEE':'Utilities','DUK':'Utilities','SO':'Utilities','AEP':'Utilities',
-                    'LIN':'Materials','APD':'Materials','ECL':'Materials','NEM':'Materials',
-                    'AMT':'Real Estate','PLD':'Real Estate','CCI':'Real Estate',
-                    'GOOGL':'Communication','META':'Communication','NFLX':'Communication',
-                    'DIS':'Communication','CMCSA':'Communication','VZ':'Communication',
-                }
-                spike_data["sector"] = spike_data["ticker"].map(TICKER_SECTOR)
+                ticker_to_sector = {t: s for s, tickers in SECTOR_MAP.items() for t in tickers}
+                spike_data["sector"] = spike_data["ticker"].map(ticker_to_sector)
                 spike_data = spike_data.dropna(subset=["sector"])
                 # Use day 5 or nearest available trading day
                 available_days = sorted(spike_data[spike_data["days_from_spike"] > 0]["days_from_spike"].unique())
@@ -627,82 +602,51 @@ with tab2:
                 else:
                     sector_5d = pd.Series(dtype=float)
                 if not sector_5d.empty:
+                    max_abs = sector_5d.abs().max()
+                    sec_html = "<div class='card'>"
                     for sector, ret in sector_5d.items():
-                        color = "#dc2626" if ret < 0 else "#16a34a"
-                        arrow = "▼" if ret < 0 else "▲"
-                        st.markdown(f"""
-                        <div style='display:flex;justify-content:space-between;
-                                    padding:6px 12px;margin:3px 0;
-                                    background:#f8fafc;border-radius:6px;
-                                    border-left:4px solid {color}'>
-                            <span style='font-weight:500'>{sector}</span>
-                            <span style='color:{color};font-weight:bold'>{arrow} {ret:+.2f}%</span>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        bar_w = int(abs(ret) / max_abs * 180) if max_abs > 0 else 0
+                        bar_cls = "sector-bar-pos" if ret >= 0 else "sector-bar-neg"
+                        val_cls = "sector-val-pos" if ret >= 0 else "sector-val-neg"
+                        sign = "+" if ret >= 0 else ""
+                        sec_html += f"<div class='sector-row'><div class='sector-name'>{sector}</div><div class='{bar_cls}' style='width:{bar_w}px'></div><div class='{val_cls}'>{sign}{ret:.1f}%</div></div>"
+                    sec_html += "</div>"
+                    st.markdown(sec_html, unsafe_allow_html=True)
                 else:
                     st.warning("No sector data for this date.")
             except Exception as e:
                 st.error(f"Error: {e}")
 
         # ── Right: Supporting News ────────────────────────────────────────
+        # ── Right: Supporting News ────────────────────────────────────────
         with col_right:
-            st.markdown("#### 📰 Supporting News")
-
-            spike_year = int(selected_date[:4])
-
-            if spike_year >= 2022:
-                # Use GDELT DOC API for recent events
-                with st.spinner("Fetching news from GDELT API..."):
-                    articles = fetch_gdelt_news(selected_event, selected_date, window_days=3, max_records=50)
-                    articles = [a for a in articles if all(ord(c) < 128 for c in a.get("title", ""))]
-                if not articles:
-                    st.warning("No articles found.")
+            try:
+                spike_news_df = pd.read_parquet(os.path.expanduser("~/dashboard_data/spike_news/"))
+                spike_dt_hist = datetime.date.fromisoformat(selected_date)
+                news_filtered = spike_news_df[
+                    spike_news_df["article_date"].apply(lambda d: abs((d - spike_dt_hist).days) <= 3)
+                ].copy()
+                mask = (
+                    (news_filtered["title"].str.len() > 20) &
+                    (~news_filtered["title"].str.contains(r"#|\.com|\.org|\.net", na=False)) &
+                    (~news_filtered["title"].str.contains(r"[A-Fa-f0-9]{6,}", regex=True, na=False)) &
+                    (news_filtered["title"].str.contains(" ", na=False)) &
+                    (news_filtered["title"].str.replace(r"[^a-zA-Z]", "", regex=True).str.len() > 15)
+                )
+                news_filtered = news_filtered[mask].head(6)
+                news_html = "<div class='card'><div class='chart-title'>Supporting News — GDELT Archive</div>"
+                if len(news_filtered) == 0:
+                    news_html += "<p style='color:#888;font-size:13px'>No articles found.</p>"
                 else:
-                    st.caption(f"{len(articles)} articles from GDELT DOC API")
-                    for i, a in enumerate(articles[:8], 1):
-                        with st.expander(f"[{i}] {a['title'][:70]}..."):
-                            st.markdown(f"**Source:** {a['domain']} ({a.get('country','')})")
-                            st.markdown(f"**Date:** {a['date']}")
-                            st.markdown(f"**URL:** [{a['url']}]({a['url']})")
-            else:
-                # Use pre-extracted GDELT TSV data for historical events
-                try:
-                    spike_news_df = pd.read_parquet(
-                        os.path.expanduser("~/dashboard_data/spike_news/")
-                    )
-                    spike_dt_hist = datetime.date.fromisoformat(selected_date)
-                    # Search by article_date ±3 days for better coverage
-                    news_filtered = spike_news_df[
-                        spike_news_df["article_date"].apply(
-                            lambda d: abs((d - spike_dt_hist).days) <= 3
-                        )
-                    ].copy()
-                    # Filter by event keywords from label
-                    event_keywords = "|".join([
-                        w for w in selected_event.replace("-", " ").split()
-                        if len(w) > 3 and w.lower() not in {"peak","aftermath","tensions","escalation","crisis","protests","protest"}
-                    ])
-                    mask = (
-                        (news_filtered["title"].str.len() > 20) &
-                        (~news_filtered["title"].str.contains(r"#|\.com|\.org|\.net", na=False)) &
-                        (news_filtered["title"].str.contains(" ", na=False)) &
-                        (news_filtered["title"].str.replace(r"[^a-zA-Z]", "", regex=True).str.len() > 15)
-                    )
-                    if event_keywords:
-                        mask = mask & news_filtered["title"].str.contains(event_keywords, case=False, na=False)
-                    news_filtered = news_filtered[mask].head(8)
-                    if len(news_filtered) == 0:
-                        st.warning("No articles found in historical data.")
-                    else:
-                        st.caption(f"{len(news_filtered)} articles from GDELT TSV archive")
-                        for i, (_, row) in enumerate(news_filtered.iterrows(), 1):
-                            with st.expander(f"[{i}] {row['title'][:70]}..."):
-                                st.markdown(f"**Source:** {row['domain']}")
-                                st.markdown(f"**Date:** {row['article_date']}")
-                                st.markdown(f"**URL:** [{row['url']}]({row['url']})")
-                except Exception as e:
-                    st.error(f"Error loading historical news: {e}")
-
+                    for _, row in news_filtered.iterrows():
+                        news_html += f"""<div class='news-item'>
+                            <div class='news-time'>{row['article_date']} · {row['domain']}</div>
+                            <span class='tag tag-military'>Geopolitical</span> {row['title']}
+                        </div>"""
+                news_html += "</div>"
+                st.markdown(news_html, unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"Error: {e}")
     st.caption("Source: GDELT 2016–2026 + S&P 500 yfinance | NYU Big Data Project")
 
 
