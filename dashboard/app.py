@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 import pandas as pd
 import plotly.graph_objects as go
 import requests
@@ -480,42 +481,49 @@ with tab2:
     display_df.columns = ["Date", "Event", "Tension Score", "News Volume"]
     display_df["Tension Score"] = display_df["Tension Score"].round(2)
     st.dataframe(display_df.head(20).reset_index(drop=True), use_container_width=True)
-
-    st.divider()
-
-    st.subheader("📈 Ticker Reaction Patterns During Spike Events")
-    col_g, col_l = st.columns(2)
-
-    with col_g:
-        st.markdown("**Top 15 Gainers (5-day avg)**")
-        top_gainers = ticker_summary.nlargest(15, "avg_return_5d")[["ticker", "avg_return_5d", "worst_drawdown"]]
-        fig_g = go.Figure(go.Bar(
-            x=top_gainers["avg_return_5d"],
-            y=top_gainers["ticker"],
-            orientation="h",
-            marker_color="#3b82f6",
-            text=[f"{v:+.1f}%" for v in top_gainers["avg_return_5d"]],
-            textposition="outside"
-        ))
-        fig_g.update_layout(height=400, margin=dict(l=0, r=60, t=0, b=0),
-                           plot_bgcolor="white", paper_bgcolor="white",
-                           xaxis=dict(showgrid=False), yaxis=dict(showgrid=False))
-        st.plotly_chart(fig_g, use_container_width=True)
-
-    with col_l:
-        st.markdown("**Top 15 Losers (worst drawdown)**")
-        top_losers = ticker_summary.nsmallest(15, "worst_drawdown")[["ticker", "avg_return_5d", "worst_drawdown"]]
-        fig_l = go.Figure(go.Bar(
-            x=top_losers["worst_drawdown"],
-            y=top_losers["ticker"],
-            orientation="h",
-            marker_color="#dc2626",
-            text=[f"{v:.1f}%" for v in top_losers["worst_drawdown"]],
-            textposition="outside"
-        ))
         fig_l.update_layout(height=400, margin=dict(l=0, r=60, t=0, b=0),
                            plot_bgcolor="white", paper_bgcolor="white",
                            xaxis=dict(showgrid=False), yaxis=dict(showgrid=False))
         st.plotly_chart(fig_l, use_container_width=True)
 
     st.caption("Source: GDELT 2016–2026 + S&P 500 yfinance | NYU Big Data Project")
+
+    # ── RAG: Real-time News Retrieval ─────────────────────────────────────────
+    st.divider()
+    st.subheader("🔍 Real-time News Retrieval (RAG)")
+    st.caption("Select a spike event to retrieve semantically relevant news articles via GDELT DOC API")
+
+    import sys
+    sys.path.append(os.path.expanduser("~/gdelt-risk-platform"))
+    from rag.gdelt_rag import query_realtime
+
+    # Spike date selector
+    spike_dates = spike_events["date"].dt.strftime("%Y-%m-%d").tolist()
+    spike_labels = (spike_events["date"].dt.strftime("%Y-%m-%d") + " | " +
+                    spike_events["dominant_category"]).tolist()
+
+    selected_label = st.selectbox("Select Spike Event", spike_labels)
+    selected_idx   = spike_labels.index(selected_label)
+    selected_date  = spike_dates[selected_idx]
+    selected_cat   = spike_events.iloc[selected_idx]["dominant_category"]
+
+    top_k = st.slider("Number of articles", min_value=3, max_value=10, value=5)
+
+    if st.button("🔍 Retrieve News"):
+        with st.spinner("Fetching articles from GDELT API..."):
+            results = query_realtime(
+                spike_date=selected_date,
+                category=selected_cat,
+                top_k=top_k
+            )
+
+        if not results:
+            st.warning("No articles found for this date. Try another spike event.")
+        else:
+            st.success(f"Found {len(results)} relevant articles")
+            for i, r in enumerate(results, 1):
+                with st.expander(f"[{i}] {r['title'][:80]}... (Score: {r['similarity']:.3f})"):
+                    st.markdown(f"**Source:** {r['domain']} ({r['country']})")
+                    st.markdown(f"**Date:** {r['date']}")
+                    st.markdown(f"**Similarity Score:** {r['similarity']:.4f}")
+                    st.markdown(f"**URL:** [{r['url']}]({r['url']})")
