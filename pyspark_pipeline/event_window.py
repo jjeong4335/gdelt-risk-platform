@@ -1,6 +1,5 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
-from pyspark.sql.types import *
 from pyspark.sql.window import Window
 
 spark = SparkSession.builder \
@@ -11,15 +10,12 @@ spark = SparkSession.builder \
 # ── 1. Load spike events ──────────────────────────────────────────
 spike_events = spark.read.parquet(
     "hdfs:///user/jj4335_nyu_edu/gdelt_project/spike_events/"
-).select("date", "geo_tension_index") \
+).select("date", "geo_tension_index", "dominant_category") \
  .withColumnRenamed("date", "spike_date")
 
 print(f"Total spike events: {spike_events.count()}")
 
 # ── 2. Load S&P 500 price data ────────────────────────────────────
-# Read each year's parquet folder explicitly
-# mergeSchema: handles column differences across years
-# datetimeRebaseMode/int96RebaseMode: handle nanosecond timestamp incompatibility
 sp500 = spark.read \
     .option("mergeSchema", "true") \
     .option("datetimeRebaseMode", "CORRECTED") \
@@ -38,11 +34,8 @@ sp500 = spark.read \
         "hdfs:///user/jj4335_nyu_edu/gdelt_project/sp500_converted/sp500_2026.parquet"
     )
 
-# Date column contains nanosecond timestamp - convert to date
-# ticker columns are all other columns except Date
 ticker_cols = [c for c in sp500.columns if c != "Date"]
 
-# Stack wide format to long format (date, ticker, close)
 sp500_long = sp500.select(
     F.to_date(
         (F.col("Date") / 1e9).cast("timestamp")
@@ -54,12 +47,8 @@ sp500_long = sp500.select(
 ).filter(F.col("close").isNotNull() & F.col("date").isNotNull())
 
 print(f"Total S&P 500 rows: {sp500_long.count()}")
-sp500_long.show(5)
 
-# ── 3. For each spike event, compute ±30-day returns ─────────────
-# Cross join spike events with price data
-# Then filter for ±30 day window
-
+# ── 3. Join spike events with price data (±30 day window) ─────────
 joined = sp500_long.alias("prices").join(
     spike_events.alias("spikes"),
     F.datediff(
@@ -69,6 +58,7 @@ joined = sp500_long.alias("prices").join(
 ).select(
     F.col("spikes.spike_date"),
     F.col("spikes.geo_tension_index"),
+    F.col("spikes.dominant_category"),
     F.col("prices.date").alias("price_date"),
     F.col("prices.ticker"),
     F.col("prices.close"),
@@ -79,11 +69,9 @@ joined = sp500_long.alias("prices").join(
 )
 
 # ── 4. Compute return relative to spike day (day 0) ──────────────
-# Get price on spike day (day 0)
 price_day0 = joined.filter(F.col("days_from_spike") == 0) \
     .select("spike_date", "ticker", F.col("close").alias("close_day0"))
 
-# Join back to get relative return
 joined_with_base = joined.join(
     price_day0,
     on=["spike_date", "ticker"],
@@ -93,15 +81,16 @@ joined_with_base = joined.join(
     ((F.col("close") - F.col("close_day0")) / F.col("close_day0")) * 100
 )
 
-# ── 5. Aggregate: avg return per ticker per days_from_spike ──────
-ticker_reaction = joined_with_base.groupBy(
-    "ticker", "days_from_spike"
+# ── 5. Aggregate per spike_date + ticker + days_from_spike ────────
+# Keep spike_date so dashboard can filter by event
+ticker_reaction_by_spike = joined_with_base.groupBy(
+    "spike_date", "dominant_category", "ticker", "days_from_spike"
 ).agg(
     F.avg("return_pct").alias("avg_return_pct"),
-    F.count("spike_date").alias("num_events")
-).orderBy("ticker", "days_from_spike")
+    F.count("*").alias("num_obs")
+).orderBy("spike_date", "ticker", "days_from_spike")
 
-# ── 6. Key metrics per ticker ─────────────────────────────────────
+# ── 6. Overall summary per ticker (across all spikes) ────────────
 ticker_summary = joined_with_base.groupBy("ticker").agg(
     F.avg(
         F.when(F.col("days_from_spike") == 5, F.col("return_pct"))
@@ -113,13 +102,22 @@ ticker_summary = joined_with_base.groupBy("ticker").agg(
     F.count("spike_date").alias("num_events")
 )
 
-print("Top 10 tickers by 5-day return:")
-ticker_summary.orderBy(F.col("avg_return_5d").desc()).show(10)
+# ── 7. Overall reaction curve (across all spikes) ─────────────────
+ticker_reaction = joined_with_base.groupBy(
+    "ticker", "days_from_spike"
+).agg(
+    F.avg("return_pct").alias("avg_return_pct"),
+    F.count("spike_date").alias("num_events")
+).orderBy("ticker", "days_from_spike")
 
-print("Top 10 tickers by worst drawdown:")
-ticker_summary.orderBy(F.col("worst_drawdown").asc()).show(10)
+print("Sample spike-level reaction:")
+ticker_reaction_by_spike.show(10)
 
-# ── 7. Save results ───────────────────────────────────────────────
+# ── 8. Save results ───────────────────────────────────────────────
+ticker_reaction_by_spike.write.mode("overwrite").parquet(
+    "hdfs:///user/jj4335_nyu_edu/gdelt_project/ticker_reaction_by_spike/"
+)
+
 ticker_reaction.write.mode("overwrite").parquet(
     "hdfs:///user/jj4335_nyu_edu/gdelt_project/ticker_reaction/"
 )
