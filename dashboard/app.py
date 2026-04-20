@@ -534,6 +534,25 @@ with tab2:
             os.path.expanduser("~/dashboard_data/ticker_reaction_by_spike/")
         )
 
+
+    def extract_keywords(articles, top_n=3):
+        """Extract top keywords from article titles using word frequency."""
+        import re
+        from collections import Counter
+        stopwords = {
+            "the","a","an","in","of","to","and","for","is","are","was","were",
+            "on","at","by","with","as","it","be","this","that","from","or","but",
+            "not","have","has","had","will","can","its","their","about","over",
+            "after","before","into","than","more","also","been","when","who",
+            "what","how","new","says","say","said","two","one","us","up","out",
+        }
+        words = []
+        for a in articles:
+            tokens = re.findall(r"\b[a-zA-Z]{3,}\b", a["title"].lower())
+            words.extend([w for w in tokens if w not in stopwords])
+        top = Counter(words).most_common(top_n)
+        return " · ".join([w.title() for w, _ in top]) if top else "Geopolitical Event"
+
     # Spike selector
     spike_dates  = spike_events["date"].dt.strftime("%Y-%m-%d").tolist()
     spike_labels = (spike_events["date"].dt.strftime("%Y-%m-%d") + " | " +
@@ -609,9 +628,10 @@ with tab2:
                     worst_ret    = sector_5d.iloc[0]
                     best_sector  = sector_5d.index[-1]
                     best_ret     = sector_5d.iloc[-1]
+                    auto_label = extract_keywords(articles, top_n=3)
                     st.info(
-                        f"📌 During **{selected_date}** ({selected_cat.replace('_',' ').title()}), "
-                        f"{len(articles)} GDELT articles reported: "
+                        f"📌 **{auto_label}** | {selected_date}  \n"
+                        f"{len(articles)} GDELT articles retrieved. "
                         f"**{worst_sector}** sector avg **{worst_ret:+.1f}%**, "
                         f"**{best_sector}** sector avg **{best_ret:+.1f}%** at day +5."
                     )
