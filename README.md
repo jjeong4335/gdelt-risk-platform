@@ -1,19 +1,27 @@
 # Geopolitical Event-Driven Portfolio Risk Analysis Platform
 
-> "VIX tells you how scared the market is. This system tells you why — and how exposed your portfolio is to that cause."
+> "VIX tells you how scared the market is. This tells you *why* — and what happened last time."
+
+A big data platform that processes 10 years of GDELT global news data alongside S&P 500 price data to detect geopolitical tension spikes, analyze their historical market impact, and visualize the results in an interactive dashboard.
+
+**Team:** David Hong · Jonghyun Jeong · Tinos Vafias — NYU Big Data (Spring 2026)  
+**Cluster:** NYU Dataproc (Google Cloud, YARN)  
+**Dashboard:** Streamlit + Plotly
+
+---
 
 ## Overview
 
-A large-scale data pipeline that processes 10 years of GDELT global news records alongside S&P 500 price data to:
+When geopolitical crises happen — wars, sanctions, coups, protests — markets react. But how? Which sectors go up? Which collapse? How fast does it normalize?
 
-- Compute a daily **Geo-Tension Index** from global news sentiment
-- Detect geopolitical tension spike events and analyze market reactions in **±30-day windows**
-- Build a dataset of **sector and ticker-level reaction patterns** per event type
-- Accept a user portfolio as input and return a **historical risk summary**
-- Explain *why* a risk score is high via a **RAG-based news evidence layer**
-- Refresh automatically every 15 minutes with a **live Streamlit dashboard**
+This platform answers those questions by:
 
-No machine learning. No prediction. Pure large-scale data engineering and retrieval — fully explainable outputs.
+1. Building a **Geo-Tension Index** from 10 years of GDELT news (2016–2026)
+2. Detecting **31 international tension spikes** using statistical anomaly detection
+3. Computing **sector-level stock reactions** for each spike event (±30 trading days)
+4. Displaying everything in a **Streamlit dashboard** with historical event explorer
+
+No machine learning. No prediction. Pure large-scale data engineering — fully explainable outputs.
 
 ---
 
@@ -28,59 +36,123 @@ No machine learning. No prediction. Pure large-scale data engineering and retrie
 ---
 
 ## Architecture
-
-```
-GDELT Archive (2016–2025)          S&P 500 Price Data (yfinance)
-        |                                       |
-        v                                       v
-  Download + Filter                     Chunk collection
-  (simultaneous, xargs -P 4)            (Parquet format)
-        |                                       |
-        +---------------+---------------+
-                        |
-                        v
-              HDFS: /user/jj4335_nyu_edu/gdelt_project/
-                        |
-                        v
-                 PySpark ETL Pipeline
-                 - VADER sentiment scoring
-                 - Daily Geo-Tension Index
-                 - Tension spike detection
-                 - ±30-day event window aggregation
-                        |
-              +---------+---------+
-              |                   |
-              v                   v
-     Reaction Pattern         FAISS Vector Index
-       Dataset (Parquet)       (RAG layer)
-              |                   |
-              +---------+---------+
-                        |
-                        v
-              Portfolio Risk Engine
-              (weighted historical summary)
-                        |
-                        v
-              Streamlit Dashboard
-              (APScheduler: 15-min refresh)
-```
+GDELT Archive (2016–2026)          S&P 500 Price Data (yfinance)
+|                                       |
+v                                       v
+Download + Filter                     Chunk collection
+(simultaneous, xargs -P 4)            (Parquet format)
+|                                       |
++-------------------+-------------------+
+|
+v
+HDFS: /user/jj4335_nyu_edu/gdelt_project/
+|
+v
+PySpark ETL Pipeline
+- Daily Geo-Tension Index
+- Tension spike detection
+- ±30-day event window aggregation
+- Spike news extraction
+|
++-------------+-------------+
+|                           |
+v                           v
+Reaction Pattern Dataset       Spike News Archive
+(Parquet, per spike)          (TSV, per spike ±3d)
+|                           |
++-------------+-------------+
+|
+v
+Streamlit Dashboard
+(Historical Event Explorer + Live Feed)
 
 ---
 
 ## Repository Structure
-
-```
 gdelt-risk-platform/
 ├── data_collection/
-│   └── gdelt_download.sh       # Download + filter GDELT data simultaneously
+│   └── gdelt_download.sh          # Downloads & filters GDELT GKG (2016–2026)
 ├── pyspark_pipeline/
-│   └── geo_tension_index.py    # PySpark ETL: Geo-Tension Index + event windows
-├── rag/
-│   └── faiss_index.py          # Embed news articles + FAISS vector search
-├── dashboard/
-│   └── app.py                  # Streamlit dashboard + APScheduler
-└── README.md
+│   ├── geo_tension_index.py       # Builds daily Geo-Tension Index
+│   ├── event_window.py            # Computes ticker reactions ±30d per spike
+│   ├── risk_engine.py             # Aggregates sector-level risk scores
+│   └── spike_news_extract.py      # Extracts news URLs per spike event
+└── dashboard/
+└── app.py                     # Streamlit dashboard (2 tabs)
+
+---
+
+## Geo-Tension Index
+
+### Formula
+geo_tension_raw = avg(negative_tone) × log(article_count + 1)
+
+### Why this formula?
+
+**`avg(negative_tone)`** — GDELT's V2Tone column provides comma-separated sentiment scores computed automatically from article full text. The third value is the negative score (range: 0–50). We use the daily average across all filtered articles.
+
+Using raw sentiment alone has a flaw: a single highly negative article would score the same as a hundred moderately negative ones. Volume matters.
+
+**`log(article_count + 1)`** — We weight sentiment by article volume to capture the "how much the world is talking about this" dimension. Log scale is used instead of linear because:
+- News volume during major crises can spike 10x–50x above normal
+- Linear scaling would make crisis days dominate the index and compress all other variation
+- Log dampens explosive growth while still rewarding higher volume
+
+**Multiplying the two** captures both *intensity* (how negative) and *scale* (how many articles). A ceasefire with many positive articles scores low. An invasion with massive negative coverage scores high.
+
+**International filter** — Only articles referencing non-US country codes (e.g. `#RS#` for Russia, `#UP#` for Ukraine) are included. This removes US domestic news that would otherwise dominate the index and distort geopolitical signals.
+
+**Normalization** — Final scores are scaled to 0–10 using p1–p99 percentile normalization, making the index interpretable across different time periods without being distorted by extreme outliers.
+
+---
+
+## Spike Detection
+
+### Method
+spike = geo_tension_index > yearly_mean + 3 × yearly_std
+
+This is a Z-score based statistical anomaly detection approach. The threshold is computed **per year** to account for the fact that global news volume and sentiment vary across different periods (e.g. COVID era vs pre-2020). A 3σ threshold captures statistically extreme days — roughly the top 0.1% of tension scores — ensuring only genuine geopolitical shocks are flagged, not routine news cycles.
+
+### Labeling
+
+Spike dates falling within known geopolitical events are manually labeled (e.g. "Russia-Ukraine War", "Israel-Hamas War"). For remaining dates, labels are auto-generated from the most frequent keywords in GDELT article titles within ±3 days of the spike.
+
+---
+
+## Data Pipeline
+
+### Phase 1 — Historical Batch (PySpark on NYU Dataproc)
+
+```bash
+# 1. Download & filter GDELT
+bash data_collection/gdelt_download.sh 2016 2026
+
+# 2. Build Geo-Tension Index
+spark-submit --deploy-mode client pyspark_pipeline/geo_tension_index.py
+
+# 3. Detect spikes & compute ticker reactions
+spark-submit --deploy-mode client pyspark_pipeline/event_window.py
+
+# 4. Extract supporting news per spike
+spark-submit --deploy-mode client pyspark_pipeline/spike_news_extract.py
 ```
+
+### Phase 2 — Live Feed (in dashboard)
+
+`app.py` polls `gdeltproject.org/gdeltv2/lastupdate.txt` every 15 minutes to fetch the latest GDELT GKG file and display current geopolitical headlines. Sector ETF returns are fetched via yfinance every 1 minute. This matches GDELT's own update frequency.
+
+---
+
+## Why PySpark?
+
+| Task | Why Spark? |
+|------|-----------|
+| Filter keywords from billions of records | Single machine cannot load the full GDELT archive (2TB+) |
+| 500 tickers × 31 spikes × ±30-day windows | Distributed join across partitioned datasets |
+| Sector-level aggregations across 500 tickers | Parallel groupBy + window operations |
+| Daily tension index from 7.6M articles | Distributed aggregation at scale |
+
+We initially planned real-time Kafka streaming, but GDELT and yfinance rate limits made sub-15-minute updates infeasible. We switched to 15-minute batch collection, which matches GDELT's own update frequency.
 
 ---
 
@@ -91,11 +163,10 @@ gdelt-risk-platform/
 | Cluster | NYU Dataproc (Google Cloud Dataproc) |
 | Resource Manager | YARN |
 | Distributed Processing | Apache Spark (PySpark) |
-| Storage | HDFS (`/user/jj4335_nyu_edu/gdelt_project/`) |
-| NLP / Sentiment | VADER |
-| Scheduling | APScheduler |
-| Vector Search (RAG) | FAISS |
+| Storage | HDFS + Parquet |
 | Dashboard | Streamlit + Plotly |
+| Live News Feed | GDELT GKG lastupdate.txt polling (15 min) |
+| Live Sector Returns | yfinance ETF data (1 min cache) |
 | Version Control | Git / GitHub |
 
 ---
@@ -105,8 +176,25 @@ gdelt-risk-platform/
 | Source | Description | Cost |
 |--------|-------------|------|
 | [GDELT Project](https://gdeltproject.org) | Global news events, sentiment (2016–present) | Free |
-| [yfinance](https://github.com/ranaroussi/yfinance) | S&P 500 daily prices, 10 years | Free |
-| [OFAC Sanctions](https://ofac.treasury.gov) | US sanctions event list | Free |
+| [yfinance](https://github.com/ranaroussi/yfinance) | S&P 500 daily prices + live ETF data | Free |
+
+---
+
+## GDELT Data Schema
+
+Raw GDELT GKG has 60+ columns. We extract and store only 7:
+
+| Column | Description |
+|--------|-------------|
+| `record_id` | Unique article identifier |
+| `date` | Publication date (yyyyMMddHHmmss) |
+| `source` | News outlet |
+| `url` | Article URL |
+| `themes` | GDELT auto-assigned theme tags including country codes (e.g. `#RS#`, `#UP#`) |
+| `tone` | Comma-separated sentiment scores: overall, positive, **negative**, polarity, ... |
+| `category` | Geopolitical event category |
+
+We use `themes` for international filtering and the 3rd value of `tone` (negative score) for the Geo-Tension Index.
 
 ---
 
@@ -125,34 +213,82 @@ We tested four approaches for 1 month of GDELT data (January 2016):
 
 Geopolitical keywords: `MILITARY`, `SANCTION`, `TERROR`, `CONFLICT`, `WAR`, `PROTEST`, `WEAPON`, `NUCLEAR`
 
-10-year dataset: ~7 GB filtered, stored at `/user/jj4335_nyu_edu/gdelt_project/gdelt/` with 755 permissions (owner write, team read-only).
+---
+
+## Data Specs
+
+| Dataset | Size | Rows | Period |
+|---------|------|------|--------|
+| GDELT Raw (original) | ~2TB | ~billions | 2016–2026 |
+| GDELT Filtered (geopolitical) | ~5GB | 7.6M | 2016–2026 |
+| Geo-Tension Index | ~1MB | 3,744 | 2016–2026 |
+| Spike Events | <1MB | 31 | 2016–2026 |
+| Ticker Reactions | ~50MB | 878K | per spike |
+| Spike News Archive | ~5MB | 6,200 | per spike ±3d |
 
 ---
 
-## Why PySpark?
+## Dashboard Features
 
-| Task | Why Spark? |
-|------|-----------|
-| Filter keywords from hundreds of millions of records | Single machine cannot load the full GDELT archive |
-| 500 tickers × all events × ±30-day windows | Distributed join across partitioned datasets |
-| Sector-level aggregations across 500 tickers | Parallel groupBy + window operations |
-| Daily tension index from massive text corpus | Distributed aggregation at scale |
+### Tab 1: Live Dashboard
+
+- **4 metric cards**: Current Geo-Tension score, Risk Level (Low/Medium/High), Events Today, Historical Avg Portfolio Change
+- **Live chart**: Geo-Tension Index (today vs. last 5 days, 15-min granularity)
+- **Latest news**: Real-time geopolitical headlines from GDELT (updates every 15 min)
+- **Sector Reaction**: Live ETF returns — JETS, SOXX, XLE, ITA, XLK, GLD (1-min cache refresh). Shows last trading day when market is closed.
+
+### Tab 2: Historical Events
+
+- **10-year chart**: Full Geo-Tension Index (2016–2026) with VIX overlay and spike markers
+- **Event Explorer**: Selectbox to choose any of 31 spike events
+  - Geo-Tension & VIX chart (±5 days around spike)
+  - Sector Impact bar chart (Day +5 returns)
+  - Supporting News from GDELT archive (keyword-filtered by event)
 
 ---
 
-## RAG: Explainability Layer
+## VIX vs Geo-Tension Index
 
-The Geo-Tension Index answers *"how dangerous?"* — but users need to know *"why?"*
+VIX and the Geo-Tension Index often move together during major geopolitical events, but not always. VIX reflects all market risk — interest rates, earnings, liquidity, credit — while the Geo-Tension Index is purely news-sentiment based. During major geopolitical shocks (e.g. Russia-Ukraine War, Israel-Hamas War), both tend to spike simultaneously because geopolitical risk dominates market sentiment. During routine market volatility (e.g. Fed decisions), VIX moves while Geo-Tension stays flat.
 
-For each tension spike, the RAG layer retrieves the top-K most relevant GDELT news articles from a FAISS vector index and surfaces them alongside the quantitative risk score.
+---
 
-**Example output:**
+## Challenges & Solutions
+
+| Challenge | Solution |
+|-----------|----------|
+| 2TB+ raw GDELT data | Keyword filter during download → 5GB |
+| US domestic event noise | Filter to articles with non-US country codes only |
+| Noisy URL-based titles | Multi-layer regex filter: remove hex strings, URLs, short tokens |
+| GDELT/yfinance rate limits | Pre-computed parquet + 15-min batch collection |
+| Weekend trading gaps | Nearest trading day fallback |
+| Spark datetime bug | Date range filter + CORRECTED rebase mode |
+| Irrelevant news in spike explorer | Proper noun keyword filter + conflict context filter |
+
+---
+
+## Setup & Reproduction
+
+### Prerequisites
+
+- NYU Dataproc cluster access
+- Python 3.11, PySpark 3.5
+- HDFS write access
+
+### Install Dependencies
+
+```bash
+pip install streamlit plotly pandas yfinance
 ```
-Geo-Tension Index: 0.73 (High)
-Portfolio Risk: Energy sector -12% expected
 
-"During Iran-Israel tensions in 2024, 23 Reuters/Bloomberg articles
- reported an avg -11.8% drop in energy stocks, with refiners most affected."
+### Run Dashboard
+
+```bash
+streamlit run dashboard/app.py --server.port 8501 --theme.base light
 ```
 
----
+### Expose via ngrok
+
+```bash
+~/ngrok http 8501
+```
