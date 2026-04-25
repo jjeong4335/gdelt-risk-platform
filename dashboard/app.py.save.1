@@ -77,6 +77,50 @@ SECTOR_MAP = {
 }
 
 DATA_DIR = "/home/jj4335_nyu_edu/dashboard_data"
+# ── Keyword filter for supporting news ───────────────────────────
+import re as _re
+
+_STOPWORDS = {
+    "war", "tensions", "protests", "crisis", "escalation", "airstrikes",
+    "peak", "ceasefire", "civil", "political", "geopolitical", "border", "strait"
+}
+_CONFLICT_CONTEXT = {
+    "attack", "missile", "strike", "military", "troops", "invasion",
+    "bomb", "nuclear", "riot", "clash", "conflict", "threat",
+    "shoot", "kill", "dead", "wound", "protest", "warn", "launch"
+}
+
+def _extract_primary_keywords(label):
+    """Extract proper nouns from spike label, excluding generic conflict words."""
+    words = _re.findall(r'[A-Z][a-z]+', label)
+    return [w.lower() for w in words if w.lower() not in _STOPWORDS]
+
+def _passes_news_filter(title, label):
+    """Return True if title contains a primary keyword AND a conflict context keyword."""
+    if not isinstance(title, str):
+        return False
+    primary = _extract_primary_keywords(label)
+    t = title.lower()
+    if not primary:
+        return True
+    return any(k in t for k in primary) and any(k in t for k in _CONFLICT_CONTEXT)
+
+_STOPWORDS = {"war", "tensions", "protests", "crisis", "escalation", "airstrikes", "peak", "ceasefire", "civil", "political", "geopolitical", "border", "strait"}
+_CONFLICT_CONTEXT = {"attack", "missile", "strike", "military", "troops", "invasion", "bomb", "nuclear", "riot", "clash", "conflict", "threat", "shoot", "kill", "dead", "wound", "protest", "warn", "launch"}
+def _extract_primary_keywords(label):
+    """Extract proper nouns from spike label, excluding generic conflict words."""
+    words = _re.findall(r'[A-Z][a-z]+', label)
+    return [w.lower() for w in words if w.lower() not in _STOPWORDS]
+
+def _passes_news_filter(title, label):
+    """Return True if title contains a primary keyword AND a conflict context keyword."""
+    if not isinstance(title, str):
+        return False
+    primary = _extract_primary_keywords(label)
+    t = title.lower()
+    if not primary:
+        return True
+    return any(k in t for k in primary) and any(k in t for k in _CONFLICT_CONTEXT)
 
 # ── Keyword filter for supporting news ───────────────────────────
 import re as _re
@@ -102,7 +146,7 @@ def _passes_news_filter(title, label):
 # ── Spike event labels ────────────────────────────────────────────
 SPIKE_LABELS = {
     # 2018 - North Korea, Syria, Gaza
-    "2018-01-02": "Iran Protests",
+    "2018-01-02": "North Korea Tensions",
     "2018-04-16": "Syria Airstrikes",
     "2018-05-15": "Gaza Border Protests",
     # 2019 - Iran, Hong Kong
@@ -128,15 +172,15 @@ SPIKE_LABELS = {
     "2024-04-30": "Iran-Israel Tensions",
     "2024-05-01": "Iran-Israel Tensions",
     "2024-05-02": "Iran-Israel Tensions",
-    "2024-08-01": "Russia Ukraine Escalation",
-    "2024-08-05": "Russia Ukraine Escalation",
+    "2024-08-01": "Middle East Escalation",
+    "2024-08-05": "Middle East Escalation",
     # 2025 - Iran War, Geopolitical Tensions
     "2025-06-09": "Iran War",
     "2025-06-10": "Iran War",
     "2025-06-11": "Iran War",
     "2025-06-12": "Iran War",
-    "2025-09-09": "Russia Ukraine Tensions",
-    "2025-10-02": "Russia Ukraine Tensions",
+    "2025-09-09": "Geopolitical Tensions",
+    "2025-10-02": "Geopolitical Tensions",
     # 2026 - Iran War Escalation
     "2026-01-12": "Iran War Escalation",
     "2026-01-14": "Iran War Escalation",
@@ -481,16 +525,8 @@ with tab1:
             "Political": "tag-political", "Other": "tag-other"
         }
         news_html = "<div class='card' style='height:100%'><div class='chart-title'>Latest news events</div>"
-        # Filter out low-quality titles: hex UUIDs, URLs, short or symbol-heavy strings
-        news_df_filtered = news_df[
-            (news_df["title"].str.replace(r"[\d\s]", "", regex=True).str.len() > 5) &
-            (~news_df["title"].str.contains(r"#|\.com|\.org|\.net", na=False)) &
-            (~news_df["title"].str.contains(r"[A-Fa-f0-9]{6,}", regex=True, na=False)) &
-            (news_df["title"].str.contains(" ", na=False)) &
-            (news_df["title"].str.replace(r"[^a-zA-Z]", "", regex=True).str.len() > 15)
-        ] if len(news_df) > 0 else news_df
-
-
+        # Filter out numeric-only or very short titles
+        news_df_filtered = news_df[news_df["title"].str.replace(r"[\d\s]", "", regex=True).str.len() > 5] if len(news_df) > 0 else news_df
         if len(news_df_filtered) > 0:
             for _, row in news_df_filtered.head(6).iterrows():
                 time_str = row["time"].strftime("%H:%M UTC") if pd.notna(row["time"]) else ""
@@ -514,7 +550,7 @@ with tab1:
 # ══════════════════════════════════════════════════════════════════
 with tab2:
     st.markdown("## 📅 Historical Geopolitical Spike Events")
-    st.caption("31 major geopolitical events detected from GDELT news sentiment (2016–2026)")
+    st.caption("45 major geopolitical events detected from GDELT news sentiment (2016–2026)")
 
     fig_hist = go.Figure()
     fig_hist.add_trace(go.Scatter(
@@ -658,9 +694,7 @@ with tab2:
                     (news_filtered["title"].str.replace(r"[^a-zA-Z]", "", regex=True).str.len() > 15) &
                     (~news_filtered["title"].str.contains(r"^Article [A-Z][a-z]+ [A-Z][a-z]+", regex=True, na=False))
                 )
-                news_filtered = news_filtered[mask]
-                # Apply keyword relevance filter based on spike event label
-                news_filtered = news_filtered[news_filtered["title"].apply(lambda t: _passes_news_filter(t, selected_event))].head(6)
+                news_filtered = news_filtered[mask].head(6)
                 news_html = "<div class='card'><div class='chart-title'>Supporting News — GDELT Archive</div>"
                 if len(news_filtered) == 0:
                     news_html += "<p style='color:#888;font-size:13px'>No articles found.</p>"
