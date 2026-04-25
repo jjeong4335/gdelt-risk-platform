@@ -201,6 +201,34 @@ def fetch_vix():
     except:
         return pd.DataFrame(columns=["date", "vix"])
 
+# ── Fetch live ETF sector returns (1-min interval) ───────────────
+SECTOR_ETF_MAP = {
+    "Airlines": "JETS",
+    "Semiconductors": "SOXX",
+    "Energy": "XLE",
+    "Defense": "ITA",
+    "Tech": "XLK",
+    "Gold/Safe Haven": "GLD",
+}
+
+@st.cache_data(ttl=60)
+def fetch_live_sector_returns():
+    """Fetch todays intraday return for each sector ETF via yfinance."""
+    rows = []
+    for sector, ticker in SECTOR_ETF_MAP.items():
+        try:
+            df = yf.download(ticker, period="1d", interval="1m", progress=False)
+            if len(df) >= 2:
+                open_price = df["Close"].iloc[0]
+                latest_price = df["Close"].iloc[-1]
+                ret = float((latest_price - open_price) / open_price * 100)
+            else:
+                ret = 0.0
+        except Exception:
+            ret = 0.0
+        rows.append({"sector": sector, "avg": ret})
+    return pd.DataFrame(rows).sort_values("avg", ascending=False)
+
 @st.cache_data(ttl=900)
 def fetch_latest_gdelt_news():
     try:
@@ -286,12 +314,13 @@ else:
 
 events_today = int(latest["total_events"]) if "total_events" in latest else 0
 
-sector_rows = []
-for sector, tickers in SECTOR_MAP.items():
-    subset = ticker_summary[ticker_summary["ticker"].isin(tickers)]
-    if len(subset) > 0:
-        sector_rows.append({"sector": sector, "avg": subset["avg_return_5d"].mean()})
-sector_df = pd.DataFrame(sector_rows).sort_values("avg", ascending=False)
+sector_df = fetch_live_sector_returns()
+
+
+
+
+
+
 
 default_portfolio = [("AAPL", "Tech", 30), ("XOM", "Energy", 50), ("LMT", "Defense", 20)]
 port_stats = []
@@ -322,7 +351,6 @@ with tab1:
     with col_badge:
         st.markdown("""
         <div style='text-align:right; padding-top:12px'>
-            <span class='live-badge'>● Live — auto-refreshes every 15 min</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -458,7 +486,8 @@ with tab1:
 
 
         max_abs = sector_df["avg"].abs().max()
-        sector_html = "<div class='card'><div class='chart-title'>Sector reaction — past similar events (avg 5-day)</div>"
+        sector_title = "Sector reaction — live today · refreshes every 1 min" if market_open else "Sector reaction — last trading day"
+        sector_html = f"<div class='card'><div class='chart-title'>{sector_title}</div>"
         for _, row in sector_df.iterrows():
             v = row["avg"]
             bar_w = int(abs(v) / max_abs * 180) if max_abs > 0 else 0
@@ -480,7 +509,7 @@ with tab1:
             "Diplomatic": "tag-diplomatic", "Nuclear": "tag-nuclear",
             "Political": "tag-political", "Other": "tag-other"
         }
-        news_html = "<div class='card' style='height:100%'><div class='chart-title'>Latest news events</div>"
+        news_html = "<div class='card' style='height:100%'><div class='chart-title'>Latest news events · updates every 15 min</div>"
         # Filter out low-quality titles: hex UUIDs, URLs, short or symbol-heavy strings
         news_df_filtered = news_df[
             (news_df["title"].str.replace(r"[\d\s]", "", regex=True).str.len() > 5) &
