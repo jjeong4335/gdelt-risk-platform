@@ -36,39 +36,44 @@ No machine learning. No prediction. Pure large-scale data engineering — fully 
 ---
 
 ## Architecture
+
+```
 GDELT Archive (2016–2026)          S&P 500 Price Data (yfinance)
-|                                       |
-v                                       v
-Download + Filter                     Chunk collection
-(simultaneous, xargs -P 4)            (Parquet format)
-|                                       |
-+-------------------+-------------------+
-|
-v
-HDFS: /user/jj4335_nyu_edu/gdelt_project/
-|
-v
-PySpark ETL Pipeline
-- Daily Geo-Tension Index
-- Tension spike detection
-- ±30-day event window aggregation
-- Spike news extraction
-|
-+-------------+-------------+
-|                           |
-v                           v
-Reaction Pattern Dataset       Spike News Archive
-(Parquet, per spike)          (TSV, per spike ±3d)
-|                           |
-+-------------+-------------+
-|
-v
-Streamlit Dashboard
-(Historical Event Explorer + Live Feed)
+        |                                       |
+        v                                       v
+  Download + Filter                     Chunk collection
+  (simultaneous, xargs -P 4)            (Parquet format)
+        |                                       |
+        +-------------------+-------------------+
+                            |
+                            v
+              HDFS: /user/jj4335_nyu_edu/gdelt_project/
+                            |
+                            v
+                   PySpark ETL Pipeline
+                   - Daily Geo-Tension Index
+                   - Tension spike detection
+                   - ±30-day event window aggregation
+                   - Spike news extraction
+                            |
+              +-------------+-------------+
+              |                           |
+              v                           v
+     Reaction Pattern Dataset       Spike News Archive
+       (Parquet, per spike)          (TSV, per spike ±3d)
+              |                           |
+              +-------------+-------------+
+                            |
+                            v
+                  Streamlit Dashboard
+                  (Historical Event Explorer + Live Feed)
+```
 
 ---
 
 ## Repository Structure
+
+```
 gdelt-risk-platform/
 ├── data_collection/
 │   └── gdelt_download.sh          # Downloads & filters GDELT GKG (2016–2026)
@@ -78,14 +83,18 @@ gdelt-risk-platform/
 │   ├── risk_engine.py             # Aggregates sector-level risk scores
 │   └── spike_news_extract.py      # Extracts news URLs per spike event
 └── dashboard/
-└── app.py                     # Streamlit dashboard (2 tabs)
+    └── app.py                     # Streamlit dashboard (2 tabs)
+```
 
 ---
 
 ## Geo-Tension Index
 
 ### Formula
+
+```
 geo_tension_raw = avg(negative_tone) × log(article_count + 1)
+```
 
 ### Why this formula?
 
@@ -109,9 +118,14 @@ Using raw sentiment alone has a flaw: a single highly negative article would sco
 ## Spike Detection
 
 ### Method
-spike = geo_tension_index > yearly_mean + 3 × yearly_std
 
-This is a Z-score based statistical anomaly detection approach. The threshold is computed **per year** to account for the fact that global news volume and sentiment vary across different periods (e.g. COVID era vs pre-2020). A 3σ threshold captures statistically extreme days — roughly the top 0.1% of tension scores — ensuring only genuine geopolitical shocks are flagged, not routine news cycles.
+```
+spike = geo_tension_index > yearly_mean + 3 × yearly_std
+```
+
+This is a Z-score based statistical anomaly detection approach. The threshold is computed **per year** to account for the fact that global news volume and sentiment vary across different periods (e.g. the Russia-Ukraine War era generated far more alarming coverage than 2018 or 2019). A 3σ threshold captures statistically extreme days — roughly the top 0.1% of tension scores — ensuring only genuine geopolitical shocks are flagged, not routine news cycles.
+
+We tested multiple thresholds (1.5σ, 2σ, 3σ). 3σ gave the cleanest separation between routine noise and major geopolitical shocks.
 
 ### Labeling
 
@@ -139,7 +153,7 @@ spark-submit --deploy-mode client pyspark_pipeline/spike_news_extract.py
 
 ### Phase 2 — Live Feed (in dashboard)
 
-`app.py` polls `gdeltproject.org/gdeltv2/lastupdate.txt` every 15 minutes to fetch the latest GDELT GKG file and display current geopolitical headlines. Sector ETF returns are fetched via yfinance every 1 minute. This matches GDELT's own update frequency.
+`app.py` polls `gdeltproject.org/gdeltv2/lastupdate.txt` every 15 minutes to fetch the latest GDELT GKG file and display current geopolitical headlines. Sector ETF returns (JETS, SOXX, XLE, ITA, XLK, GLD) are fetched via yfinance with a 1-minute cache. This matches GDELT's own update frequency.
 
 ---
 
@@ -152,7 +166,7 @@ spark-submit --deploy-mode client pyspark_pipeline/spike_news_extract.py
 | Sector-level aggregations across 500 tickers | Parallel groupBy + window operations |
 | Daily tension index from 7.6M articles | Distributed aggregation at scale |
 
-We initially planned real-time Kafka streaming, but GDELT and yfinance rate limits made sub-15-minute updates infeasible. We switched to 15-minute batch collection, which matches GDELT's own update frequency.
+We intentionally chose batch over streaming. Both GDELT and market APIs update in discrete intervals — real-time streaming would add complexity without adding signal.
 
 ---
 
@@ -233,9 +247,9 @@ Geopolitical keywords: `MILITARY`, `SANCTION`, `TERROR`, `CONFLICT`, `WAR`, `PRO
 ### Tab 1: Live Dashboard
 
 - **4 metric cards**: Current Geo-Tension score, Risk Level (Low/Medium/High), Events Today, Historical Avg Portfolio Change
-- **Live chart**: Geo-Tension Index (today vs. last 5 days, 15-min granularity)
+- **Live chart**: Geo-Tension Index (today vs. last 5 days)
 - **Latest news**: Real-time geopolitical headlines from GDELT (updates every 15 min)
-- **Sector Reaction**: Live ETF returns — JETS, SOXX, XLE, ITA, XLK, GLD (1-min cache refresh). Shows last trading day when market is closed.
+- **Sector Reaction**: Live ETF returns — JETS, SOXX, XLE, ITA, XLK, GLD (1-min cache). Shows last trading day when market is closed.
 
 ### Tab 2: Historical Events
 
@@ -249,7 +263,13 @@ Geopolitical keywords: `MILITARY`, `SANCTION`, `TERROR`, `CONFLICT`, `WAR`, `PRO
 
 ## VIX vs Geo-Tension Index
 
-VIX and the Geo-Tension Index often move together during major geopolitical events, but not always. VIX reflects all market risk — interest rates, earnings, liquidity, credit — while the Geo-Tension Index is purely news-sentiment based. During major geopolitical shocks (e.g. Russia-Ukraine War, Israel-Hamas War), both tend to spike simultaneously because geopolitical risk dominates market sentiment. During routine market volatility (e.g. Fed decisions), VIX moves while Geo-Tension stays flat.
+VIX and the Geo-Tension Index often move together during major geopolitical events, but not always. There are three cases:
+
+**Case 1 — Both spike together:** Major geopolitical shock dominates market sentiment (Russia-Ukraine War, Israel-Hamas War).
+
+**Case 2 — VIX spikes, Geo-Tension flat:** Financial stress without geopolitical cause — Fed decisions, bank failures, earnings surprises.
+
+**Case 3 — Geo-Tension spikes, VIX flat:** A geopolitical event was captured by our index but markets did not react strongly — likely already priced in, or a regional conflict with limited global exposure.
 
 ---
 
