@@ -283,8 +283,10 @@ def fetch_latest_gdelt_news():
         df = df[~df["title"].str.match(r"^[A-Fa-f0-9\s]+$", na=False)]  # no hex
         df = df[~df["title"].str.match(r"^[A-Z][a-z]* \d+$", na=False)]  # no "Article 893559"
         df = df[df["title"].str.replace(r"[^a-zA-Z]", "", regex=True).str.len() > 10]  # enough letters
-        df["time"] = pd.to_datetime(df["date"].astype(str), format="%Y%m%d%H%M%S", errors="coerce")
-        df = df.dropna(subset=["time"]).sort_values("time", ascending=False)
+        df["time"] = pd.to_datetime(df["date"].astype(str), format="%Y%m%d%H%M%S", errors="coerce", utc=True).dt.tz_convert("America/New_York")
+        df = df.dropna(subset=["time"])
+        df["time"] = df["time"].dt.strftime("%H:%M ET")
+        df = df.sort_values("time", ascending=False)
         return df.head(10)[["time", "title", "source", "category"]].reset_index(drop=True)
     except Exception as e:
         return pd.DataFrame(columns=["time", "title", "source", "category"])
@@ -536,11 +538,9 @@ with tab1:
             (news_df["title"].str.contains(" ", na=False)) &
             (news_df["title"].str.replace(r"[^a-zA-Z]", "", regex=True).str.len() > 15)
         ] if len(news_df) > 0 else news_df
-
-
         if len(news_df_filtered) > 0:
             for _, row in news_df_filtered.head(6).iterrows():
-                time_str = row["time"].strftime("%H:%M UTC") if pd.notna(row["time"]) else ""
+                time_str = row["time"] if pd.notna(row["time"]) else ""
                 cat = row["category"]
                 tag_cls = tag_classes.get(cat, "tag-other")
                 title = str(row["title"]) if pd.notna(row["title"]) else "Unknown"
@@ -553,11 +553,6 @@ with tab1:
             news_html += "<p style='color:#888;font-size:13px'>No recent events found.</p>"
         news_html += "</div>"
         st.markdown(news_html, unsafe_allow_html=True)
-
-    st.caption("Source: GDELT (live) + S&P 500 2016–2026 | NYU Big Data Project")
-
-# ══════════════════════════════════════════════════════════════════
-# TAB 2: HISTORICAL EVENTS
 # ══════════════════════════════════════════════════════════════════
 with tab2:
     st.markdown("## 📅 Historical Geopolitical Spike Events")
