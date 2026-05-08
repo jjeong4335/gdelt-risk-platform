@@ -36,39 +36,44 @@ No machine learning. No prediction. Pure large-scale data engineering — fully 
 ---
 
 ## Architecture
+
+```
 GDELT Archive (2016–2026)          S&P 500 Price Data (yfinance)
-|                                       |
-v                                       v
-Download + Filter                     Chunk collection
-(simultaneous, xargs -P 4)            (Parquet format)
-|                                       |
-+-------------------+-------------------+
-|
-v
-HDFS: /user/jj4335_nyu_edu/gdelt_project/
-|
-v
-PySpark ETL Pipeline
-- Daily Geo-Tension Index
-- Tension spike detection
-- ±30-day event window aggregation
-- Spike news extraction
-|
-+-------------+-------------+
-|                           |
-v                           v
-Reaction Pattern Dataset       Spike News Archive
-(Parquet, per spike)          (TSV, per spike ±3d)
-|                           |
-+-------------+-------------+
-|
-v
-Streamlit Dashboard
-(Historical Event Explorer + Live Feed)
+        |                                       |
+        v                                       v
+  Download + Filter                     Chunk collection
+  (simultaneous, xargs -P 4)            (Parquet format)
+        |                                       |
+        +-------------------+-------------------+
+                            |
+                            v
+              HDFS: /user/jj4335_nyu_edu/gdelt_project/
+                            |
+                            v
+                   PySpark ETL Pipeline
+                   - Daily Geo-Tension Index
+                   - Tension spike detection
+                   - ±30-day event window aggregation
+                   - Spike news extraction
+                            |
+              +-------------+-------------+
+              |                           |
+              v                           v
+     Reaction Pattern Dataset       Spike News Archive
+       (Parquet, per spike)          (TSV, per spike ±3d)
+              |                           |
+              +-------------+-------------+
+                            |
+                            v
+                  Streamlit Dashboard
+                  (Historical Event Explorer + Live Feed)
+```
 
 ---
 
 ## Repository Structure
+
+```
 gdelt-risk-platform/
 ├── data_collection/
 │   └── gdelt_download.sh          # Downloads & filters GDELT GKG (2016–2026)
@@ -78,8 +83,8 @@ gdelt-risk-platform/
 │   ├── risk_engine.py             # Aggregates sector-level risk scores
 │   └── spike_news_extract.py      # Extracts news URLs per spike event
 └── dashboard/
-└── app.py                     # Streamlit dashboard (2 tabs)
-
+    └── app.py                     # Streamlit dashboard (2 tabs)
+```
 ---
 
 ## Geo-Tension Index
