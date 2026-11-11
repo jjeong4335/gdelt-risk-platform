@@ -32,7 +32,7 @@ Differences from the original outputs (also documented in the README):
 
 Run (from the repo root):
     pip install -r requirements.txt
-    python -m data_collection.rebuild_for_rag            # ~640 GDELT files, resumable
+    python -m data_collection.rebuild_for_rag            # all ~15k GKG files for 161 days, resumable
     python -m rag.build_corpus --data-dir ~/dashboard_data_rebuilt
 """
 import argparse
