@@ -76,7 +76,8 @@ GDELT Archive (2016–2026)          S&P 500 Price Data (yfinance)
 ```
 gdelt-risk-platform/
 ├── data_collection/
-│   └── gdelt_download.sh          # Downloads & filters GDELT GKG (2016–2026)
+│   ├── gdelt_download.sh          # Downloads & filters GDELT GKG (2016–2026)
+│   └── rebuild_for_rag.py         # Rebuilds Q&A inputs for the 31 spikes on a laptop
 ├── pyspark_pipeline/
 │   ├── geo_tension_index.py       # Builds daily Geo-Tension Index
 │   ├── event_window.py            # Computes ticker reactions ±30d per spike
@@ -90,6 +91,7 @@ gdelt-risk-platform/
 │   ├── index.py                   # Embeddings + FAISS index
 │   ├── retrieve.py                # Top-k search with date/sector filters
 │   ├── generate.py                # Grounded answer from Claude
+│   ├── ui.py / qa_app.py          # Streamlit Q&A (tab or standalone)
 │   └── eval/                      # Eval questions + eval script
 ├── MODEL_CARD.md                  # Intended use, limits, eval results
 └── requirements.txt
@@ -315,12 +317,26 @@ A **Q&A** tab where you can ask things like *"Which sector fell most 5 days afte
 
 **RAG (Retrieval-Augmented Generation) in one line:** first *retrieve* the few pieces of our own data that match the question, then ask an LLM to *generate* an answer using only those pieces. The LLM writes the sentence; the facts come from our pipeline outputs.
 
+### Data provenance (read this first)
+
+The original pipeline outputs lived on the NYU Dataproc cluster, and access ended with the course. The Q&A therefore runs on **rebuilt** inputs made by `data_collection/rebuild_for_rag.py` for the same 31 spike dates the original pipeline detected (kept in `dashboard/constants.py`):
+
+| | Original cluster outputs | Rebuilt for the Q&A |
+|---|---|---|
+| Spike dates & labels | 31, detected by `geo_tension_index.py` | Same 31 dates and labels |
+| Geo-Tension Index, z-score, threshold | Yes | **No** (needed 10 years of data, so left out of the documents) |
+| News around each spike (±3 days) | All GDELT GKG files, top 50 per spike | **Sampled**: 4 of 96 GKG files per day, same keyword filter, up to 300 per spike |
+| Sector returns, Day −30…+30 | All S&P 500 members (yfinance) | The ~50 stocks in the 6 sector groups (yfinance, adjusted closes), same return formula |
+| Weekend/holiday spikes | Borrowed the nearest other spike's numbers | Measured from the next trading day's close |
+
+`build_corpus.py` works with either version: if `geo_tension_index.parquet` is present it adds index sentences, otherwise it leaves them out, and the eval generator swaps index questions for other data-derived questions.
+
 ### Architecture
 
 ```mermaid
 flowchart LR
     subgraph Offline["Offline (run once)"]
-        P[Existing Parquet outputs<br/>spike_events · geo_tension_index<br/>spike_news · ticker_reaction_by_spike]
+        P[Parquet inputs — original or rebuilt<br/>spike_events · spike_news<br/>ticker_reaction_by_spike]
         P --> C[build_corpus.py<br/>217 short text docs]
         C --> E[index.py<br/>all-MiniLM-L6-v2 embeddings]
         E --> F[(FAISS index)]
@@ -367,7 +383,7 @@ User:
 
 ### Evaluation method
 
-`rag/eval/make_questions.py` builds the eval set **from the data** (expected answers are computed from the corpus, not typed by hand): 24 answerable questions (weakest sector at Day +5, a sector's Day +30 move, the index value on a date, most-mentioned country, label-only questions, and 2 questions that need comparing many events) plus 5 the data can't answer (advice, prediction, Bitcoin, 2008, the Fed).
+`rag/eval/make_questions.py` builds the eval set **from the data** (expected answers are computed from the corpus, not typed by hand). On rebuilt data it makes 23 answerable questions: weakest and strongest sector at Day +5, one sector's Day +30 move, the most-mentioned country, questions that name only the event (no date), and 1 question that needs comparing all events. It adds 5 questions the data can't answer (advice, prediction, Bitcoin, 2008, the Fed), for 28 total. With the original outputs, index-value and z-score questions replace the strongest-sector ones.
 
 `rag/eval/run_eval.py` reports:
 
@@ -390,6 +406,7 @@ User:
 
 ### Known limitations
 
+- **Rebuilt, partial data:** no index values, and news is a 4-of-96 sample per day, so "most-mentioned country" and headlines describe the sample, not all coverage.
 - **Small corpus:** 31 events and 6 hand-picked sector groups (~50 S&P 500 stocks), so many reasonable questions have no answer here.
 - **Headline text only:** "headlines" are rebuilt from article URLs, not full article text, so the system knows *what* was in the news only roughly.
 - **Day +N is calendar days:** when Day +N falls on a weekend or holiday, the nearest trading day is used and written in the document.
@@ -402,9 +419,11 @@ User:
 ```bash
 pip install -r requirements.txt
 
-# 1. Build the corpus where the pipeline outputs live (no Spark needed).
-#    Default folder: ~/dashboard_data (override with --data-dir or GEO_DATA_DIR)
-python -m rag.build_corpus            # -> rag/data/corpus.jsonl (commit this file)
+# 0. Rebuild the inputs (laptop; resumable — re-run the same command if interrupted)
+python -m data_collection.rebuild_for_rag      # -> ~/dashboard_data_rebuilt/
+
+# 1. Build the corpus (no Spark needed)
+python -m rag.build_corpus --data-dir ~/dashboard_data_rebuilt   # -> rag/data/corpus.jsonl (commit it)
 
 # 2. Build the vector index (downloads the embedding model the first time)
 python -m rag.index                   # -> rag/artifacts/ (git-ignored)
@@ -418,8 +437,9 @@ python -m rag.eval.make_questions     # -> rag/eval/questions.jsonl
 python -m rag.eval.run_eval --retrieval-only   # free, no API calls
 python -m rag.eval.run_eval                    # full eval (~30 API calls)
 
-# 5. Dashboard (Q&A is the third tab)
-streamlit run dashboard/app.py
+# 5. UI
+streamlit run rag/qa_app.py           # Q&A on its own (works with rebuilt data)
+streamlit run dashboard/app.py        # full dashboard, Q&A is the third tab (needs the original outputs)
 ```
 
 Optional settings (environment variables): `GEO_QA_MODEL`, `GEO_QA_TOP_K` (default 5), `GEO_QA_MIN_SIM` (refusal threshold, default 0.30), `GEO_EMBED_MODEL`.

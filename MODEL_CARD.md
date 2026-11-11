@@ -17,12 +17,14 @@ A question-answering feature on top of the GDELT Geopolitical Risk Platform. It 
 - Real-time news. The live feed in the dashboard is not part of the Q&A corpus.
 
 ## Data sources
+The original cluster outputs are no longer accessible, so the knowledge base is **rebuilt** with `data_collection/rebuild_for_rag.py` for the same 31 spike dates. It has no Geo-Tension Index values, and news is a 4-of-96-files-per-day sample (details in the README's "Data provenance" section).
+
 - [GDELT 2.0 GKG](https://www.gdeltproject.org/): news articles filtered to geopolitical themes, international coverage only
 - S&P 500 daily closing prices via [yfinance](https://github.com/ranaroussi/yfinance)
 - Event labels written by the project team (`dashboard/constants.py`); unlabeled spikes are named by their most frequent headline words
 
 ## Evaluation
-Method: see "Evaluation method" in the README. The eval set is generated from the data (24 answerable and 5 unanswerable questions).
+Method: see "Evaluation method" in the README. The eval set is generated from the data (23 answerable and 5 unanswerable questions on rebuilt data).
 
 > **Results: not run yet.** Paste the table from `rag/eval/results.md` after running `python -m rag.eval.run_eval`.
 
@@ -35,6 +37,7 @@ Method: see "Evaluation method" in the README. The eval set is generated from th
 | False refusals (answerable) | — |
 
 ## Limitations and risks
+- Rebuilt data: no index values, and news is sampled, so country and headline facts describe the sample.
 - Small corpus (31 events, ~50 stocks in 6 sectors), so coverage is narrow.
 - Headlines are reconstructed from article URLs, not full text, and can be noisy.
 - Spike labels are partly manual and partly keyword-based, and may oversimplify an event.
