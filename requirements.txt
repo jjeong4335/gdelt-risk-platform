@@ -1,0 +1,13 @@
+# Dashboard
+streamlit
+plotly
+pandas
+pyarrow
+yfinance
+requests
+pytz
+
+# Geo-Risk Q&A (RAG)
+sentence-transformers   # local embedding model (all-MiniLM-L6-v2)
+faiss-cpu               # vector index for similarity search
+anthropic               # Claude API client for answer generation
