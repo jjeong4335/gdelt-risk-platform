@@ -50,7 +50,7 @@ def render_qa():
             if use_dates and isinstance(date_range, (tuple, list)) and len(date_range) == 2:
                 start, end = (d.strftime("%Y-%m-%d") for d in date_range)
             try:
-                with st.spinner("Retrieving documents and asking Claude..."):
+                with st.spinner("Retrieving documents and asking the LLM..."):
                     ans = rag_answer(question, retriever=retriever, k=top_k,
                                      start_date=start, end_date=end, sectors=sectors or None)
             except Exception as e:

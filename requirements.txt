@@ -10,4 +10,5 @@ pytz
 # Geo-Risk Q&A (RAG)
 sentence-transformers   # local embedding model (all-MiniLM-L6-v2)
 faiss-cpu               # vector index for similarity search
-anthropic>=2.8          # Claude API client for answer generation
+google-genai            # Gemini API client (default answer generator)
+anthropic>=2.8          # Claude API client (optional, GEO_QA_PROVIDER=anthropic)

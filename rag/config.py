@@ -27,9 +27,17 @@ INDEX_META_PATH = ARTIFACT_DIR / "index_meta.json"
 # each document is kept short (see build_corpus.py).
 EMBED_MODEL = os.environ.get("GEO_EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
-# LLM used to write the answer. The API key is read by the anthropic SDK
-# from the ANTHROPIC_API_KEY environment variable.
-LLM_MODEL = os.environ.get("GEO_QA_MODEL", "claude-sonnet-5-5")
+# LLM used to write the answer.
+#   gemini    -> Google AI Studio (free tier available), key in GEMINI_API_KEY
+#   anthropic -> Claude API (prepaid credits), key in ANTHROPIC_API_KEY
+LLM_PROVIDER = os.environ.get("GEO_QA_PROVIDER", "gemini").lower()
+_DEFAULT_MODEL = {"gemini": "gemini-3.8-flash", "anthropic": "claude-sonnet-5-5"}
+LLM_MODEL = os.environ.get("GEO_QA_MODEL", _DEFAULT_MODEL.get(LLM_PROVIDER, ""))
+
+# Minimum seconds between LLM calls. The Gemini free tier allows ~5 requests
+# per minute, so the default spaces calls 13 s apart for Gemini.
+MIN_INTERVAL = float(os.environ.get("GEO_QA_MIN_INTERVAL",
+                                    "13" if LLM_PROVIDER == "gemini" else "0"))
 
 # "hybrid" = embeddings + BM25 keyword search merged with RRF (default);
 # "dense" = embeddings only. See rag/retrieve.py.

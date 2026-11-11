@@ -7,3 +7,4 @@ rag/artifacts/
 .env
 
 __pycache__/
+rag/eval/.answer_cache.json

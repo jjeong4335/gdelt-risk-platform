@@ -17,8 +17,11 @@ Metrics
 
 Run:
     python -m rag.eval.run_eval --retrieval-only   # no API key needed
-    python -m rag.eval.run_eval                    # full eval, needs ANTHROPIC_API_KEY
+    python -m rag.eval.run_eval                    # full eval, needs GEMINI_API_KEY (default)
+                                                   # or GEO_QA_PROVIDER=anthropic + ANTHROPIC_API_KEY
     python -m rag.eval.run_eval --retrieval-only --retriever dense   # baseline to compare
+If a free-tier quota stops the run, re-run the same command later: answers
+already received are cached in rag/eval/.answer_cache.json and skipped.
 Writes rag/eval/results*.md (summary) and results*.json (every question);
 the suffix shows the mode, e.g. results_dense_retrieval.md.
 """
@@ -29,11 +32,14 @@ import re
 from pathlib import Path
 
 from rag import config
-from rag.generate import ADVICE_DECLINE, CITATION_RE, answer
+from rag.generate import ADVICE_DECLINE, CITATION_RE, RateLimited, answer, call_llm
 from rag.retrieve import Retriever
 
 EVAL_DIR = Path(__file__).parent
 QUESTIONS_PATH = EVAL_DIR / "questions.jsonl"
+# LLM answers already received, so a run stopped by a free-tier quota can
+# continue later without paying for (or waiting on) the same calls again.
+CACHE_PATH = EVAL_DIR / ".answer_cache.json"
 KS = [1, 3, 5]
 
 DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
@@ -143,6 +149,8 @@ def main():
     lines = [f"# Geo-Risk Q&A eval — {dt.date.today()}", "",
              f"- Questions: {len(questions)} ({len(answerable)} answerable, {len(unanswerable)} unanswerable)",
              f"- Retriever: **{args.retriever}**; embedding model: `{config.EMBED_MODEL}`",
+             f"- LLM: {config.LLM_PROVIDER} / `{config.LLM_MODEL}`"
+             + (" (not used)" if args.retrieval_only else ""),
              f"- k given to LLM: {args.k}; refusal similarity gate: {config.MIN_SIMILARITY}", "",
              "| Metric | Result |", "|---|---|"]
     lows = []
@@ -158,9 +166,33 @@ def main():
     # ── 2-4. Generation ───────────────────────────────────────────
     manual = []
     if not args.retrieval_only:
+        cache = json.loads(CACHE_PATH.read_text()) if CACHE_PATH.exists() else {}
+
+        def cached_llm(question, hits):
+            key = "|".join([config.LLM_PROVIDER, config.LLM_MODEL, args.retriever,
+                            ",".join(h.doc["doc_id"] for h in hits), question])
+            if key not in cache:
+                cache[key] = call_llm(question, hits)
+                CACHE_PATH.write_text(json.dumps(cache, indent=1))
+            return cache[key]
+
+        # First pass: make sure every answer exists (stop cleanly on quota).
+        done = 0
+        for q in questions:
+            try:
+                answer(q["question"], retriever=retriever, k=args.k, llm=cached_llm)
+                done += 1
+            except RateLimited as e:
+                print(f"\nStopped: API quota reached after {done}/{len(questions)} questions "
+                      f"(answers so far are saved).\n{e}\n"
+                      "Re-run the same command later (free-tier daily limits reset at "
+                      "midnight Pacific) and it will continue where it stopped.")
+                raise SystemExit(1)
+        print(f"All {len(questions)} answers ready ({config.LLM_PROVIDER} / {config.LLM_MODEL}).\n")
+
         correct = grounded = checkable = false_ref = refused_ok = invalid_cit = 0
         for q in questions:
-            a = answer(q["question"], retriever=retriever, k=args.k)
+            a = answer(q["question"], retriever=retriever, k=args.k, llm=cached_llm)
             rec = records[q["id"]]
             rec.update(answer=a.text, refused=a.refused, gated=a.gated,
                        cited=a.cited_ids, invalid_citations=a.invalid_citations)
