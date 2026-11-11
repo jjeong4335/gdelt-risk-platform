@@ -324,12 +324,13 @@ The original pipeline outputs lived on the NYU Dataproc cluster, and access ende
 | | Original cluster outputs | Rebuilt for the Q&A |
 |---|---|---|
 | Spike dates & labels | 31, detected by `geo_tension_index.py` | Same 31 dates and labels |
-| Geo-Tension Index, z-score, threshold | Yes | **No** (needed 10 years of data, so left out of the documents) |
-| News around each spike (±3 days) | All GDELT GKG files, top 50 per spike | **Sampled**: 4 of 96 GKG files per day, same keyword filter, up to 300 per spike |
+| Geo-Tension Index on the spike day | Yes | **Recomputed** from every GKG file that day with the original formula and the p1/p99 constants kept in `collect_live.py` |
+| z-score, yearly threshold | Yes | **No** (need 10 years of daily values) |
+| News around each spike (±3 days) | All GDELT GKG files, top 50 per spike | All GKG files for the 161 needed days (same keyword filter), up to 300 per spike |
 | Sector returns, Day −30…+30 | All S&P 500 members (yfinance) | The ~50 stocks in the 6 sector groups (yfinance, adjusted closes), same return formula |
 | Weekend/holiday spikes | Borrowed the nearest other spike's numbers | Measured from the next trading day's close |
 
-`build_corpus.py` works with either version: if `geo_tension_index.parquet` is present it adds index sentences, otherwise it leaves them out, and the eval generator swaps index questions for other data-derived questions.
+Only the 161 days around the spikes are downloaded, so this runs on a laptop: data is filtered while it streams and only matching rows are saved (a few hundred MB), though the download itself is large (roughly tens to a hundred-plus GB, a few hours depending on connection). `--files-per-day 4` makes a quick sample instead; then no index is recomputed. `build_corpus.py` handles all three shapes (original, full rebuild, sample) and only writes the facts that exist.
 
 ### Architecture
 
@@ -383,7 +384,7 @@ User:
 
 ### Evaluation method
 
-`rag/eval/make_questions.py` builds the eval set **from the data** (expected answers are computed from the corpus, not typed by hand). On rebuilt data it makes 23 answerable questions: weakest and strongest sector at Day +5, one sector's Day +30 move, the most-mentioned country, questions that name only the event (no date), and 1 question that needs comparing all events. It adds 5 questions the data can't answer (advice, prediction, Bitcoin, 2008, the Fed), for 28 total. With the original outputs, index-value and z-score questions replace the strongest-sector ones.
+`rag/eval/make_questions.py` builds the eval set **from the data** (expected answers are computed from the corpus, not typed by hand). On the full rebuild it makes 24 answerable questions: weakest sector at Day +5, one sector's Day +30 move, the index value on a date, the most-mentioned country, questions that name only the event (no date), and 2 that need comparing many events (highest index overall and within one year). It adds 5 questions the data can't answer (advice, prediction, Bitcoin, 2008, the Fed), for 29 total. If a fact isn't in the data (e.g. no index in a sample run), questions about it are swapped for other data-derived ones.
 
 `rag/eval/run_eval.py` reports:
 
@@ -406,7 +407,7 @@ User:
 
 ### Known limitations
 
-- **Rebuilt, partial data:** no index values, and news is a 4-of-96 sample per day, so "most-mentioned country" and headlines describe the sample, not all coverage.
+- **Rebuilt data:** index values are recomputed for spike days only (no z-scores or thresholds), and may differ slightly from the originals because the p1/p99 constants are rounded.
 - **Small corpus:** 31 events and 6 hand-picked sector groups (~50 S&P 500 stocks), so many reasonable questions have no answer here.
 - **Headline text only:** "headlines" are rebuilt from article URLs, not full article text, so the system knows *what* was in the news only roughly.
 - **Day +N is calendar days:** when Day +N falls on a weekend or holiday, the nearest trading day is used and written in the document.
@@ -420,7 +421,7 @@ User:
 pip install -r requirements.txt
 
 # 0. Rebuild the inputs (laptop; resumable — re-run the same command if interrupted)
-python -m data_collection.rebuild_for_rag      # -> ~/dashboard_data_rebuilt/
+python -m data_collection.rebuild_for_rag      # -> ~/dashboard_data_rebuilt/ (all files; a few hours)
 
 # 1. Build the corpus (no Spark needed)
 python -m rag.build_corpus --data-dir ~/dashboard_data_rebuilt   # -> rag/data/corpus.jsonl (commit it)

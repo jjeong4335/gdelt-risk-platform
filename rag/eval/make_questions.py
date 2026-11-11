@@ -95,6 +95,7 @@ def make(docs):
     # Index values exist only in the original cluster outputs, not in data
     # rebuilt by data_collection/rebuild_for_rag.py.
     has_index = all(e.get("geo_tension_index") is not None for e in events)
+    has_z = all(e.get("z_score") is not None for e in events)
 
     # C. Index level on a date (4 questions; original data only)
     for e in (spread(events[2:], 4) if has_index else []):
@@ -152,10 +153,17 @@ def make(docs):
                "expected_doc_ids": [top["doc_id"]]})
     years = Counter(e["event_date"][:4] for e in events)
     year = max(years, key=lambda y: (years[y], y))
-    top_z = max((e for e in events if e["event_date"].startswith(year)), key=lambda e: e["z_score"])
-    qs.append({"question": f"Which {year} spike had the largest z-score?",
-               "category": "aggregate", "expected_answer": top_z["event_date"],
-               "expected_doc_ids": [top_z["doc_id"]]})
+    in_year = [e for e in events if e["event_date"].startswith(year)]
+    if has_z:
+        top_z = max(in_year, key=lambda e: e["z_score"])
+        qs.append({"question": f"Which {year} spike had the largest z-score?",
+                   "category": "aggregate", "expected_answer": top_z["event_date"],
+                   "expected_doc_ids": [top_z["doc_id"]]})
+    else:
+        top_y = max(in_year, key=lambda e: e["geo_tension_index"])
+        qs.append({"question": f"Which {year} spike had the highest Geo-Tension Index?",
+                   "category": "aggregate", "expected_answer": top_y["event_date"],
+                   "expected_doc_ids": [top_y["doc_id"]]})
 
     for q in qs:
         q["answerable"] = True

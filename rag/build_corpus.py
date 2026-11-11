@@ -189,8 +189,11 @@ def horizon_text(cell: dict, horizon: int) -> str:
 
 
 def build_documents(data: dict) -> list:
-    has_index = data["geo_tension"] is not None and "geo_tension_index" in data["spike_events"]
-    z = yearly_zscores(data["geo_tension"]) if has_index else None
+    # Original outputs: index + z-score + threshold. Rebuilt data (all GKG
+    # files): index recomputed for the spike day only, no z-score/threshold.
+    has_index = "geo_tension_index" in data["spike_events"]
+    has_z = has_index and data["geo_tension"] is not None and "threshold" in data["spike_events"]
+    z = yearly_zscores(data["geo_tension"]) if has_z else None
     news_all = data["spike_news"]
     docs = []
 
@@ -206,17 +209,21 @@ def build_documents(data: dict) -> list:
         urls = headlines["url"].tolist()
         source_url = urls[0] if urls else ""
         countries = top_countries(news)
-        z_score = (float(z.loc[date, "z_score"]) if has_index and date in z.index
+        z_score = (float(z.loc[date, "z_score"]) if has_z and date in z.index
                    else float("nan"))
         sectors, reaction_date, base_date = sector_reactions(data["reactions"], date)
 
         # ── EVENT document ──
         parts = [f"Event: {label}. Spike date: {date}."]
-        if has_index:
+        if has_z:
             parts.append(
                 f"Geo-Tension Index: {ev['geo_tension_index']:.2f} out of 10 "
                 f"(z-score {z_score:.2f} versus the {date[:4]} daily average; "
                 f"spike threshold {ev['threshold']:.2f}).")
+        elif has_index and pd.notna(ev["geo_tension_index"]):
+            parts.append(
+                f"Geo-Tension Index that day: {ev['geo_tension_index']:.2f} out of 10 "
+                f"(recomputed from GDELT with the original formula).")
         if pd.notna(ev.get("dominant_category")):
             parts.append(f"Dominant news category: {ev['dominant_category']}.")
         if pd.notna(ev.get("total_events")):
@@ -246,8 +253,9 @@ def build_documents(data: dict) -> list:
             "sector": None,
             "source_url": source_url,
             "urls": urls,
-            "geo_tension_index": round(float(ev["geo_tension_index"]), 2) if has_index else None,
-            "z_score": round(z_score, 2) if has_index else None,
+            "geo_tension_index": (round(float(ev["geo_tension_index"]), 2)
+                                  if has_index and pd.notna(ev["geo_tension_index"]) else None),
+            "z_score": round(z_score, 2) if has_z else None,
             "countries": countries,
             "text": " ".join(parts),
         })
