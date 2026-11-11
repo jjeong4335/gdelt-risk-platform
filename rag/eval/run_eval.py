@@ -18,7 +18,9 @@ Metrics
 Run:
     python -m rag.eval.run_eval --retrieval-only   # no API key needed
     python -m rag.eval.run_eval                    # full eval, needs ANTHROPIC_API_KEY
-Writes rag/eval/results.json (every question) and rag/eval/results.md (summary).
+    python -m rag.eval.run_eval --retrieval-only --retriever dense   # baseline to compare
+Writes rag/eval/results*.md (summary) and results*.json (every question);
+the suffix shows the mode, e.g. results_dense_retrieval.md.
 """
 import argparse
 import datetime as dt
@@ -109,11 +111,13 @@ def main():
     ap.add_argument("--retrieval-only", action="store_true",
                     help="only measure retrieval (no LLM calls, no API key needed)")
     ap.add_argument("--k", type=int, default=config.TOP_K, help="documents given to the LLM")
+    ap.add_argument("--retriever", choices=["hybrid", "dense"], default=config.RETRIEVER,
+                    help="hybrid = embeddings + BM25 (default); dense = embeddings only")
     args = ap.parse_args()
 
     with open(QUESTIONS_PATH) as f:
         questions = [json.loads(line) for line in f if line.strip()]
-    retriever = Retriever()
+    retriever = Retriever(mode=args.retriever)
     answerable = [q for q in questions if q["answerable"]]
     unanswerable = [q for q in questions if not q["answerable"]]
 
@@ -124,20 +128,21 @@ def main():
     for q in questions:
         hits = retriever.search(q["question"], k=max(KS + [args.k]))
         ids = [h.doc["doc_id"] for h in hits]
-        rec = {**q, "retrieved": ids[:args.k], "top1_score": round(hits[0].score, 4)}
+        best = max(h.score for h in hits[:args.k])  # what the refusal gate sees
+        rec = {**q, "retrieved": ids[:args.k], "best_similarity": round(best, 4)}
         if q["answerable"]:
-            top1_ans.append(hits[0].score)
+            top1_ans.append(best)
             for k in KS:
                 if set(q["expected_doc_ids"]) & set(ids[:k]):
                     hits_at[k] += 1
             rec["hit@5"] = bool(set(q["expected_doc_ids"]) & set(ids[:5]))
         else:
-            top1_unans.append(hits[0].score)
+            top1_unans.append(best)
         records[q["id"]] = rec
 
     lines = [f"# Geo-Risk Q&A eval — {dt.date.today()}", "",
              f"- Questions: {len(questions)} ({len(answerable)} answerable, {len(unanswerable)} unanswerable)",
-             f"- Embedding model: `{config.EMBED_MODEL}`",
+             f"- Retriever: **{args.retriever}**; embedding model: `{config.EMBED_MODEL}`",
              f"- k given to LLM: {args.k}; refusal similarity gate: {config.MIN_SIMILARITY}", "",
              "| Metric | Result |", "|---|---|"]
     lows = []
@@ -146,7 +151,7 @@ def main():
     if answerable and 100 * hits_at[5] / len(answerable) < 80:
         lows.append(suggestion("hit@5", 100 * hits_at[5] / len(answerable)))
 
-    sim_note = (f"Top-1 similarity — answerable: min {min(top1_ans):.3f}, mean "
+    sim_note = (f"Best cosine similarity in top {args.k} — answerable: min {min(top1_ans):.3f}, mean "
                 f"{sum(top1_ans) / len(top1_ans):.3f}; unanswerable: max {max(top1_unans):.3f}, "
                 f"mean {sum(top1_unans) / len(top1_unans):.3f}") if top1_ans and top1_unans else ""
 
@@ -226,10 +231,13 @@ def main():
 
     report = "\n".join(lines)
     print(report)
-    (EVAL_DIR / "results.md").write_text(report + "\n")
-    with open(EVAL_DIR / "results.json", "w") as f:
+    suffix = "" if args.retriever == "hybrid" else f"_{args.retriever}"
+    if args.retrieval_only:
+        suffix += "_retrieval"
+    (EVAL_DIR / f"results{suffix}.md").write_text(report + "\n")
+    with open(EVAL_DIR / f"results{suffix}.json", "w") as f:
         json.dump(list(records.values()), f, indent=2, ensure_ascii=False)
-    print(f"\nSaved {EVAL_DIR / 'results.md'} and results.json")
+    print(f"\nSaved {EVAL_DIR / f'results{suffix}.md'} and results{suffix}.json")
 
 
 if __name__ == "__main__":

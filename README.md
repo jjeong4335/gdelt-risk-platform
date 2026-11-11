@@ -343,7 +343,7 @@ flowchart LR
         E --> F[(FAISS index)]
     end
     subgraph Online["Per question"]
-        Q[Question] --> R[retrieve.py<br/>cosine top-k + date/sector filter]
+        Q[Question] --> R[retrieve.py<br/>hybrid: embeddings + BM25, RRF<br/>+ date/sector filter]
         F --> R
         R --> G{best similarity<br/>>= threshold?}
         G -- no --> X["I don't have evidence for that in the data."]
@@ -359,6 +359,7 @@ flowchart LR
 | Embedding model | `sentence-transformers/all-MiniLM-L6-v2` (384-dim) | Small (~80 MB), runs on a laptop CPU, free, strong at short English sentence similarity. Our documents are short and factual, so a larger model isn't needed. |
 | Chunking | 1 document per spike event + 1 per event × sector (31 + 186 = 217) | Matches the two kinds of questions people ask ("what happened on X?" / "how did sector Y react?"). Each document stays under the model's 256-token limit; `index.py` warns if one doesn't. |
 | Vector store | FAISS `IndexFlatIP` (exact search) on normalised vectors | Inner product of unit vectors = cosine similarity. With 217 documents exact search is instant; approximate indexes would only add complexity. |
+| Hybrid retrieval | Embedding ranking + BM25 keyword ranking, merged with Reciprocal Rank Fusion: `1/(60+rank_dense) + 1/(60+rank_bm25)` | The first eval run showed embeddings miss exact tokens: 9 of the 10 retrieval misses were questions that name a date (e.g. "the spike on 2024-05-02"). BM25 scores rare exact tokens (a date, a sector name) highly. RRF only uses ranks, so the two score scales don't need calibrating. `GEO_QA_RETRIEVER=dense` turns it off for comparison. |
 | Filters | Date range and sector, applied to metadata after scoring all documents | Scoring everything first means a filter can never hide a good match. |
 | LLM | Claude via the Anthropic API (`GEO_QA_MODEL`, key from `ANTHROPIC_API_KEY`) | Never hard-coded; temperature 0 for repeatable eval runs. |
 | Refusal | Two layers: similarity gate before the LLM, then a prompt rule | If nothing relevant is retrieved the LLM is never called, so it can't make something up. |
@@ -386,7 +387,7 @@ User:
 
 `rag/eval/make_questions.py` builds the eval set **from the data** (expected answers are computed from the corpus, not typed by hand). On the full rebuild it makes 24 answerable questions: weakest sector at Day +5, one sector's Day +30 move, the index value on a date, the most-mentioned country, questions that name only the event (no date), and 2 that need comparing many events (highest index overall and within one year). It adds 5 questions the data can't answer (advice, prediction, Bitcoin, 2008, the Fed), for 29 total. If a fact isn't in the data (e.g. no index in a sample run), questions about it are swapped for other data-derived ones.
 
-`rag/eval/run_eval.py` reports:
+`rag/eval/run_eval.py --retriever dense|hybrid` reports (run both to compare retrieval):
 
 - **Retrieval hit rate @k** — did an expected document appear in the top k (k = 1, 3, 5)?
 - **Answer accuracy** — does the answer contain the expected sector / country / date / number?

@@ -31,6 +31,10 @@ EMBED_MODEL = os.environ.get("GEO_EMBED_MODEL", "sentence-transformers/all-MiniL
 # from the ANTHROPIC_API_KEY environment variable.
 LLM_MODEL = os.environ.get("GEO_QA_MODEL", "claude-sonnet-5-5")
 
+# "hybrid" = embeddings + BM25 keyword search merged with RRF (default);
+# "dense" = embeddings only. See rag/retrieve.py.
+RETRIEVER = os.environ.get("GEO_QA_RETRIEVER", "hybrid")
+
 # How many documents to give the LLM.
 TOP_K = int(os.environ.get("GEO_QA_TOP_K", "5"))
 

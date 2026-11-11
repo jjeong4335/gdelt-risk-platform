@@ -119,7 +119,9 @@ def answer(question, retriever=None, k=config.TOP_K, start_date=None, end_date=N
     retriever = retriever or Retriever()
     hits = retriever.search(question, k=k, start_date=start_date, end_date=end_date, sectors=sectors)
 
-    if not hits or hits[0].score < config.MIN_SIMILARITY:
+    # Gate on the best cosine similarity among the retrieved documents
+    # (in hybrid mode the first hit is not necessarily the most similar).
+    if not hits or max(h.score for h in hits) < config.MIN_SIMILARITY:
         return Answer(question, config.REFUSAL_TEXT, config.REFUSAL_TEXT, hits,
                       refused=True, gated=True)
 
