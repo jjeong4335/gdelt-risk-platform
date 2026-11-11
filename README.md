@@ -21,7 +21,7 @@ This platform answers those questions by:
 3. Computing **sector-level stock reactions** for each spike event (±30 trading days)
 4. Displaying everything in a **Streamlit dashboard** with historical event explorer
 
-No machine learning. No prediction. Pure large-scale data engineering — fully explainable outputs.
+No prediction. Pure large-scale data engineering — fully explainable outputs. A small RAG layer (Geo-Risk Q&A) lets users ask questions about these outputs in plain English, with every answer cited back to the data.
 
 ---
 
@@ -82,8 +82,17 @@ gdelt-risk-platform/
 │   ├── event_window.py            # Computes ticker reactions ±30d per spike
 │   ├── risk_engine.py             # Aggregates sector-level risk scores
 │   └── spike_news_extract.py      # Extracts news URLs per spike event
-└── dashboard/
-    └── app.py                     # Streamlit dashboard (2 tabs)
+├── dashboard/
+│   ├── app.py                     # Streamlit dashboard (3 tabs)
+│   └── constants.py               # Sector map + spike labels (shared with rag/)
+├── rag/                           # Geo-Risk Q&A (RAG) — see section below
+│   ├── build_corpus.py            # Parquet outputs -> text documents
+│   ├── index.py                   # Embeddings + FAISS index
+│   ├── retrieve.py                # Top-k search with date/sector filters
+│   ├── generate.py                # Grounded answer from Claude
+│   └── eval/                      # Eval questions + eval script
+├── MODEL_CARD.md                  # Intended use, limits, eval results
+└── requirements.txt
 ```
 ---
 
@@ -283,7 +292,7 @@ VIX and the Geo-Tension Index often move together during major geopolitical even
 ### Install Dependencies
 
 ```bash
-pip install streamlit plotly pandas yfinance
+pip install -r requirements.txt
 ```
 
 ### Run Dashboard
@@ -297,3 +306,120 @@ streamlit run dashboard/app.py --server.port 8501 --theme.base light
 ```bash
 ~/ngrok http 8501
 ```
+
+---
+
+## Geo-Risk Q&A (RAG)
+
+A **Q&A** tab where you can ask things like *"Which sector fell most 5 days after the Russia-Ukraine War spike?"* and get a short answer that cites the event date and a source article URL, with the documents it used shown underneath.
+
+**RAG (Retrieval-Augmented Generation) in one line:** first *retrieve* the few pieces of our own data that match the question, then ask an LLM to *generate* an answer using only those pieces. The LLM writes the sentence; the facts come from our pipeline outputs.
+
+### Architecture
+
+```mermaid
+flowchart LR
+    subgraph Offline["Offline (run once)"]
+        P[Existing Parquet outputs<br/>spike_events · geo_tension_index<br/>spike_news · ticker_reaction_by_spike]
+        P --> C[build_corpus.py<br/>217 short text docs]
+        C --> E[index.py<br/>all-MiniLM-L6-v2 embeddings]
+        E --> F[(FAISS index)]
+    end
+    subgraph Online["Per question"]
+        Q[Question] --> R[retrieve.py<br/>cosine top-k + date/sector filter]
+        F --> R
+        R --> G{best similarity<br/>>= threshold?}
+        G -- no --> X["I don't have evidence for that in the data."]
+        G -- yes --> L[generate.py<br/>Claude + grounded prompt]
+        L --> A[Answer with citations<br/>+ retrieved docs in UI]
+    end
+```
+
+### Design choices
+
+| Choice | What we did | Why |
+|---|---|---|
+| Embedding model | `sentence-transformers/all-MiniLM-L6-v2` (384-dim) | Small (~80 MB), runs on a laptop CPU, free, strong at short English sentence similarity. Our documents are short and factual, so a larger model isn't needed. |
+| Chunking | 1 document per spike event + 1 per event × sector (31 + 186 = 217) | Matches the two kinds of questions people ask ("what happened on X?" / "how did sector Y react?"). Each document stays under the model's 256-token limit; `index.py` warns if one doesn't. |
+| Vector store | FAISS `IndexFlatIP` (exact search) on normalised vectors | Inner product of unit vectors = cosine similarity. With 217 documents exact search is instant; approximate indexes would only add complexity. |
+| Filters | Date range and sector, applied to metadata after scoring all documents | Scoring everything first means a filter can never hide a good match. |
+| LLM | Claude via the Anthropic API (`GEO_QA_MODEL`, key from `ANTHROPIC_API_KEY`) | Never hard-coded; temperature 0 for repeatable eval runs. |
+| Refusal | Two layers: similarity gate before the LLM, then a prompt rule | If nothing relevant is retrieved the LLM is never called, so it can't make something up. |
+| Citations | Model cites document IDs (`[event:2022-02-25]`); code checks each ID was retrieved, then shows it as `[date · URL]` | Short IDs are easy for the model to copy exactly and easy for code to verify. |
+
+### Prompt template (abridged — full text in `rag/generate.py`)
+
+```text
+System:
+  Use ONLY the facts in the <documents>. No outside knowledge, no guessed numbers.
+  After every factual sentence, cite the document id in [brackets].
+  If the documents don't contain the answer, reply exactly:
+    "I don't have evidence for that in the data."
+  Never give investment advice; if asked, start with "I can't give investment advice."
+  "Day +N" = N calendar days after the spike. Headlines come from article URLs.
+User:
+  <documents>
+    <document id="event:2022-02-25" event_date="2022-02-25"> ... </document>
+    ...
+  </documents>
+  Question: ...
+```
+
+### Evaluation method
+
+`rag/eval/make_questions.py` builds the eval set **from the data** (expected answers are computed from the corpus, not typed by hand): 24 answerable questions (weakest sector at Day +5, a sector's Day +30 move, the index value on a date, most-mentioned country, label-only questions, and 2 questions that need comparing many events) plus 5 the data can't answer (advice, prediction, Bitcoin, 2008, the Fed).
+
+`rag/eval/run_eval.py` reports:
+
+- **Retrieval hit rate @k** — did an expected document appear in the top k (k = 1, 3, 5)?
+- **Answer accuracy** — does the answer contain the expected sector / country / date / number?
+- **Groundedness** — every cited ID must be a retrieved document, and every number and date in the answer must appear in the retrieved documents. Answers with no numbers or dates are listed in `results.md` for manual review.
+- **Refusal accuracy** — on unanswerable questions, did it refuse (or decline advice)? It also reports **false refusals** on answerable questions.
+
+### Results
+
+> **Not run yet.** Run the steps below and paste the table from `rag/eval/results.md` here. Do not edit the numbers by hand.
+
+| Metric | Result |
+|---|---|
+| Retrieval hit rate @1 / @3 / @5 | — |
+| Answer accuracy (answerable) | — |
+| Grounded answers (auto-checkable) | — |
+| Refusal accuracy (unanswerable) | — |
+| False refusals (answerable) | — |
+
+### Known limitations
+
+- **Small corpus:** 31 events and 6 hand-picked sector groups (~50 S&P 500 stocks), so many reasonable questions have no answer here.
+- **Headline text only:** "headlines" are rebuilt from article URLs, not full article text, so the system knows *what* was in the news only roughly.
+- **Day +N is calendar days:** when Day +N falls on a weekend or holiday, the nearest trading day is used and written in the document.
+- **Comparison questions are hard:** "Which spike was the biggest?" needs all 31 events, but the LLM only sees the top k.
+- **The LLM can still be wrong:** citations and automatic checks reduce this but don't eliminate it. Always check the retrieved documents shown under the answer.
+- **Not investment advice.** Historical correlations only; see `MODEL_CARD.md`.
+
+### How to run
+
+```bash
+pip install -r requirements.txt
+
+# 1. Build the corpus where the pipeline outputs live (no Spark needed).
+#    Default folder: ~/dashboard_data (override with --data-dir or GEO_DATA_DIR)
+python -m rag.build_corpus            # -> rag/data/corpus.jsonl (commit this file)
+
+# 2. Build the vector index (downloads the embedding model the first time)
+python -m rag.index                   # -> rag/artifacts/ (git-ignored)
+
+# 3. Ask a question from the terminal
+export ANTHROPIC_API_KEY=...          # never commit this
+python -m rag.generate "Which sector fell most 5 days after the Russia-Ukraine War spike?"
+
+# 4. Evaluate
+python -m rag.eval.make_questions     # -> rag/eval/questions.jsonl
+python -m rag.eval.run_eval --retrieval-only   # free, no API calls
+python -m rag.eval.run_eval                    # full eval (~30 API calls)
+
+# 5. Dashboard (Q&A is the third tab)
+streamlit run dashboard/app.py
+```
+
+Optional settings (environment variables): `GEO_QA_MODEL`, `GEO_QA_TOP_K` (default 5), `GEO_QA_MIN_SIM` (refusal threshold, default 0.30), `GEO_EMBED_MODEL`.
