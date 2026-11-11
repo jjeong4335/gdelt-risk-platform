@@ -105,13 +105,9 @@ def call_claude(question, hits):
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": build_user_message(question, hits)}],
     )
-    try:
-        # temperature=0 makes answers as repeatable as possible for the eval.
-        resp = client.messages.create(temperature=0, **kwargs)
-    except anthropic.BadRequestError as e:
-        if "temperature" not in str(e):
-            raise
-        resp = client.messages.create(**kwargs)  # model doesn't accept temperature
+    # Note: current SDK/models don't take a temperature setting, so answers can
+    # vary slightly between runs; the eval reports what a single run produced.
+    resp = client.messages.create(**kwargs)
     return "".join(b.text for b in resp.content if b.type == "text").strip()
 
 
