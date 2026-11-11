@@ -239,7 +239,8 @@ def build_documents(data: dict) -> list:
                           key=lambda x: x[1]["return_pct"])
             parts.append("Sector average returns at Day +5 after the spike: " + ", ".join(
                 f"{s} {fmt_pct(c['return_pct'])}" for s, c in day5) + ".")
-            parts.append(f"Weakest sector at Day +5: {day5[0][0]}. Strongest: {day5[-1][0]}.")
+            parts.append(f"Sector that fell the most (weakest) at Day +5: {day5[0][0]}. "
+                         f"Sector that rose the most (strongest) at Day +5: {day5[-1][0]}.")
             if base_date and base_date != date:
                 parts.append(f"(Spike was not a trading day; returns use the {base_date} close as the base.)")
             elif reaction_date != date:
@@ -275,7 +276,7 @@ def build_documents(data: dict) -> list:
             )
             if sector in day5_rank:
                 text += (f" At Day +5 this sector ranked {day5_rank.index(sector) + 1} "
-                         f"of {len(day5_rank)} (1 = fell the most).")
+                         f"of {len(day5_rank)} by return (1 = lowest return).")
             docs.append({
                 "doc_id": f"sector:{date}:{sector}",
                 "type": "event_sector",
