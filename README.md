@@ -90,7 +90,7 @@ gdelt-risk-platform/
 │   ├── build_corpus.py            # Parquet outputs -> text documents
 │   ├── index.py                   # Embeddings + FAISS index
 │   ├── retrieve.py                # Top-k search with date/sector filters
-│   ├── generate.py                # Grounded answer from Claude
+│   ├── generate.py                # Grounded answer from an LLM (Gemini or Claude)
 │   ├── ui.py / qa_app.py          # Streamlit Q&A (tab or standalone)
 │   └── eval/                      # Eval questions + eval script
 ├── MODEL_CARD.md                  # Intended use, limits, eval results
@@ -347,7 +347,7 @@ flowchart LR
         F --> R
         R --> G{best similarity<br/>>= threshold?}
         G -- no --> X["I don't have evidence for that in the data."]
-        G -- yes --> L[generate.py<br/>Claude + grounded prompt]
+        G -- yes --> L[generate.py<br/>Gemini or Claude + grounded prompt]
         L --> A[Answer with citations<br/>+ retrieved docs in UI]
     end
 ```
@@ -361,7 +361,7 @@ flowchart LR
 | Vector store | FAISS `IndexFlatIP` (exact search) on normalised vectors | Inner product of unit vectors = cosine similarity. With 217 documents exact search is instant; approximate indexes would only add complexity. |
 | Hybrid retrieval | Embedding ranking + BM25 keyword ranking, merged with Reciprocal Rank Fusion: `1/(60+rank_dense) + 1/(60+rank_bm25)` | The first eval run showed embeddings miss exact tokens: 9 of the 10 retrieval misses were questions that name a date (e.g. "the spike on 2024-05-02"). BM25 scores rare exact tokens (a date, a sector name) highly. RRF only uses ranks, so the two score scales don't need calibrating. `GEO_QA_RETRIEVER=dense` turns it off for comparison. |
 | Filters | Date range and sector, applied to metadata after scoring all documents | Scoring everything first means a filter can never hide a good match. |
-| LLM | Claude via the Anthropic API (`GEO_QA_MODEL`, key from `ANTHROPIC_API_KEY`) | Never hard-coded. The current API has no temperature setting, so answers can vary slightly between runs; eval numbers are from a single run. |
+| LLM | `GEO_QA_PROVIDER=gemini` (default, `gemini-3.8-flash`, key in `GEMINI_API_KEY`) or `anthropic` (`claude-sonnet-5-5`, key in `ANTHROPIC_API_KEY`) | Gemini's free tier makes the project free to run; the same prompt and safety rails work with either provider. Keys come from environment variables, never the code. Calls are spaced to respect free-tier per-minute limits, and the eval caches answers so a daily quota just pauses it. Answers can vary slightly between runs; eval numbers are from a single run. |
 | Refusal | Two layers: similarity gate before the LLM, then a prompt rule | If nothing relevant is retrieved the LLM is never called, so it can't make something up. |
 | Citations | Model cites document IDs (`[event:2022-02-25]`); code checks each ID was retrieved, then shows it as `[date · URL]` | Short IDs are easy for the model to copy exactly and easy for code to verify. |
 
@@ -431,17 +431,18 @@ python -m rag.build_corpus --data-dir ~/dashboard_data_rebuilt   # -> rag/data/c
 python -m rag.index                   # -> rag/artifacts/ (git-ignored)
 
 # 3. Ask a question from the terminal
-export ANTHROPIC_API_KEY=...          # never commit this
+export GEMINI_API_KEY=...             # free key from aistudio.google.com; never commit it
 python -m rag.generate "Which sector fell most 5 days after the Russia-Ukraine War spike?"
 
 # 4. Evaluate
 python -m rag.eval.make_questions     # -> rag/eval/questions.jsonl
 python -m rag.eval.run_eval --retrieval-only   # free, no API calls
-python -m rag.eval.run_eval                    # full eval (~30 API calls)
+python -m rag.eval.run_eval                    # full eval (~30 LLM calls, ~6 min on the free tier;
+                                               #  if the daily quota stops it, re-run later to continue)
 
 # 5. UI
 streamlit run rag/qa_app.py           # Q&A on its own (works with rebuilt data)
 streamlit run dashboard/app.py        # full dashboard, Q&A is the third tab (needs the original outputs)
 ```
 
-Optional settings (environment variables): `GEO_QA_MODEL`, `GEO_QA_TOP_K` (default 5), `GEO_QA_MIN_SIM` (refusal threshold, default 0.30), `GEO_EMBED_MODEL`.
+Optional settings (environment variables): `GEO_QA_PROVIDER` (`gemini`/`anthropic`), `GEO_QA_MODEL`, `GEO_QA_TOP_K` (default 5), `GEO_QA_MIN_SIM` (refusal threshold, default 0.30), `GEO_EMBED_MODEL`.

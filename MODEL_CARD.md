@@ -1,10 +1,10 @@
 # Model Card — Geo-Risk Q&A (RAG)
 
 ## What it is
-A question-answering feature on top of the GDELT Geopolitical Risk Platform. It retrieves the most relevant spike-event and sector-reaction documents (built from this project's pipeline outputs) and asks Claude to answer **only** from those documents, citing each claim.
+A question-answering feature on top of the GDELT Geopolitical Risk Platform. It retrieves the most relevant spike-event and sector-reaction documents (built from this project's pipeline outputs) and asks an LLM to answer **only** from those documents, citing each claim.
 
 - **Retriever:** `sentence-transformers/all-MiniLM-L6-v2` embeddings + FAISS exact cosine search
-- **Generator:** Claude via the Anthropic API (model set by `GEO_QA_MODEL`)
+- **Generator:** Gemini via Google AI Studio by default (`gemini-3.8-flash`), or Claude via the Anthropic API (`GEO_QA_PROVIDER`, `GEO_QA_MODEL`). The model used is printed in every eval report.
 - **Knowledge source:** 31 detected geopolitical tension spikes (2016–2026) and the average returns of 6 groups of S&P 500 stocks at Day +1 / +5 / +30
 
 ## Intended use
@@ -50,3 +50,4 @@ Method: see "Evaluation method" in the README. The eval set is generated from th
 - The prompt restricts answers to the provided documents, requires citations and forbids investment advice.
 - Code checks that every cited document was actually retrieved and flags any that weren't.
 - The API key is read from an environment variable and never stored in the repo.
+- On the Gemini free tier, prompts and responses may be used by Google to improve its products. Only public data (GDELT news metadata and stock prices) is sent.
