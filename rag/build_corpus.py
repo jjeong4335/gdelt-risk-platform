@@ -30,10 +30,13 @@ from rag import config
 # The pipeline outputs this script needs, relative to the data folder.
 REQUIRED_OUTPUTS = {
     "spike_events": "spike_events.parquet",
-    "geo_tension": "geo_tension_index.parquet",
     "spike_news": "spike_news",
     "reactions": "ticker_reaction_by_spike",
 }
+# Only in the ORIGINAL cluster outputs. Data rebuilt with
+# data_collection/rebuild_for_rag.py has no index values, so index, z-score
+# and threshold sentences are left out of the documents.
+OPTIONAL_OUTPUTS = {"geo_tension": "geo_tension_index.parquet"}
 
 # The three horizons the Q&A talks about (calendar days after the spike).
 HORIZONS = [1, 5, 30]
@@ -75,11 +78,12 @@ def check_outputs(data_dir: Path) -> None:
 
 def load_outputs(data_dir: Path) -> dict:
     out = {}
-    for key, name in REQUIRED_OUTPUTS.items():
-        out[key] = pd.read_parquet(data_dir / name)
+    for key, name in {**REQUIRED_OUTPUTS, **OPTIONAL_OUTPUTS}.items():
+        out[key] = pd.read_parquet(data_dir / name) if (data_dir / name).exists() else None
     for key, col in [("spike_events", "date"), ("geo_tension", "date"),
                      ("spike_news", "spike_date"), ("reactions", "spike_date")]:
-        out[key][col] = _to_date_str(out[key][col])
+        if out[key] is not None:
+            out[key][col] = _to_date_str(out[key][col])
     return out
 
 
@@ -133,7 +137,7 @@ def event_label(date: str, news: pd.DataFrame) -> str:
 def sector_reactions(reactions: pd.DataFrame, date: str):
     """Average return per sector at Day +1/+5/+30.
 
-    Returns (table, reaction_date). Like the dashboard:
+    Returns (table, reaction_date, base_date). Like the dashboard:
       * if the spike day was not a trading day, use the nearest spike date
         that has price data;
       * if Day +N was a weekend/holiday, use the nearest trading day and
@@ -141,7 +145,7 @@ def sector_reactions(reactions: pd.DataFrame, date: str):
     """
     available = reactions["spike_date"].unique()
     if len(available) == 0:
-        return {}, None
+        return {}, None, None
     if date in set(available):
         reaction_date = date
     else:
@@ -152,9 +156,11 @@ def sector_reactions(reactions: pd.DataFrame, date: str):
     ticker_to_sector = {t: s for s, tickers in SECTOR_MAP.items() for t in tickers}
     rows["sector"] = rows["ticker"].map(ticker_to_sector)
     rows = rows.dropna(subset=["sector"])
+    base_date = (str(pd.Timestamp(rows["base_date"].iloc[0]).date())
+                 if "base_date" in rows and len(rows) else None)
     days = sorted(d for d in rows["days_from_spike"].unique() if d > 0)
     if not days:
-        return {}, reaction_date
+        return {}, reaction_date, base_date
 
     table = {}
     for horizon in HORIZONS:
@@ -168,7 +174,7 @@ def sector_reactions(reactions: pd.DataFrame, date: str):
                 "day_used": int(used),
                 "n_tickers": int(r["n"]),
             }
-    return table, reaction_date
+    return table, reaction_date, base_date
 
 
 def fmt_pct(x: float) -> str:
@@ -183,7 +189,8 @@ def horizon_text(cell: dict, horizon: int) -> str:
 
 
 def build_documents(data: dict) -> list:
-    z = yearly_zscores(data["geo_tension"])
+    has_index = data["geo_tension"] is not None and "geo_tension_index" in data["spike_events"]
+    z = yearly_zscores(data["geo_tension"]) if has_index else None
     news_all = data["spike_news"]
     docs = []
 
@@ -199,18 +206,21 @@ def build_documents(data: dict) -> list:
         urls = headlines["url"].tolist()
         source_url = urls[0] if urls else ""
         countries = top_countries(news)
-        z_score = float(z.loc[date, "z_score"]) if date in z.index else float("nan")
-        sectors, reaction_date = sector_reactions(data["reactions"], date)
+        z_score = (float(z.loc[date, "z_score"]) if has_index and date in z.index
+                   else float("nan"))
+        sectors, reaction_date, base_date = sector_reactions(data["reactions"], date)
 
         # ── EVENT document ──
-        parts = [
-            f"Event: {label}. Spike date: {date}.",
-            f"Geo-Tension Index: {ev['geo_tension_index']:.2f} out of 10 "
-            f"(z-score {z_score:.2f} versus the {date[:4]} daily average; "
-            f"spike threshold {ev['threshold']:.2f}).",
-            f"Dominant news category: {ev['dominant_category']}. "
-            f"International articles that day: {int(ev['total_events']):,}.",
-        ]
+        parts = [f"Event: {label}. Spike date: {date}."]
+        if has_index:
+            parts.append(
+                f"Geo-Tension Index: {ev['geo_tension_index']:.2f} out of 10 "
+                f"(z-score {z_score:.2f} versus the {date[:4]} daily average; "
+                f"spike threshold {ev['threshold']:.2f}).")
+        if pd.notna(ev.get("dominant_category")):
+            parts.append(f"Dominant news category: {ev['dominant_category']}.")
+        if pd.notna(ev.get("total_events")):
+            parts.append(f"International articles that day: {int(ev['total_events']):,}.")
         if countries:
             parts.append("Most-mentioned countries in coverage: " + ", ".join(countries) + ".")
         if len(headlines):
@@ -223,8 +233,11 @@ def build_documents(data: dict) -> list:
             parts.append("Sector average returns at Day +5 after the spike: " + ", ".join(
                 f"{s} {fmt_pct(c['return_pct'])}" for s, c in day5) + ".")
             parts.append(f"Weakest sector at Day +5: {day5[0][0]}. Strongest: {day5[-1][0]}.")
-            if reaction_date != date:
-                parts.append(f"(Price reactions measured from {reaction_date}, the nearest trading day.)")
+            if base_date and base_date != date:
+                parts.append(f"(Spike was not a trading day; returns use the {base_date} close as the base.)")
+            elif reaction_date != date:
+                parts.append(f"(No price data for this date; numbers are from the nearest spike "
+                             f"date with price data, {reaction_date}, as in the dashboard.)")
         docs.append({
             "doc_id": f"event:{date}",
             "type": "event",
@@ -233,8 +246,8 @@ def build_documents(data: dict) -> list:
             "sector": None,
             "source_url": source_url,
             "urls": urls,
-            "geo_tension_index": round(float(ev["geo_tension_index"]), 2),
-            "z_score": round(z_score, 2),
+            "geo_tension_index": round(float(ev["geo_tension_index"]), 2) if has_index else None,
+            "z_score": round(z_score, 2) if has_index else None,
             "countries": countries,
             "text": " ".join(parts),
         })
@@ -242,13 +255,15 @@ def build_documents(data: dict) -> list:
         # ── EVENT x SECTOR documents ──
         day5_rank = sorted((s for s in sectors if 5 in sectors[s]),
                            key=lambda s: sectors[s][5]["return_pct"])
+        base_label = (f"{base_date} (first trading day after the spike)"
+                      if base_date and base_date != date else "spike-day")
         for sector, cells in sectors.items():
             tickers = ", ".join(SECTOR_MAP[sector])
             moves = "; ".join(horizon_text(cells[h], h) for h in HORIZONS if h in cells)
             text = (
                 f"Sector reaction: {sector} stocks after the spike on {date} ({label}). "
                 f"Average return of S&P 500 members ({tickers}) measured from the "
-                f"spike-day close: {moves}."
+                f"{base_label} close: {moves}."
             )
             if sector in day5_rank:
                 text += (f" At Day +5 this sector ranked {day5_rank.index(sector) + 1} "

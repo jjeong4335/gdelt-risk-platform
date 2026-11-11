@@ -92,8 +92,12 @@ def make(docs):
                    "category": "sector_d30", "expected_answer": pct(cell["return_pct"]),
                    "expected_doc_ids": [f"sector:{date}:{sector}"]})
 
-    # C. Index level on a date (4 questions)
-    for e in spread(events[2:], 4):
+    # Index values exist only in the original cluster outputs, not in data
+    # rebuilt by data_collection/rebuild_for_rag.py.
+    has_index = all(e.get("geo_tension_index") is not None for e in events)
+
+    # C. Index level on a date (4 questions; original data only)
+    for e in (spread(events[2:], 4) if has_index else []):
         qs.append({"question": f"What was the Geo-Tension Index on {e['event_date']}?",
                    "category": "index_value", "expected_answer": f"{e['geo_tension_index']:.2f}",
                    "expected_doc_ids": [e["doc_id"]]})
@@ -117,7 +121,31 @@ def make(docs):
                    "category": "label_only_d1", "expected_answer": pct(cell["return_pct"]),
                    "expected_doc_ids": [f"sector:{date}:{sector}"]})
 
-    # F. Questions that need comparing many events (2) — hard for top-k RAG
+    # C'. Without index values: strongest sector at Day +5 (4 questions)
+    for e in ([] if has_index else spread(with_sectors[2:], 4)):
+        date = e["event_date"]
+        day5 = [(s, sector_docs[(date, s)]["returns"].get("5")) for s in sectors_of[date]]
+        day5 = [(s, c["return_pct"]) for s, c in day5 if c]
+        if not day5:
+            continue
+        best = max(day5, key=lambda x: x[1])[0]
+        qs.append({"question": f"Which sector rose the most 5 days after {name(e)}?",
+                   "category": "strongest_sector_d5", "expected_answer": best,
+                   "expected_doc_ids": [e["doc_id"], f"sector:{date}:{best}"]})
+
+    # F. Questions that need comparing many events — hard for top-k RAG
+    if not has_index:
+        cells = [(d, c["5"]["return_pct"]) for (d, s), doc in sector_docs.items()
+                 if s == "Airlines" for c in [doc["returns"]] if "5" in c]
+        if cells:
+            worst_date = min(cells, key=lambda x: x[1])[0]
+            qs.append({"question": "After which spike did Airlines stocks fall the most by Day +5?",
+                       "category": "aggregate", "expected_answer": worst_date,
+                       "expected_doc_ids": [f"sector:{worst_date}:Airlines"]})
+        for q in qs:
+            q["answerable"] = True
+        return _finish(qs)
+
     top = max(events, key=lambda e: e["geo_tension_index"])
     qs.append({"question": "Which detected spike had the highest Geo-Tension Index?",
                "category": "aggregate", "expected_answer": top["event_date"],
@@ -131,6 +159,10 @@ def make(docs):
 
     for q in qs:
         q["answerable"] = True
+    return _finish(qs)
+
+
+def _finish(qs):
     for q in UNANSWERABLE:
         qs.append({**q, "answerable": False, "expected_answer": None, "expected_doc_ids": []})
     for i, q in enumerate(qs, 1):
