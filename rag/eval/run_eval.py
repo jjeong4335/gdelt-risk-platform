@@ -183,7 +183,7 @@ def main():
                 answer(q["question"], retriever=retriever, k=args.k, llm=cached_llm)
                 done += 1
             except RateLimited as e:
-                print(f"\nStopped: API quota reached after {done}/{len(questions)} questions "
+                print(f"\nStopped: API quota reached or model busy after {done}/{len(questions)} questions "
                       f"(answers so far are saved).\n{e}\n"
                       "Re-run the same command later (free-tier daily limits reset at "
                       "midnight Pacific) and it will continue where it stopped.")

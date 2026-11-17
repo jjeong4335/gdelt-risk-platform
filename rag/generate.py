@@ -100,7 +100,8 @@ def cited_doc_ids(text):
 
 
 class RateLimited(RuntimeError):
-    """The provider's quota is used up (e.g. Gemini free tier's daily limit)."""
+    """The provider can't serve us right now: quota used up (e.g. Gemini free
+    tier's daily limit) or the model is overloaded. Safe to retry later."""
 
 
 _last_call = 0.0
@@ -138,12 +139,19 @@ def call_gemini(question, hits):
                 model=config.LLM_MODEL, contents=build_user_message(question, hits), config=cfg)
             return (resp.text or "").strip()
         except errors.APIError as e:
-            if getattr(e, "code", None) != 429:
+            code, msg = getattr(e, "code", None), str(e)
+            if code == 429:  # quota
+                if "PerDay" in msg or "per day" in msg.lower() or attempt == 2:
+                    raise RateLimited(f"Gemini quota exhausted: {msg[:300]}") from e
+                time.sleep(30 * (attempt + 1))  # per-minute limit: wait and retry
+            elif code in (500, 503):  # "model is experiencing high demand" — temporary
+                if attempt == 2:
+                    raise RateLimited(
+                        f"Gemini is busy ({code}); try again later or set "
+                        f"GEO_QA_MODEL to another model. {msg[:200]}") from e
+                time.sleep(20 * (attempt + 1))
+            else:
                 raise
-            msg = str(e)
-            if "PerDay" in msg or "per day" in msg.lower() or attempt == 2:
-                raise RateLimited(f"Gemini quota exhausted: {msg[:300]}") from e
-            time.sleep(30 * (attempt + 1))  # per-minute limit: wait and retry
 
 
 def call_claude(question, hits):
