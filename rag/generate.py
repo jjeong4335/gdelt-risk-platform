@@ -124,7 +124,11 @@ def call_gemini(question, hits):
     if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")):
         raise RuntimeError("Set the GEMINI_API_KEY environment variable first "
                            "(create a key at aistudio.google.com).")
-    client = genai.Client()  # reads GEMINI_API_KEY from the environment
+    # Reads GEMINI_API_KEY from the environment. The SDK's own retries are
+    # turned off (attempts=1) because the loop below already retries; stacking
+    # both made a busy model look frozen for minutes. 60 s timeout per call.
+    client = genai.Client(http_options=types.HttpOptions(
+        timeout=60_000, retry_options=types.HttpRetryOptions(attempts=1)))
     cfg = types.GenerateContentConfig(
         system_instruction=SYSTEM_PROMPT,
         # Output budget includes the model's internal "thinking" tokens,
