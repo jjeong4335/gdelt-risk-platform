@@ -29,6 +29,7 @@ import argparse
 import datetime as dt
 import json
 import re
+import time
 from pathlib import Path
 
 from rag import config
@@ -168,20 +169,31 @@ def main():
     if not args.retrieval_only:
         cache = json.loads(CACHE_PATH.read_text()) if CACHE_PATH.exists() else {}
 
+        status = {}
+
         def cached_llm(question, hits):
             key = "|".join([config.LLM_PROVIDER, config.LLM_MODEL, args.retriever,
                             ",".join(h.doc["doc_id"] for h in hits), question])
-            if key not in cache:
+            if key in cache:
+                status["how"] = "saved earlier"
+            else:
+                t0 = time.monotonic()
                 cache[key] = call_llm(question, hits)
-                CACHE_PATH.write_text(json.dumps(cache, indent=1))
+                CACHE_PATH.write_text(json.dumps(cache, indent=1))  # saved after every answer
+                status["how"] = f"answered in {time.monotonic() - t0:.0f}s"
             return cache[key]
 
         # First pass: make sure every answer exists (stop cleanly on quota).
+        print(f"Asking {config.LLM_PROVIDER} / {config.LLM_MODEL} — calls are spaced "
+              f"{config.MIN_INTERVAL:.0f}s apart for free-tier limits, so this takes a few minutes. "
+              "Safe to stop with Ctrl+C: re-running continues from the saved answers.", flush=True)
         done = 0
         for q in questions:
+            status["how"] = "refused before calling the LLM (similarity gate)"
             try:
                 answer(q["question"], retriever=retriever, k=args.k, llm=cached_llm)
                 done += 1
+                print(f"  [{done}/{len(questions)}] {q['id']} {status['how']}", flush=True)
             except RateLimited as e:
                 print(f"\nStopped: API quota reached or model busy after {done}/{len(questions)} questions "
                       f"(answers so far are saved).\n{e}\n"
