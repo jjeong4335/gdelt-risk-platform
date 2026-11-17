@@ -44,6 +44,25 @@ CACHE_PATH = EVAL_DIR / ".answer_cache.json"
 KS = [1, 3, 5]
 
 DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
+# Dates the model writes in prose: "November 24, 2023", "Nov. 24, 2023", "24 November 2023".
+_MONTHS = ("January|February|March|April|May|June|July|August|September|October|November|December|"
+           "Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec")
+PROSE_DATE_RE = re.compile(
+    rf"\b(?:(?P<m1>{_MONTHS})\.? (?P<d1>\d{{1,2}}),? (?P<y1>\d{{4}})"
+    rf"|(?P<d2>\d{{1,2}}) (?P<m2>{_MONTHS})\.? (?P<y2>\d{{4}}))\b")
+
+
+def normalize_dates(text):
+    """Rewrite prose dates as YYYY-MM-DD so they are checked as dates,
+    not as loose numbers like 24 and 2023."""
+    def repl(m):
+        month = (m["m1"] or m["m2"])[:3]
+        day, year = m["d1"] or m["d2"], m["y1"] or m["y2"]
+        try:
+            return dt.datetime.strptime(f"{year} {month} {day}", "%Y %b %d").strftime("%Y-%m-%d")
+        except ValueError:
+            return m.group()
+    return PROSE_DATE_RE.sub(repl, text)
 NUM_RE = re.compile(r"(?<![\w.])[-+]?\d[\d,]*(?:\.\d+)?")
 
 
@@ -66,7 +85,7 @@ def numbers_in(text):
 
 def check_grounding(answer_text, hits):
     """Return (facts_checked, unsupported_facts)."""
-    body = CITATION_RE.sub(" ", answer_text)          # citations aren't claims
+    body = normalize_dates(CITATION_RE.sub(" ", answer_text))  # citations aren't claims
     docs_text = " ".join(h.doc["text"] for h in hits)
     doc_dates = set(DATE_RE.findall(docs_text))
     doc_nums = [v for v, _ in numbers_in(docs_text)]
@@ -86,7 +105,7 @@ def check_grounding(answer_text, hits):
 def contains_expected(text, expected):
     if expected is None:
         return False
-    body = CITATION_RE.sub(" ", text).lower()
+    body = normalize_dates(CITATION_RE.sub(" ", text)).lower()
     if expected.lower() in body:
         return True
     # numbers: accept the same value written with fewer decimals or without "+"
