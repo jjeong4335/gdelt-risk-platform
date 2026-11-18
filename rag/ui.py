@@ -14,21 +14,16 @@ import streamlit as st
 
 
 
+EXAMPLES = [
+    "What were the best-performing stocks when the tension index went up?",
+    "Did the VIX or our Tension Index move first?",
+    "Were the most volatile stocks similar across geopolitical events?",
+]
+
+
 def examples_from(docs):
-    """Three example questions built from the biggest events in the corpus, so
-    they always match the data (events are detected automatically)."""
-    events = sorted((d for d in docs if d["type"] == "event"),
-                    key=lambda d: -(d.get("z_score") or d.get("geo_tension_index") or 0))
-    templates = [
-        ("Which sector fell most after {label} ({date})?",
-         "Which sector fell the most 5 days after the spike on {date} ({label})?"),
-        ("How did airlines do in the 30 days after {label} ({date})?",
-         "How did Airlines stocks move 30 days after the spike on {date}?"),
-        ("Which countries stood out in the news on {date}?",
-         "Which country stood out most in news coverage of the spike on {date}?"),
-    ]
-    return [(show.format(label=e["label"], date=e["event_date"]), ask.format(label=e["label"], date=e["event_date"]))
-            for (show, ask), e in zip(templates, events)]
+    """Example questions shown in the chat window (label, question)."""
+    return [(q, q) for q in EXAMPLES]
 
 _CSS = """
 <style>
