@@ -23,7 +23,7 @@ from dashboard.constants import SECTOR_MAP
 
 TOP_N = 10          # stocks listed per direction
 MOVERS_N = 20       # "biggest movers" per event
-LAG_WINDOW = 10     # days either side of the spike to look for the VIX peak
+LAG_WINDOW = 5      # trading days either side of the news peak to look for the VIX jump
 
 
 def stock_ranking(reac: pd.DataFrame, n_events: int) -> dict:
@@ -44,22 +44,34 @@ def stock_ranking(reac: pd.DataFrame, n_events: int) -> dict:
 
 
 def vix_lead(events: pd.DataFrame, tension: pd.DataFrame, vix: pd.DataFrame) -> dict:
+    """For each event, the trading day on which the VIX jumped the most (largest
+    daily % rise) within LAG_WINDOW trading days of the news peak, counted in
+    trading days from the first trading day on/after the peak (day 0 = the
+    market's first chance to react, so weekend news isn't counted as a lag).
+    A jump before day 0 means the VIX moved before the news peaked."""
     t = tension.set_index("date")["z_score"]
-    v = vix.set_index("date")["vix"]
+    v = vix.set_index("date")["vix"].sort_index()
+    jump = v.pct_change() * 100
+    days_idx = v.index
     lags = []
     for d in events["date"]:
-        w = v[(v.index >= d - pd.Timedelta(days=LAG_WINDOW)) & (v.index <= d + pd.Timedelta(days=LAG_WINDOW))]
-        if len(w):
-            lags.append({"event": str(d.date()), "vix_peak": str(w.idxmax().date()),
-                         "vix_peak_minus_tension_peak_days": int((w.idxmax() - d).days)})
-    days = [x["vix_peak_minus_tension_peak_days"] for x in lags]
+        pos0 = days_idx.searchsorted(d)  # first trading day on/after the news peak
+        if pos0 >= len(days_idx):
+            continue
+        lo, hi = max(1, pos0 - LAG_WINDOW), min(len(days_idx) - 1, pos0 + LAG_WINDOW)
+        w = jump.iloc[lo:hi + 1]
+        k = int(np.argmax(w.values))
+        lags.append({"event": str(d.date()), "vix_biggest_jump_day": str(w.index[k].date()),
+                     "jump_pct": round(float(w.iloc[k]), 1),
+                     "trading_days_after_news_peak": int(lo + k - pos0)})
+    days = [x["trading_days_after_news_peak"] for x in lags]
     # Whole-period check: correlation of tension(t) with the VIX daily % change k days later.
-    both = pd.concat([t, v.pct_change() * 100], axis=1, keys=["t", "dv"], sort=True).dropna()
+    both = pd.concat([t, jump], axis=1, keys=["t", "dv"], sort=True).dropna()
     corr = {k: round(float(both["t"].corr(both["dv"].shift(-k))), 3) for k in range(-5, 6)}
-    return {"per_event": lags,
+    return {"per_event": lags, "window_trading_days": LAG_WINDOW,
             "median_days": float(np.median(days)) if days else None,
-            "tension_first": sum(x > 0 for x in days), "vix_first": sum(x < 0 for x in days),
-            "same_day": sum(x == 0 for x in days), "events": len(days),
+            "vix_before": sum(x < 0 for x in days), "vix_same_day": sum(x == 0 for x in days),
+            "vix_after": sum(x > 0 for x in days), "events": len(days),
             "corr_tension_vs_vix_change_k_days_later": corr}
 
 
@@ -105,8 +117,8 @@ def main():
     print(f"  biggest movers overlap between events: {v['mean_jaccard']} (random sets: {v['random_jaccard']})")
     if "vix_lead" in out:
         x = out["vix_lead"]
-        print(f"  VIX peak vs tension peak: median {x['median_days']:+.1f} days "
-              f"(tension first {x['tension_first']}, VIX first {x['vix_first']}, same day {x['same_day']})")
+        print(f"  Biggest VIX jump vs news peak: median {x['median_days']:+.1f} trading days "
+              f"(VIX before {x['vix_before']}, first trading day {x['vix_same_day']}, after {x['vix_after']})")
     else:
         print("  VIX step skipped: run python -m data_collection.download_prices (it now saves vix.parquet).")
 

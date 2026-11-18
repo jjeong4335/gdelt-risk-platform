@@ -235,9 +235,6 @@ def build_documents(data: dict) -> list:
     return docs + summary_documents(docs) + analysis_documents(data.get("analysis"))
 
 
-LAG_WINDOW_DAYS = 10  # same as data_collection/build_analysis.py
-
-
 def analysis_documents(a) -> list:
     """Cross-event analyses from data_collection/build_analysis.py, written
     answer-first so the embedding model (first ~256 tokens) sees the answer."""
@@ -273,13 +270,15 @@ def analysis_documents(a) -> list:
         x = a["vix_lead"]
         corr = x["corr_tension_vs_vix_change_k_days_later"]
         best_k = max(corr, key=lambda k: abs(corr[k]))
-        who = ("the Geo-Tension score usually peaked first" if x["median_days"] > 0 else
-               "the VIX usually peaked first" if x["median_days"] < 0 else "they usually peaked on the same day")
+        who = ("the news usually came first and the VIX jumped afterwards" if x["median_days"] > 0 else
+               "the VIX usually jumped before the news peaked" if x["median_days"] < 0 else
+               "the VIX usually jumped on the first trading day after the news peak")
         mk("vix_lead", "Did the VIX or the Geo-Tension score move first",
-           f"Did the VIX or the Geo-Tension Index move first? Around the {x['events']} detected spikes, {who}: "
-           f"the VIX's highest close within {LAG_WINDOW_DAYS} days of the spike came a median of "
-           f"{x['median_days']:+.1f} days after the tension peak (positive = VIX later). Tension peaked first in "
-           f"{x['tension_first']} events, the VIX first in {x['vix_first']}, the same day in {x['same_day']}. "
+           f"Did the VIX or the Geo-Tension Index move first? Around the {x['events']} detected spikes, {who}. "
+           f"The VIX's biggest daily jump within {x['window_trading_days']} trading days of the news peak came a "
+           f"median of {x['median_days']:+.1f} trading days after it (day 0 = the first trading day on or after the "
+           f"news peak, so weekend news isn't counted as a delay). The VIX jumped before the news peak in "
+           f"{x['vix_before']} events, on day 0 in {x['vix_same_day']}, and later in {x['vix_after']}. "
            f"Over all days, the tension score's correlation with the VIX's daily change k days later was "
            f"strongest at k = {best_k} ({corr[best_k]:+.3f}); correlations for k = -2..+2: "
            + ", ".join(f"k={k}: {corr[str(k)] if str(k) in corr else corr[k]:+.3f}" for k in range(-2, 3))
