@@ -416,6 +416,48 @@ def style_fig(fig, height, ytitle=None, y2title=None):
     return fig
 
 
+def zoom_chart(fig, height, window_days=365):
+    """Plotly chart with simple zoom controls, drawn in its own small page
+    because st.plotly_chart can't change what a double-click does:
+    double-click = zoom to a one-year window around that spot (again = back
+    to the full range), drag = move left/right."""
+    import streamlit.components.v1 as components
+    post = """
+    var gd = document.getElementById('{plot_id}');
+    var zoomed = false, half = %d * 86400000 / 2, last = null;
+    // Plotly swallows the browser's dblclick, so detect two quick clicks
+    // (no drag in between) ourselves.
+    window.addEventListener('mouseup', function (e) {
+      var box = gd.querySelector('.nsewdrag');
+      if (!box) return;
+      var r = box.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+      var now = Date.now();
+      if (last && now - last.t < 400 && Math.abs(e.clientX - last.x) < 6 && Math.abs(e.clientY - last.y) < 6) {
+        last = null;
+        if (!zoomed) {
+          var x = gd._fullLayout.xaxis.p2c(e.clientX - r.left);
+          Plotly.relayout(gd, {'xaxis.range': [new Date(x - half), new Date(x + half)]});
+        } else {
+          Plotly.relayout(gd, {'xaxis.autorange': true});
+        }
+        zoomed = !zoomed;
+      } else {
+        last = {t: now, x: e.clientX, y: e.clientY};
+      }
+    }, true);
+    window.addEventListener('mousedown', function (e) {
+      if (last && (Math.abs(e.clientX - last.x) > 6 || Math.abs(e.clientY - last.y) > 6)) last = null;
+    }, true);
+    """ % window_days
+    html = fig.to_html(include_plotlyjs=True, full_html=False, post_script=post,
+                       default_height=f"{height}px", default_width="100%",
+                       config={"displayModeBar": False, "doubleClick": False,
+                               "scrollZoom": False, "responsive": True})
+    components.html("<style>body{margin:0;font-family:Arial,Helvetica,sans-serif}</style>" + html,
+                    height=height + 12)
+
+
 def html_card(key, height, body):
     """A card with a fixed height, built the same way as the chart cards, so
     boxes in one row line up exactly."""
@@ -619,8 +661,18 @@ with tab_hist:
                                   hovertemplate="<b>%{text}</b><br>%{x|%Y-%m-%d} · z-score %{customdata:.1f}<extra></extra>"))
     style_fig(fig_hist, 400, "σ from that year's average")
     fig_hist.update_layout(hovermode="closest")
+    fig_hist.update_layout(dragmode="pan", yaxis_fixedrange=True, margin=dict(l=56, r=16, t=36, b=36),
+                           height=410, font=dict(family="Arial, Helvetica, sans-serif", size=12),
+                           showlegend=False)
+    fig_hist.update_yaxes(title_text="σ vs that year", tickformat="+d")
+    fig_hist.layout.annotations = [a.update(x=0.01, xanchor="left") for a in fig_hist.layout.annotations
+                                   if "spike" in a.text]  # 0 = the year's average, shown by the axis
     with st.container(border=True, key="card_hist_chart"):
-        st.plotly_chart(fig_hist, width="stretch", config={"displayModeBar": False})
+        st.markdown("<div class='card-sub'><b style='color:#dc2626'>●</b> detected event · "
+                    "<b style='color:#dc2626'>- -</b> spike level (+3σ) · 0 = that year's average<br>"
+                    "Double-click to zoom in on that spot · drag to move left or right · "
+                    "double-click again to see all 10 years</div>", unsafe_allow_html=True)
+        zoom_chart(fig_hist, 410)
 
     section("All events", "Detected events",
             "Every spike found in the data, newest first. Names are generated from the countries and "
