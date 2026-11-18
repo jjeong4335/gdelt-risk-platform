@@ -71,7 +71,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-DATA_DIR = "/home/jj4335_nyu_edu/dashboard_data"
+# Data folder: GEO_DATA_DIR if set; else the original cluster folder if it
+# exists; else the laptop rebuild made by data_collection/rebuild_for_rag.py.
+_CLUSTER_DIR = "/home/jj4335_nyu_edu/dashboard_data"
+DATA_DIR = os.path.expanduser(os.environ.get("GEO_DATA_DIR") or (
+    _CLUSTER_DIR if os.path.isdir(_CLUSTER_DIR) else "~/dashboard_data_rebuilt"))
+# The rebuild has no 10-year daily index (it needs the full 2 TB archive), so
+# the parts of the dashboard that need it say so instead of crashing.
+HAS_HISTORY = os.path.exists(f"{DATA_DIR}/geo_tension_index.parquet")
 
 # ── Keyword filter for supporting news ───────────────────────────
 import re as _re
@@ -97,6 +104,8 @@ def _passes_news_filter(title, label):
 # ── Load data ─────────────────────────────────────────────────────
 @st.cache_data
 def load_geo_tension():
+    if not HAS_HISTORY:
+        return pd.DataFrame({"date": pd.to_datetime([]), "geo_tension_index": [], "total_events": []})
     df = pd.read_parquet(f"{DATA_DIR}/geo_tension_index.parquet")
     df["date"] = pd.to_datetime(df["date"])
     df = df[df["date"].dt.year.between(2016, 2026)]
@@ -106,10 +115,13 @@ def load_geo_tension():
 def load_spike_events():
     df = pd.read_parquet(f"{DATA_DIR}/spike_events.parquet")
     df["date"] = pd.to_datetime(df["date"])
+    if "geo_tension_index" not in df:  # quick-sample rebuild has no index values
+        df["geo_tension_index"] = float("nan")
     df["date_str"] = df["date"].dt.strftime("%Y-%m-%d")
     # Auto-label from spike_news keywords if not in SPIKE_LABELS
     try:
         spike_news_df = pd.read_parquet(f"{DATA_DIR}/spike_news/")
+        spike_news_df["article_date"] = pd.to_datetime(spike_news_df["article_date"]).dt.date
         import collections, re
         STOPWORDS = {"the","and","for","are","was","has","had","with","that","this",
                      "from","have","been","will","its","not","but","they","their",
@@ -132,15 +144,25 @@ def load_spike_events():
 
 @st.cache_data
 def load_ticker_summary():
-    return pd.read_parquet(f"{DATA_DIR}/ticker_summary.parquet")
+    if os.path.exists(f"{DATA_DIR}/ticker_summary.parquet"):
+        return pd.read_parquet(f"{DATA_DIR}/ticker_summary.parquet")
+    # Rebuilt data: same aggregation as event_window.py, done in pandas.
+    r = load_ticker_reaction_by_spike()
+    g = r.groupby("ticker")
+    return pd.DataFrame({
+        "avg_return_5d": r[r["days_from_spike"] == 5].groupby("ticker")["avg_return_pct"].mean(),
+        "avg_return_30d": r[r["days_from_spike"] == 30].groupby("ticker")["avg_return_pct"].mean(),
+        "worst_drawdown": g["avg_return_pct"].min(),
+        "num_events": g["spike_date"].nunique(),
+    }).reset_index()
 
 
 @st.cache_data
 def load_ticker_reaction_by_spike():
     """Load spike-level ticker reaction data."""
-    return pd.read_parquet(
-        os.path.expanduser("~/dashboard_data/ticker_reaction_by_spike/")
-    )
+    df = pd.read_parquet(f"{DATA_DIR}/ticker_reaction_by_spike/")
+    df["spike_date"] = pd.to_datetime(df["spike_date"]).dt.date
+    return df
 @st.cache_data(ttl=900)
 def fetch_vix():
     try:
@@ -242,6 +264,21 @@ def fetch_latest_gdelt_news():
     except Exception as e:
         return pd.DataFrame(columns=["time", "title", "source", "category"])
 
+@st.cache_data(ttl=900)
+def fetch_live_tension():
+    """Score the latest 15-minute GDELT file the same way collect_live.py does.
+    Used for the headline card when there is no daily history to show."""
+    try:
+        from dashboard.collect_live import compute_tension, fetch_latest_gdelt
+        df = fetch_latest_gdelt()
+        if df is None:
+            return None, 0
+        intl = df[df[6].astype(str).str.contains(r"#(?!US)[A-Z]{2}#", regex=True, na=False)]
+        return compute_tension(df), len(intl)
+    except Exception:
+        return None, 0
+
+
 # Load all data
 geo_tension = load_geo_tension()
 spike_events = load_spike_events()
@@ -250,22 +287,35 @@ vix_df = fetch_vix()
 news_df = fetch_latest_gdelt_news()
 
 # ── Compute metrics ───────────────────────────────────────────────
-latest = geo_tension.iloc[-1]
-prev = geo_tension.iloc[-2]
-current_score = latest["geo_tension_index"]
-delta_score = current_score - prev["geo_tension_index"]
-mean = geo_tension["geo_tension_index"].mean()
-std = geo_tension["geo_tension_index"].std()
-threshold = mean + 3 * std
+if HAS_HISTORY:
+    latest = geo_tension.iloc[-1]
+    prev = geo_tension.iloc[-2]
+    current_score = latest["geo_tension_index"]
+    delta_score = current_score - prev["geo_tension_index"]
+    mean = geo_tension["geo_tension_index"].mean()
+    std = geo_tension["geo_tension_index"].std()
+    threshold = mean + 3 * std
 
-if current_score > threshold:
-    risk_level, risk_class = "High", "risk-high"
-elif current_score > mean + 1.5 * std:
-    risk_level, risk_class = "Medium", "risk-medium"
+    if current_score > threshold:
+        risk_level, risk_class = "High", "risk-high"
+    elif current_score > mean + 1.5 * std:
+        risk_level, risk_class = "Medium", "risk-medium"
+    else:
+        risk_level, risk_class = "Low", "risk-low"
+
+    events_today = int(latest["total_events"]) if "total_events" in latest else 0
+    score_note = f"{'+' if delta_score >= 0 else ''}{delta_score:.1f} since yesterday"
+    threshold_note = f"Threshold: {threshold:.1f}"
+    events_note = "Geopolitical news volume"
 else:
-    risk_level, risk_class = "Low", "risk-low"
-
-events_today = int(latest["total_events"]) if "total_events" in latest else 0
+    live_score, live_events = fetch_live_tension()
+    current_score = live_score if live_score is not None else float("nan")
+    delta_score = 0.0
+    risk_level, risk_class = "n/a", "risk-low"
+    events_today = live_events
+    score_note = "Latest 15-min GDELT file"
+    threshold_note = "Needs the 10-year daily history"
+    events_note = "Intl. articles, latest 15 min"
 
 sector_df = fetch_live_sector_returns()
 
@@ -315,21 +365,21 @@ with tab1:
         st.markdown(f"""<div class='card'>
             <div class='metric-label'>Geo-Tension Index</div>
             <div class='metric-value'>{current_score:.1f}</div>
-            <div class='{delta_class}'>{sign}{delta_score:.1f} since yesterday</div>
+            <div class='{delta_class}'>{score_note}</div>
         </div>""", unsafe_allow_html=True)
 
     with c2:
         st.markdown(f"""<div class='card'>
             <div class='metric-label'>Risk Level</div>
             <div class='{risk_class}'>{risk_level}</div>
-            <div class='metric-delta-neu'>Threshold: {threshold:.1f}</div>
+            <div class='metric-delta-neu'>{threshold_note}</div>
         </div>""", unsafe_allow_html=True)
 
     with c3:
         st.markdown(f"""<div class='card'>
             <div class='metric-label'>Events Today</div>
             <div class='metric-value'>{events_today:,}</div>
-            <div class='metric-delta-neu'>Geopolitical news volume</div>
+            <div class='metric-delta-neu'>{events_note}</div>
         </div>""", unsafe_allow_html=True)
 
     with c4:
@@ -359,7 +409,7 @@ with tab1:
         if True:  # Always show live tension
             # Live mode: show today's GDELT tension
             import sqlite3
-            DB_PATH = "/home/jj4335_nyu_edu/dashboard_data/live_tension.db"
+            DB_PATH = f"{DATA_DIR}/live_tension.db"
             try:
                 conn = sqlite3.connect(DB_PATH)
                 live_df = pd.read_sql("SELECT timestamp, tension_score FROM live_tension WHERE date(timestamp) >= date('now') ORDER BY timestamp", conn, parse_dates=["timestamp"])
@@ -386,6 +436,10 @@ with tab1:
 
 
 
+            if len(live_df) == 0 and not HAS_HISTORY and current_score == current_score:
+                # No live collector running: show the one score computed above.
+                live_df = pd.DataFrame({"timestamp": [now_et.replace(tzinfo=None)],
+                                        "tension_score": [current_score]})
             if len(live_df) > 0:
                 fig.add_trace(go.Scatter(
                     x=live_df["timestamp"], y=live_df["tension_score"],
@@ -450,7 +504,7 @@ with tab1:
                 legend=dict(orientation="h", y=1.1, x=0)
             )
         st.markdown(f"<div class='card'><div class='chart-title'>{chart_title}</div>", unsafe_allow_html=True)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         st.markdown("</div>", unsafe_allow_html=True)
         # Sector + Portfolio
 
@@ -509,6 +563,10 @@ with tab2:
     st.markdown("## 📅 Historical Geopolitical Spike Events")
     st.caption("31 major geopolitical events detected from GDELT news sentiment (2016–2026)")
 
+    if not HAS_HISTORY:
+        st.info("The 10-year daily index isn't available in the rebuilt data (it needs the full "
+                "GDELT archive). The chart shows the 31 spike days, with each day's index "
+                "recomputed from every GDELT file for that day.")
     fig_hist = go.Figure()
     fig_hist.add_trace(go.Scatter(
         x=geo_tension["date"], y=geo_tension["geo_tension_index"],
@@ -524,8 +582,8 @@ with tab2:
         hovertemplate="<b>%{text}</b><br>Date: %{x}<br>Score: %{y:.2f}<extra></extra>"
     ))
     # Show 5 years by default with rangeslider to scroll through all data
-    end_date   = geo_tension["date"].max()
-    start_date = end_date - pd.Timedelta(days=365*5)
+    end_date   = geo_tension["date"].max() if HAS_HISTORY else spike_events["date"].max() + pd.Timedelta(days=30)
+    start_date = end_date - pd.Timedelta(days=365*5) if HAS_HISTORY else pd.Timestamp("2017-10-01")
 
     fig_hist.update_layout(
         height=400,
@@ -540,7 +598,7 @@ with tab2:
         legend=dict(orientation="h", y=1.05),
         hovermode="closest"
     )
-    st.plotly_chart(fig_hist, use_container_width=True)
+    st.plotly_chart(fig_hist, width="stretch")
     st.divider()
     st.subheader("🔍 Explore Spike Event")
     spike_options = (spike_events.sort_values("date", ascending=False)
@@ -559,6 +617,8 @@ with tab2:
         # ── Left: ±5 day Geo-Tension + VIX chart ─────────────────────────
         with col_left:
             st.markdown("#### 📈 Geo-Tension & VIX (±5 days)")
+            if not HAS_HISTORY:
+                st.caption("Daily index around the spike isn't in the rebuilt data; showing VIX only.")
             spike_dt = pd.Timestamp(selected_date)
             start_dt = spike_dt - pd.Timedelta(days=5)
             end_dt   = spike_dt + pd.Timedelta(days=5)
@@ -594,7 +654,7 @@ with tab2:
                 plot_bgcolor="white", paper_bgcolor="white",
                 legend=dict(orientation="h", y=1.1, x=0)
             )
-            st.plotly_chart(fig_event, use_container_width=True)
+            st.plotly_chart(fig_event, width="stretch")
 
             # Sector Impact
             st.markdown("#### 📊 Sector Impact (Day +5)")
@@ -638,7 +698,8 @@ with tab2:
         # ── Right: Supporting News ────────────────────────────────────────
         with col_right:
             try:
-                spike_news_df = pd.read_parquet(os.path.expanduser("~/dashboard_data/spike_news/"))
+                spike_news_df = pd.read_parquet(f"{DATA_DIR}/spike_news/")
+                spike_news_df["article_date"] = pd.to_datetime(spike_news_df["article_date"]).dt.date
                 spike_dt_hist = datetime.date.fromisoformat(selected_date)
                 news_filtered = spike_news_df[
                     spike_news_df["article_date"].apply(lambda d: abs((d - spike_dt_hist).days) <= 3)

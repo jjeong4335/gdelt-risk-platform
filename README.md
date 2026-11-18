@@ -330,7 +330,7 @@ The original pipeline outputs lived on the NYU Dataproc cluster, and access ende
 | Sector returns, Day −30…+30 | All S&P 500 members (yfinance) | The ~50 stocks in the 6 sector groups (yfinance, adjusted closes), same return formula |
 | Weekend/holiday spikes | Borrowed the nearest other spike's numbers | Measured from the next trading day's close |
 
-Only the 161 days around the spikes are downloaded, so this runs on a laptop: data is filtered while it streams and only matching rows are saved (a few hundred MB), though the download itself is large (roughly tens to a hundred-plus GB, a few hours depending on connection). `--files-per-day 4` makes a quick sample instead; then no index is recomputed. `build_corpus.py` handles all three shapes (original, full rebuild, sample) and only writes the facts that exist.
+Only the 161 days around the spikes are downloaded, so this runs on a laptop: data is filtered while it streams and only matching rows are saved (a few hundred MB), though the download itself is large (roughly tens to a hundred-plus GB, a few hours depending on connection). `--files-per-day 4` makes a quick sample instead; then no index is recomputed. The dashboard reads `GEO_DATA_DIR`, else the original cluster folder if present, else `~/dashboard_data_rebuilt`. On rebuilt data the 10-year index chart and the history-based risk level aren't available, so those spots say so; the headline score is computed live from the latest 15-minute GDELT file (same method as `collect_live.py`), and the portfolio card, spike explorer and Q&A work as before. `build_corpus.py` handles all three shapes (original, full rebuild, sample) and only writes the facts that exist.
 
 ### Architecture
 
@@ -453,8 +453,8 @@ python -m rag.eval.run_eval                    # full eval (~30 LLM calls, ~6 mi
                                                #  if the daily quota stops it, re-run later to continue)
 
 # 5. UI
-streamlit run rag/qa_app.py           # Q&A on its own (works with rebuilt data)
-streamlit run dashboard/app.py        # full dashboard, Q&A is the third tab (needs the original outputs)
+streamlit run dashboard/app.py        # full dashboard; Q&A is the third tab
+streamlit run rag/qa_app.py           # Q&A on its own
 ```
 
 Optional settings (environment variables): `GEO_QA_PROVIDER` (`gemini`/`anthropic`), `GEO_QA_MODEL`, `GEO_QA_TOP_K` (default 5), `GEO_QA_MIN_SIM` (refusal threshold, default 0.30), `GEO_EMBED_MODEL`.
