@@ -161,13 +161,53 @@ def sector_tests(events: pd.DataFrame, prices: pd.DataFrame, n_sims: int = 10000
     return {"hold_days": HOLD_DAYS, "groups": {g: len(v) for g, v in groups.items()}, "tests": out}
 
 
+def timing(events: pd.DataFrame, tension: pd.DataFrame, prices: pd.DataFrame, vix, days=range(-3, 6)) -> dict:
+    """Day-by-day average around war/conflict events (day 0 = first trading day
+    on/after the news peak): tension z-score, VIX daily % change, and daily
+    excess return (vs the average stock) of Defense and Airlines. Shows which
+    one reacted first and on which day most of each move happened."""
+    war = events[events["dominant_category"].map(EVENT_GROUPS).eq("war & conflict")]
+    idx = prices.sort_index().index
+    ret = prices.sort_index().pct_change()
+    market = ret.mean(axis=1)
+    series = {s: (ret[[t for t in SECTOR_MAP[s] if t in ret]].mean(axis=1) - market) * 100
+              for s in ("Defense", "Airlines")}
+    if vix is not None:
+        series["VIX"] = vix.set_index("date")["vix"].reindex(idx).pct_change() * 100
+    tz = tension.set_index("date")["z_score"]
+    out = {s: {} for s in ["Tension (z)"] + list(series)}
+    for k in days:
+        vals = {s: [] for s in out}
+        for d in war["date"]:
+            p0 = int(idx.searchsorted(d))
+            if not (0 <= p0 + k < len(idx)):
+                continue
+            day = idx[p0 + k]
+            vals["Tension (z)"].append(tz.get(day, np.nan))
+            for s, ser in series.items():
+                vals[s].append(ser.iloc[p0 + k])
+        for s in out:
+            v = pd.Series(vals[s], dtype=float).dropna()
+            out[s][k] = round(float(v.mean()), 2) if len(v) else None
+    return {"events": int(len(war)), "by_day": out}
+
+
 def build(d: Path) -> dict:
     reac = pd.read_parquet(d / "ticker_reaction_by_spike")
     events = pd.read_parquet(d / "spike_events.parquet")
     events["date"] = pd.to_datetime(events["date"])
     out = {"stocks": stock_ranking(reac, len(events)), "volatile": volatile_overlap(reac)}
+    vix = None
+    if (d / "vix.parquet").exists():
+        vix = pd.read_parquet(d / "vix.parquet")
+        vix["date"] = pd.to_datetime(vix["date"])
+    tension = pd.read_parquet(d / "geo_tension_index.parquet")
+    tension["date"] = pd.to_datetime(tension["date"])
     if (d / "sp500_prices.parquet").exists():
-        out["sectors"] = sector_tests(events, pd.read_parquet(d / "sp500_prices.parquet"))
+        prices = pd.read_parquet(d / "sp500_prices.parquet")
+        out["sectors"] = sector_tests(events, prices)
+        if "z_score" in tension:
+            out["timing"] = timing(events, tension, prices, vix)
     tension = pd.read_parquet(d / "geo_tension_index.parquet")
     tension["date"] = pd.to_datetime(tension["date"])
     if (d / "vix.parquet").exists() and "z_score" in tension:
@@ -188,6 +228,14 @@ def main():
     print("  best Day +5 on average:", ", ".join(f"{x['ticker']} {x['avg_return_pct']:+.2f}%" for x in s["best"][:5]))
     v = out["volatile"]
     print(f"  biggest movers overlap between events: {v['mean_jaccard']} (random sets: {v['random_jaccard']})")
+    if "timing" in out:
+        t = out["timing"]
+        print(f"  Day by day around the {t['events']} war/conflict events (day 0 = first trading day after the news peak):")
+        ks = list(next(iter(t["by_day"].values())).keys())
+        print("    " + " " * 13 + "".join(f"{('day ' + str(k)) if k else 'day 0':>9}" for k in ks))
+        for name, row in t["by_day"].items():
+            print(f"    {name:<13}" + "".join(f"{(v if v is not None else float('nan')):>+9.2f}" for v in row.values()))
+        print("    (Tension = z-score; VIX = daily % change; Defense/Airlines = daily % return minus the average stock)")
     for g, res in out.get("sectors", {}).get("tests", {}).items():
         line = ", ".join(f"{sec} {r['event_mean_pct']:+.2f}%{'*' if r['p_value'] < 0.05 else ''}"
                          for sec, r in res.items())
