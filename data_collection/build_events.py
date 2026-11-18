@@ -23,8 +23,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from data_collection.rebuild_for_rag import build_reactions, url_to_title
-from rag.build_corpus import FIPS_NAMES
+from data_collection.common import build_reactions, url_to_title
+from dashboard.constants import FIPS_NAMES
 
 CATEGORY_WORDS = {
     "CONFLICT": "conflict",

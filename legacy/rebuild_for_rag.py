@@ -45,7 +45,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from dashboard.constants import SECTOR_MAP, SPIKE_LABELS
+from dashboard.constants import SECTOR_MAP
 
 NEWS_WINDOW = 3        # days before/after the spike (same as spike_news_extract.py)
 PRICE_WINDOW = 30      # days before/after the spike (same as event_window.py)

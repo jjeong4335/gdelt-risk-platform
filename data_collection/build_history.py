@@ -122,7 +122,7 @@ def main():
     df = build_index(pd.read_csv(csv))
     print(f"Daily index: {len(df)} days, {df['date'].min().date()} to {df['date'].max().date()}")
 
-    out = df[["date", "geo_tension_index", "total_events", "dominant_category"]].copy()
+    out = df[["date", "geo_tension_index", "geo_tension_raw", "z_score", "total_events"]].copy()
     out["date"] = out["date"].dt.date
     out.to_parquet(d / "geo_tension_index.parquet")
 
@@ -132,7 +132,6 @@ def main():
     print(f"\nDetected {int(df['is_spike'].sum())} spike days (raw score > yearly mean + 3 sd), "
           f"grouped into {len(events)} events.")
     print(f"  spike days per year: {per_year}")
-    print(f"  categories of the events: {events['dominant_category'].value_counts().to_dict()}")
 
     n_days = write_news_sql(events, d / "event_news.sql")
     print(f"\nWrote {d / 'event_news.sql'} (reads {n_days} days of GDELT).")

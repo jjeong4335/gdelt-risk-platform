@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 # Make the repo root importable so the dashboard can use the rag/ package.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from dashboard.constants import SECTOR_MAP, SPIKE_LABELS
+from dashboard.constants import SECTOR_MAP
 
 # ── Page config ───────────────────────────────────────────────────
 st.set_page_config(
@@ -100,13 +100,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Data folder: GEO_DATA_DIR if set; else the original cluster folder if it
-# exists; else the laptop rebuild made by data_collection/rebuild_for_rag.py.
-_CLUSTER_DIR = "/home/jj4335_nyu_edu/dashboard_data"
-DATA_DIR = os.path.expanduser(os.environ.get("GEO_DATA_DIR") or (
-    _CLUSTER_DIR if os.path.isdir(_CLUSTER_DIR) else "~/dashboard_data_rebuilt"))
-# The rebuild has no 10-year daily index (it needs the full 2 TB archive), so
-# the parts of the dashboard that need it say so instead of crashing.
+# Data folder: GEO_DATA_DIR if set, else ~/dashboard_data_rebuilt (written by
+# the data_collection/ steps, see the README).
+DATA_DIR = os.path.expanduser(os.environ.get("GEO_DATA_DIR") or "~/dashboard_data_rebuilt")
+# Without the daily history the parts that need it say so instead of crashing.
 HAS_HISTORY = os.path.exists(f"{DATA_DIR}/geo_tension_index.parquet")
 
 # ── Keyword filter for supporting news ───────────────────────────
@@ -142,36 +139,10 @@ def load_geo_tension():
 
 @st.cache_data
 def load_spike_events():
+    """Events detected and named from the data (data_collection/build_events.py)."""
     df = pd.read_parquet(f"{DATA_DIR}/spike_events.parquet")
     df["date"] = pd.to_datetime(df["date"])
-    if "geo_tension_index" not in df:  # quick-sample rebuild has no index values
-        df["geo_tension_index"] = float("nan")
     df["date_str"] = df["date"].dt.strftime("%Y-%m-%d")
-    if "label" in df and df["label"].notna().all():
-        # Data-driven rebuild: events were detected and named from the data.
-        return df.sort_values("geo_tension_index", ascending=False)
-    # Original data: hand-written labels, else top headline keywords
-    try:
-        spike_news_df = pd.read_parquet(f"{DATA_DIR}/spike_news/")
-        spike_news_df["article_date"] = pd.to_datetime(spike_news_df["article_date"]).dt.date
-        import collections, re
-        STOPWORDS = {"the","and","for","are","was","has","had","with","that","this",
-                     "from","have","been","will","its","not","but","they","their",
-                     "said","says","over","after","more","also","than","into","about"}
-        def auto_label(date_str):
-            if date_str in SPIKE_LABELS:
-                return SPIKE_LABELS[date_str]
-            import datetime
-            dt = datetime.date.fromisoformat(date_str)
-            news = spike_news_df[spike_news_df["article_date"].apply(lambda d: abs((d-dt).days)<=3)]
-            titles = " ".join(news["title"].dropna().tolist()).lower()
-            words = re.findall(r"[a-z]{4,}", titles)
-            freq = collections.Counter(w for w in words if w not in STOPWORDS)
-            top = [w.capitalize() for w, _ in freq.most_common(3)]
-            return " · ".join(top) if top else "Geopolitical Event"
-        df["label"] = df["date_str"].apply(auto_label)
-    except:
-        df["label"] = df["date_str"].map(SPIKE_LABELS).fillna("Geopolitical Event")
     return df.sort_values("geo_tension_index", ascending=False)
 
 @st.cache_data
@@ -322,20 +293,21 @@ if HAS_HISTORY:
     prev = geo_tension.iloc[-2]
     current_score = latest["geo_tension_index"]
     delta_score = current_score - prev["geo_tension_index"]
-    mean = geo_tension["geo_tension_index"].mean()
-    std = geo_tension["geo_tension_index"].std()
-    threshold = mean + 3 * std
-
-    if current_score > threshold:
+    # Same rule as spike detection: z-score of the uncapped raw score versus
+    # this year's days (the 0-10 index is capped, so a threshold on it can
+    # land above 10 and never fire).
+    z_now = float(latest["z_score"]) if "z_score" in latest else float("nan")
+    if z_now > 3:
         risk_level, risk_class = "High", "risk-high"
-    elif current_score > mean + 1.5 * std:
+    elif z_now > 1.5:
         risk_level, risk_class = "Medium", "risk-medium"
     else:
         risk_level, risk_class = "Low", "risk-low"
 
     events_today = int(latest["total_events"]) if "total_events" in latest else 0
     score_note = f"{'+' if delta_score >= 0 else ''}{delta_score:.1f} since yesterday"
-    threshold_note = f"Threshold: {threshold:.1f}"
+    threshold_note = (f"z-score {z_now:+.1f} vs this year (spike: above 3)"
+                      if z_now == z_now else "Re-run build_history for z-scores")
     events_note = "Geopolitical news volume"
 else:
     live_score, live_events = fetch_live_tension()
