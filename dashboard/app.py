@@ -156,6 +156,20 @@ st.markdown("""
     .st-key-chat_panel [data-testid="stChatInputSubmitButton"] svg { color: white; fill: white; }
     .st-key-chat_panel [data-testid="stChatInputSubmitButton"]:disabled { background: #e2e8f0; }
     .st-key-chat_panel [data-testid="stChatInputSubmitButton"]:disabled svg { color: #94a3b8; fill: #94a3b8; }
+    /* diagnosis card */
+    .dx { display: flex; gap: 28px; align-items: flex-start; }
+    .dx-left { flex: 1.1; display: flex; flex-direction: column; gap: 14px; }
+    .dx-right { flex: 1; border-left: 1px solid #f1f5f9; padding-left: 24px; }
+    .dx-l { font-size: 13px; color: #475569; font-weight: 700; } .dx-v { font-size: 22px; font-weight: 800; color: #0f172a; }
+    .dx-n { font-size: 12px; color: #94a3b8; margin-top: 3px; }
+    .dx-track { position: relative; height: 8px; background: #f1f5f9; border-radius: 999px; margin-top: 4px; }
+    .dx-track div { height: 8px; border-radius: 999px; }
+    .dx-track span { position: absolute; top: -3px; width: 2px; height: 14px; background: #94a3b8; }
+    .dx-verdict { display: inline-block; font-size: 18px; font-weight: 800; padding: 5px 14px; border-radius: 999px; }
+    .dx-red { background: #fee2e2; color: #b91c1c; } .dx-amber { background: #ffedd5; color: #c2410c; }
+    .dx-green { background: #dcfce7; color: #047857; } .dx-grey { background: #f1f5f9; color: #475569; }
+    .dx-detail { font-size: 14px; color: #334155; margin: 10px 0; line-height: 1.5; }
+    .dx-hist { font-size: 13px; color: #64748b; line-height: 1.5; background: #f8fafc; border-radius: 10px; padding: 10px 12px; }
     @keyframes chat-slide-in { from { transform: translateX(110%); opacity: 0.4; } to { transform: none; opacity: 1; } }
     .st-key-chat_close button [data-testid="stIconMaterial"] { font-size: 22px; color: #64748b; }
     /* keep the message box at the bottom of the chat window */
@@ -224,8 +238,15 @@ def fetch_vix():
         vix = vix[["Close"]].reset_index()
         vix.columns = ["date", "vix"]
         vix["date"] = pd.to_datetime(vix["date"])
+        if len(vix):
+            return vix
+    except Exception:
+        pass
+    try:  # offline: the copy saved by data_collection/download_prices.py
+        vix = pd.read_parquet(f"{DATA_DIR}/vix.parquet")
+        vix["date"] = pd.to_datetime(vix["date"])
         return vix
-    except:
+    except Exception:
         return pd.DataFrame(columns=["date", "vix"])
 
 # ── Fetch live ETF sector returns (1-min interval) ───────────────
@@ -539,6 +560,66 @@ with tab_live:
     kpi(c4, "Sample portfolio after a spike", f"<span class='{exp_cls}'>{'+' if weighted_5d >= 0 else ''}{weighted_5d:.1f}%</span>",
         "average 5 days after past spikes",
         help_text="30% AAPL, 50% XOM, 20% LMT, averaged over all detected events.", color="orange")
+
+    # ── Why is the market nervous? VIX (any cause) vs tension (geopolitics only) ──
+    section("Diagnosis", "Is today's market fear geopolitical?",
+            "The VIX rises for any reason (rates, earnings, geopolitics); the tension score only reacts to "
+            "geopolitical news. Reading them together suggests the cause. Each is measured against its own "
+            "past year, so 0σ is a normal day.", "orange")
+    vix_z = vix_note = None
+    if len(vix_df) > 260:
+        v = vix_df.set_index("date")["vix"].dropna()
+        past = v.iloc[-253:-1]
+        vix_z = float((v.iloc[-1] - past.mean()) / past.std())
+        vix_note = f"VIX {v.iloc[-1]:.1f} on {v.index[-1]:%b %d}"
+    t_z = z_now if z_now == z_now else None
+    HIGH, CALM = 2.0, 1.0
+    if vix_z is None or t_z is None:
+        verdict, vcls, detail = ("Not enough data", "dx-grey",
+                                 "Needs both the VIX history and the daily tension history.")
+    elif vix_z >= HIGH and t_z >= HIGH:
+        verdict, vcls, detail = ("Geopolitical shock", "dx-red",
+                                 "Both are high: markets are reacting to geopolitical news.")
+    elif vix_z >= HIGH:
+        verdict, vcls, detail = ("Market fear, not geopolitical", "dx-amber",
+                                 "The VIX is high but geopolitical news is normal: look at rates, earnings or the economy.")
+    elif t_z >= HIGH:
+        verdict, vcls, detail = ("Geopolitical tension, market calm", "dx-amber",
+                                 "Geopolitical news is unusually tense, but the market hasn't reacted (common after terror attacks).")
+    else:
+        verdict, vcls, detail = ("Calm", "dx-green", "Neither the VIX nor geopolitical news is unusual today.")
+    history = ""
+    try:
+        import json as _json
+        an = _json.loads(open(f"{DATA_DIR}/analysis.json").read())
+        war = an["sectors"]["tests"]["war & conflict"]
+        dfn, air = war.get("Defense"), war.get("Airlines")
+        tm = an.get("timing", {}).get("by_day", {})
+        vix0, vix1 = tm.get("VIX", {}).get("0"), tm.get("VIX", {}).get("1")
+        history = ("<div class='dx-hist'><b>What happened after past war/conflict spikes</b> "
+                   f"({an['sectors']['groups']['war & conflict']} events): "
+                   + (f"the VIX jumped {vix0:+.1f}% on the first trading day and gave back {vix1:+.1f}% the next; "
+                      if vix0 is not None and vix1 is not None else "")
+                   + (f"defense stocks beat the market by {dfn['event_mean_pct']:+.2f}% over 5 trading days"
+                      f"{' (p < 0.05)' if dfn['p_value'] < 0.05 else ''}" if dfn else "")
+                   + (f"; airlines {air['event_mean_pct']:+.2f}%." if air else ".") + "</div>")
+    except Exception:
+        pass
+
+    def gauge(label, z, note):
+        if z is None:
+            return f"<div class='dx-g'><div class='dx-l'>{label}</div><div class='dx-v'>—</div></div>"
+        width = max(0.0, min(1.0, (z + 3) / 8)) * 100  # -3σ..+5σ
+        col = "#dc2626" if z >= HIGH else "#f59e0b" if z >= CALM else "#10b981"
+        return (f"<div class='dx-g'><div class='dx-l'>{label}</div><div class='dx-v'>{z:+.1f}σ</div>"
+                f"<div class='dx-track'><div style='width:{width:.0f}%;background:{col}'></div>"
+                f"<span style='left:{(HIGH + 3) / 8 * 100:.0f}%'></span></div><div class='dx-n'>{note}</div></div>")
+
+    html_card("diagnosis", 230,
+              f"<div class='dx'><div class='dx-left'>{gauge('Market fear (VIX vs past year)', vix_z, vix_note or 'VIX unavailable')}"
+              f"{gauge('Geopolitical tension (vs this year)', t_z, f'GDELT news, {latest_day}')}</div>"
+              f"<div class='dx-right'><div class='dx-verdict {vcls}'>{verdict}</div><div class='dx-detail'>{detail}</div>"
+              f"{history}</div></div>")
 
     section("Today", "Live news and market fear",
             "The tension score from GDELT's 15-minute feed next to the VIX, and the latest "

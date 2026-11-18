@@ -296,6 +296,23 @@ def analysis_documents(a) -> list:
            f"trading day to {sx['hold_days']} trading days later; p-values from a random-date test (below 0.05 = "
            "unlikely to be chance). " + " ".join(parts))
 
+    if "timing" in a:
+        tm = a["timing"]["by_day"]
+        row = lambda name, unit: ", ".join(f"day {k}: {v:+.2f}{unit}" for k, v in tm[name].items() if v is not None)
+        mk("timing", "Which reacted first: tension, VIX or defense stocks",
+           "Which reacted first and fastest to war and conflict events: the Geo-Tension Index, the VIX or defense "
+           f"stocks? Day-by-day averages over the {a['timing']['events']} war/conflict events (day 0 = first trading "
+           "day on or after the news peak). All three moved on the same day: tension starts rising the day before "
+           "and peaks on day 0; the VIX's biggest move is on day 0 and it partly reverses the next day; defense "
+           "stocks beat the market on day -1 and day 0 and keep drifting up for several days. "
+           f"Tension z-score by day: {row('Tension (z)', 'σ')}. "
+           + (f"VIX daily % change by day: {row('VIX', '%')}. " if "VIX" in tm else "")
+           + f"Defense daily return minus the average stock: {row('Defense', '%')}. "
+           f"Airlines daily return minus the average stock: {row('Airlines', '%')}. "
+           "The VIX reacts to any cause (rates, earnings, geopolitics); the Geo-Tension Index reacts only to "
+           "geopolitical news, so together they show whether market fear is geopolitical. Averages of a few "
+           "events; one large event can weigh heavily.")
+
     if "vix_lead" in a:
         x = a["vix_lead"]
         corr = x["corr_tension_vs_vix_change_k_days_later"]

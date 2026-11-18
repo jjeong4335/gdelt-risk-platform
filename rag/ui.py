@@ -16,9 +16,9 @@ import streamlit as st
 
 
 EXAMPLES = [
-    "What were the best-performing stocks when the tension index went up?",
-    "Did the VIX or our Tension Index move first?",
-    "Were the most volatile stocks similar across geopolitical events?",
+    "Which sectors beat the market after war and conflict events?",
+    "Which reacted first to wars: the VIX, the tension index or defense stocks?",
+    "Did the VIX rise more around geopolitical spikes than on normal days?",
 ]
 
 
