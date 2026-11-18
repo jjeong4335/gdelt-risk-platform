@@ -221,9 +221,12 @@ def build_documents(data: dict) -> list:
                 f"(z-score {z_score:.2f} versus the {date[:4]} daily average; "
                 f"spike threshold {ev['threshold']:.2f}).")
         elif has_index and pd.notna(ev["geo_tension_index"]):
+            files = ev.get("gkg_files_used")
+            coverage = (f"; only {int(files)} of 96 GDELT files exist for that day, so it may be "
+                        f"understated" if pd.notna(files) and files < 96 else "")
             parts.append(
                 f"Geo-Tension Index that day: {ev['geo_tension_index']:.2f} out of 10 "
-                f"(recomputed from GDELT with the original formula).")
+                f"(recomputed from GDELT with the original formula{coverage}).")
         if pd.notna(ev.get("dominant_category")):
             parts.append(f"Dominant news category: {ev['dominant_category']}.")
         if pd.notna(ev.get("total_events")):

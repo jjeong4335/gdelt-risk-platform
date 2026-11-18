@@ -189,7 +189,7 @@ def tension_for_day(day_articles: pd.DataFrame):
     return index, int(len(neg))
 
 
-def build_news_outputs(articles: pd.DataFrame, full_days: bool):
+def build_news_outputs(articles: pd.DataFrame, full_days: bool, cache_dir: Path = None):
     articles = articles.copy()
     articles["date"] = pd.to_datetime(articles["datetime"].astype(str).str[:8],
                                       format="%Y%m%d", errors="coerce")
@@ -210,6 +210,11 @@ def build_news_outputs(articles: pd.DataFrame, full_days: bool):
             # counted rows, so count rows here too (before URL dedup).
             ev["geo_tension_index"], ev["total_events"] = tension_for_day(day)
             ev["index_recomputed"] = True
+            if cache_dir is not None:
+                # How many of the day's 96 GKG files were actually available.
+                # GDELT's archive has gaps; a missing file means fewer articles,
+                # so the recomputed index can be slightly understated that day.
+                ev["gkg_files_used"] = len(list(cache_dir.glob(f"{sd:%Y%m%d}*.parquet")))
         events.append(ev)
 
         win = win.drop_duplicates("url")
@@ -298,7 +303,8 @@ def main():
         raise SystemExit("No GDELT articles downloaded — check your internet connection and re-run.")
     if missing:
         print(f"Note: {missing} GKG files do not exist on GDELT's server (gaps in their archive).")
-    events, news = build_news_outputs(articles, full_days=args.files_per_day == 96)
+    events, news = build_news_outputs(articles, full_days=args.files_per_day == 96,
+                                      cache_dir=out / "_gkg_cache")
 
     reactions = build_reactions(download_prices())
     dom = dict(zip(events["date"], events["dominant_category"]))
@@ -313,6 +319,11 @@ def main():
     print(f"\nWrote to {out}:")
     print(f"  spike_events: {len(events)} spikes"
           + (" (index recomputed for each spike day)" if "geo_tension_index" in events else ""))
+    if "gkg_files_used" in events:
+        partial = events[events["gkg_files_used"] < 96]
+        print(f"    spike days with all 96 GKG files: {len(events) - len(partial)}/{len(events)}"
+              + ("; partial: " + ", ".join(f"{r.date} ({r.gkg_files_used}/96)"
+                                           for r in partial.itertuples()) if len(partial) else ""))
     print(f"  spike_news: {len(news)} articles "
           f"({news.groupby('spike_date').size().min()}-{news.groupby('spike_date').size().max()} per spike)")
     print(f"  ticker_reaction_by_spike: {len(reactions)} rows, "

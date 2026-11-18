@@ -409,6 +409,7 @@ User:
 ### Known limitations
 
 - **Rebuilt data:** index values are recomputed for spike days only (no z-scores or thresholds), and may differ slightly from the originals because the p1/p99 constants are rounded.
+- **Gaps in GDELT's archive:** about 1.6% of the needed 15-minute GKG files don't exist on GDELT's server. When a spike day is missing files, its recomputed index can be understated; the rebuild records how many of the 96 files were used, and the event document says so.
 - **Small corpus:** 31 events and 6 hand-picked sector groups (~50 S&P 500 stocks), so many reasonable questions have no answer here.
 - **Headline text only:** "headlines" are rebuilt from article URLs, not full article text, so the system knows *what* was in the news only roughly.
 - **Day +N is calendar days:** when Day +N falls on a weekend or holiday, the nearest trading day is used and written in the document.
