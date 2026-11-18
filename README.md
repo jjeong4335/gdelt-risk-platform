@@ -77,6 +77,15 @@ For every event and every S&P 500 member (today's constituents via yfinance; com
 
 ---
 
+## Findings (data through 2026-11-17, 27 events)
+
+From `data_collection/build_analysis.py`; correlation, not causation.
+
+- **VIX and geopolitical spikes move together a little, but not clearly beyond chance.** From the trading day before a spike's news peak to the day after, the VIX rose +1.51% on average (up in 17 of 27 events) versus +0.62% for the same 2-day window on normal days. A random-date test gives p = 0.33: with only 27 events and a VIX that often moves 5–10% in two days, a difference this size can't be told apart from noise.
+- **Neither clearly moves first.** The VIX's biggest daily jump within ±5 trading days fell before the news peak in 14 events, on the first trading day in 4, and after it in 9 (median −1 day), close to what random timing would give. GDELT's peak is the day of most coverage, which can come a day after the event itself.
+- **The biggest movers repeat a little.** The 20 stocks with the largest Day +5 moves overlapped 4.7% between events on average, about twice the 2% two random sets would share.
+- **"Best stocks after spikes" mostly reflects the bull market.** The top Day +5 averages (CVNA +4.82%, XYZ +3.98%, WDAY +2.75%) are high-growth stocks that rose in most weeks of 2016–2026; these are raw returns, not returns relative to the S&P 500.
+
 ## Dashboard
 
 `streamlit run dashboard/app.py`
