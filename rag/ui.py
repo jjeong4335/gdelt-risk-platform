@@ -8,6 +8,7 @@ messages are shown for reference but are not sent to the model, so every
 answer can still be checked against its own sources.
 """
 import html
+import os
 from urllib.parse import urlparse
 
 import streamlit as st
@@ -89,7 +90,11 @@ def _ask(question, retriever, k, start, end, sectors):
                      sectors=sectors or None)
     except Exception as e:
         msg = str(e)
-        if "busy" in msg or "quota" in msg.lower():
+        key = os.environ.get("GEMINI_API_KEY", "")
+        if key and not key.isascii():
+            text = ("The GEMINI_API_KEY in the terminal isn't a real key (it has non-English characters). "
+                    "Paste your actual key from aistudio.google.com and start the app again.")
+        elif "busy" in msg or "quota" in msg.lower():
             text = ("The model is busy or today's free quota is used up. "
                     "Please try again in a minute (or tomorrow if the daily quota ran out).")
         elif "API_KEY" in msg:
@@ -196,8 +201,10 @@ def render_chat(panel=True):
             st.rerun()
         if st.session_state.get("qa_answering"):
             # while the model works, the send arrow spins (no extra spinner text)
-            st.markdown("<style>.st-key-chat_panel [data-testid='stChatInputSubmitButton'] svg "
-                        "{animation: qa-spin 0.9s linear infinite;} "
+            st.markdown("<style>.st-key-chat_panel [data-testid='stChatInputSubmitButton'] svg {display:none;} "
+                        ".st-key-chat_panel [data-testid='stChatInputSubmitButton']::after {content:''; width:16px; "
+                        "height:16px; border:2px solid #cbd5e1; border-top-color:#1d4ed8; border-radius:50%; "
+                        "animation: qa-spin 0.8s linear infinite;} "
                         "@keyframes qa-spin {to {transform: rotate(360deg);}}</style>", unsafe_allow_html=True)
             q = st.session_state.pop("qa_answering")
             history.append(_ask(q, retriever, config.TOP_K, None, None, None))
