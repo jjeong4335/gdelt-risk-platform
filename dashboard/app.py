@@ -17,7 +17,8 @@ from dashboard.constants import SECTOR_MAP, SPIKE_LABELS
 st.set_page_config(
     page_title="Geopolitical Risk Dashboard",
     page_icon="🌍",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded",  # the Q&A chat lives in the sidebar
 )
 
 st.markdown('<meta http-equiv="refresh" content="900">', unsafe_allow_html=True)
@@ -346,7 +347,11 @@ most_exposed = port_df.loc[(port_df["wd"].abs() * port_df["weight"] / 100).idxma
 # ══════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════
-tab1, tab2, tab3 = st.tabs(["📊 Live Dashboard", "📅 Historical Events", "💬 Q&A"])
+# Q&A chat: in the sidebar so it stays next to every tab.
+from rag.ui import render_chat
+render_chat(sidebar=True)
+
+tab1, tab2 = st.tabs(["📊 Live Dashboard", "📅 Historical Events"])
 
 # ══════════════════════════════════════════════════════════════════
 # TAB 1: LIVE DASHBOARD
@@ -746,11 +751,3 @@ with tab2:
             except Exception as e:
                 st.error(f"Error: {e}")
     st.caption("Source: GDELT 2016–2026 + S&P 500 yfinance | NYU Big Data Project")
-
-
-# ══════════════════════════════════════════════════════════════════
-# TAB 3: Geo-Risk Q&A (RAG) — UI lives in rag/ui.py
-# ══════════════════════════════════════════════════════════════════
-with tab3:
-    from rag.ui import render_qa
-    render_qa()

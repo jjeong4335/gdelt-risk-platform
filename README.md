@@ -87,7 +87,7 @@ gdelt-risk-platform/
 │   ├── risk_engine.py             # Aggregates sector-level risk scores
 │   └── spike_news_extract.py      # Extracts news URLs per spike event
 ├── dashboard/
-│   ├── app.py                     # Streamlit dashboard (3 tabs)
+│   ├── app.py                     # Streamlit dashboard (2 tabs + Q&A chat sidebar)
 │   └── constants.py               # Sector map + spike labels (shared with rag/)
 ├── rag/                           # Geo-Risk Q&A (RAG) — see section below
 │   ├── build_corpus.py            # Parquet outputs -> text documents
@@ -316,7 +316,7 @@ streamlit run dashboard/app.py --server.port 8501 --theme.base light
 
 ## Geo-Risk Q&A (RAG)
 
-A **Q&A** tab where you can ask things like *"Which sector fell most 5 days after the Russia-Ukraine War spike?"* and get a short answer that cites the event date and a source article URL, with the documents it used shown underneath.
+A **chat panel in the sidebar**, available next to every dashboard tab, where you can ask things like *"Which sector fell most 5 days after the Russia-Ukraine War spike?"* and get a short answer with numbered citations (event date and news source), plus the documents it used. Each question is answered on its own: earlier messages stay on screen but aren't sent to the model, so every answer can be checked against its own sources.
 
 **RAG (Retrieval-Augmented Generation) in one line:** first *retrieve* the few pieces of our own data that match the question, then ask an LLM to *generate* an answer using only those pieces. The LLM writes the sentence; the facts come from our pipeline outputs.
 
@@ -473,7 +473,7 @@ python -m rag.eval.run_eval                    # full eval (~30 LLM calls, ~6 mi
                                                #  if the daily quota stops it, re-run later to continue)
 
 # 5. UI
-streamlit run dashboard/app.py        # full dashboard; Q&A is the third tab
+streamlit run dashboard/app.py        # full dashboard; Q&A chat in the sidebar
                                       #  (run from the repo root so .streamlit/config.toml applies the light theme)
 streamlit run rag/qa_app.py           # Q&A on its own
 ```

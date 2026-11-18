@@ -8,6 +8,6 @@ import streamlit as st  # noqa: E402
 
 st.set_page_config(page_title="Geo-Risk Q&A", page_icon="💬", layout="wide")
 
-from rag.ui import render_qa  # noqa: E402
+from rag.ui import render_chat  # noqa: E402
 
-render_qa()
+render_chat(sidebar=False)
