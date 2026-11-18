@@ -7,37 +7,28 @@ Each question is answered on its own (retrieval + grounded answer); earlier
 messages are shown for reference but are not sent to the model, so every
 answer can still be checked against its own sources.
 """
-import datetime as _dt
 import html
 from urllib.parse import urlparse
 
 import streamlit as st
 
-from dashboard.constants import SECTOR_MAP
-
-REFUSAL_EXAMPLE = ("Should I buy defense stocks now?",
-                   "Should I buy defense stocks before the next crisis?")
 
 
 def examples_from(docs):
-    """Example questions built from the events actually in the corpus, so they
-    always match the data (events are detected automatically)."""
+    """Three example questions built from the biggest events in the corpus, so
+    they always match the data (events are detected automatically)."""
     events = sorted((d for d in docs if d["type"] == "event"),
                     key=lambda d: -(d.get("z_score") or d.get("geo_tension_index") or 0))
-    out = []
-    if events:
-        e = events[0]
-        out.append((f"Which sector fell most after the biggest spike ({e['event_date']})?",
-                    f"Which sector fell the most 5 days after the spike on {e['event_date']} ({e['label']})?"))
-    if len(events) > 1:
-        e = events[1]
-        out.append((f"How did airlines do 30 days after the {e['event_date']} spike?",
-                    f"How did Airlines stocks move 30 days after the spike on {e['event_date']}?"))
-    if len(events) > 2:
-        e = events[2]
-        out.append((f"Which country stood out in the news on {e['event_date']}?",
-                    f"Which country stood out most in news coverage of the spike on {e['event_date']}?"))
-    return out + [REFUSAL_EXAMPLE]
+    templates = [
+        ("Which sector fell most after {label} ({date})?",
+         "Which sector fell the most 5 days after the spike on {date} ({label})?"),
+        ("How did airlines do in the 30 days after {label} ({date})?",
+         "How did Airlines stocks move 30 days after the spike on {date}?"),
+        ("Which countries stood out in the news on {date}?",
+         "Which country stood out most in news coverage of the spike on {date}?"),
+    ]
+    return [(show.format(label=e["label"], date=e["event_date"]), ask.format(label=e["label"], date=e["event_date"]))
+            for (show, ask), e in zip(templates, events)]
 
 _CSS = """
 <style>
@@ -189,23 +180,13 @@ def render_chat(panel=True):
         for msg in history:
             _show(msg)
 
-        with st.expander("Search options", icon=":material/tune:"):
-            use_dates = st.checkbox("Limit event dates")
-            date_range = st.date_input("Event dates", value=(_dt.date(2016, 1, 1), _dt.date(2026, 12, 31)),
-                                       disabled=not use_dates)
-            sectors = st.multiselect("Sectors", list(SECTOR_MAP.keys()))
-            k = st.slider("Documents given to the model", 1, 10, config.TOP_K)
-
         typed = st.chat_input("Ask about a spike event or sector…")
         question = typed or st.session_state.pop("qa_pending", None)
         if question:
-            start = end = None
-            if use_dates and isinstance(date_range, (tuple, list)) and len(date_range) == 2:
-                start, end = (d.strftime("%Y-%m-%d") for d in date_range)
             history.append({"role": "user", "text": question})
             _show(history[-1])
             with st.spinner("Searching the events and asking the model…"):
-                history.append(_ask(question, retriever, k, start, end, sectors))
+                history.append(_ask(question, retriever, config.TOP_K, None, None, None))
             st.rerun()
 
 

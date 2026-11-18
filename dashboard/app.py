@@ -150,9 +150,12 @@ st.markdown("""
         background: #f97316; border: none; box-shadow: 0 8px 22px rgba(249,115,22,0.45); }
     .st-key-chat_fab button:hover { background: #ea580c; }
     .st-key-chat_fab button [data-testid="stIconMaterial"] { color: white; font-size: 28px; }
-    .st-key-chat_panel { position: fixed; right: 28px; bottom: 102px; z-index: 1000; width: 400px !important;
-        max-height: min(680px, calc(100vh - 140px)); overflow-y: auto; background: white; border-radius: 18px;
+    .st-key-chat_panel { position: fixed; right: 28px; top: 16px; bottom: 102px; z-index: 1000; width: 420px !important;
+        overflow-y: auto; background: white; border-radius: 18px;
         border: 1px solid #e2e8f0; border-top: 4px solid #f97316; box-shadow: 0 18px 48px rgba(15,23,42,0.22); padding: 16px 18px 8px; }
+    /* keep the message box at the bottom of the chat window */
+    .st-key-chat_panel > div:has([data-testid="stChatInput"]) { margin-top: auto; position: sticky; bottom: 0;
+        background: white; padding-top: 8px; }
 </style>
 """, unsafe_allow_html=True)
 
