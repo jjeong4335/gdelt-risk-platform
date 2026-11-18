@@ -10,7 +10,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 RAG_DIR = REPO_ROOT / "rag"
 
 # Where the existing pipeline outputs live (same folder the dashboard reads).
-DATA_DIR = Path(os.environ.get("GEO_DATA_DIR", "~/dashboard_data")).expanduser()
+# GEO_DATA_DIR wins; otherwise the rebuilt folder (data-driven pipeline) if it
+# exists, else the original cluster folder.
+_REBUILT = Path("~/dashboard_data_rebuilt").expanduser()
+DATA_DIR = Path(os.environ.get("GEO_DATA_DIR") or
+                (_REBUILT if _REBUILT.exists() else "~/dashboard_data")).expanduser()
 
 # Output of build_corpus.py. Small (a few hundred documents), so it is
 # committed to git: the index and eval can then run on a laptop without
