@@ -1,30 +1,29 @@
-"""Step 1 — Build the text corpus from the EXISTING pipeline outputs.
+"""Build the text corpus for the Q&A from the pipeline outputs.
 
-This does NOT re-run Spark. It only reads the Parquet files the dashboard
-already uses (in GEO_DATA_DIR, default ~/dashboard_data) and writes one JSON
-line per "document" to rag/data/corpus.jsonl.
+Reads the files written by data_collection/build_events.py (in GEO_DATA_DIR,
+default ~/dashboard_data_rebuilt) and writes one JSON line per "document" to
+rag/data/corpus.jsonl.
 
-Chunking choice (why two kinds of documents):
-  * one EVENT document per spike  -> answers "what happened on date X?",
+Three kinds of documents:
+  * one EVENT document per detected spike  -> "what happened on date X?",
     "how big was the spike?", "which sector fell most?"
-  * one EVENT x SECTOR document   -> answers "how did airlines react to X?"
-Each document is kept short (well under the embedding model's 256-token
-limit) so nothing gets silently cut off when it is embedded.
+  * one EVENT x SECTOR document            -> "how did airlines react to X?"
+  * comparison summaries (per sector + one over all events) -> questions
+    that compare ALL events, which top-k retrieval can't do on its own.
+Event and sector documents stay under the embedding model's 256-token limit.
 
-Run (where the data lives, e.g. on the Dataproc edge node):
+Run (from the repo root):
     python -m rag.build_corpus
-    python -m rag.build_corpus --data-dir /path/to/dashboard_data
+    python -m rag.build_corpus --data-dir /path/to/data
 """
 import argparse
-import collections
 import json
-import re
 import sys
 from pathlib import Path
 
 import pandas as pd
 
-from dashboard.constants import SECTOR_MAP, SPIKE_LABELS
+from dashboard.constants import SECTOR_MAP
 from rag import config
 
 # The pipeline outputs this script needs, relative to the data folder.
@@ -33,162 +32,10 @@ REQUIRED_OUTPUTS = {
     "spike_news": "spike_news",
     "reactions": "ticker_reaction_by_spike",
 }
-# Only in the ORIGINAL cluster outputs. Data rebuilt with
-# data_collection/rebuild_for_rag.py has no index values, so index, z-score
-# and threshold sentences are left out of the documents.
-OPTIONAL_OUTPUTS = {"geo_tension": "geo_tension_index.parquet"}
-
 # The three horizons the Q&A talks about (calendar days after the spike).
 HORIZONS = [1, 5, 30]
 # Kept small so an event document stays under the model's 256-token limit.
 HEADLINES_PER_EVENT = 3
-
-# GDELT uses FIPS 10-4 country codes (e.g. RS = Russia, UP = Ukraine).
-FIPS_NAMES = {
-    "AF": "Afghanistan",
-    "AL": "Albania",
-    "AG": "Algeria",
-    "AO": "Angola",
-    "AR": "Argentina",
-    "AM": "Armenia",
-    "AS": "Australia",
-    "AU": "Austria",
-    "AJ": "Azerbaijan",
-    "BA": "Bahrain",
-    "BG": "Bangladesh",
-    "BO": "Belarus",
-    "BE": "Belgium",
-    "BL": "Bolivia",
-    "BK": "Bosnia and Herzegovina",
-    "BR": "Brazil",
-    "BU": "Bulgaria",
-    "BM": "Myanmar",
-    "BY": "Burundi",
-    "CB": "Cambodia",
-    "CM": "Cameroon",
-    "CA": "Canada",
-    "CD": "Chad",
-    "CI": "Chile",
-    "CH": "China",
-    "CO": "Colombia",
-    "CG": "DR Congo",
-    "CF": "Republic of the Congo",
-    "CS": "Costa Rica",
-    "HR": "Croatia",
-    "CU": "Cuba",
-    "CY": "Cyprus",
-    "EZ": "Czechia",
-    "DA": "Denmark",
-    "DJ": "Djibouti",
-    "EC": "Ecuador",
-    "EG": "Egypt",
-    "ES": "El Salvador",
-    "ER": "Eritrea",
-    "EN": "Estonia",
-    "ET": "Ethiopia",
-    "FI": "Finland",
-    "FR": "France",
-    "GG": "Georgia",
-    "GM": "Germany",
-    "GH": "Ghana",
-    "GR": "Greece",
-    "GT": "Guatemala",
-    "HA": "Haiti",
-    "HO": "Honduras",
-    "HK": "Hong Kong",
-    "HU": "Hungary",
-    "IC": "Iceland",
-    "IN": "India",
-    "ID": "Indonesia",
-    "IR": "Iran",
-    "IZ": "Iraq",
-    "EI": "Ireland",
-    "IS": "Israel",
-    "IT": "Italy",
-    "JA": "Japan",
-    "JO": "Jordan",
-    "KZ": "Kazakhstan",
-    "KE": "Kenya",
-    "KN": "North Korea",
-    "KS": "South Korea",
-    "KU": "Kuwait",
-    "KG": "Kyrgyzstan",
-    "LA": "Laos",
-    "LG": "Latvia",
-    "LE": "Lebanon",
-    "LI": "Liberia",
-    "LY": "Libya",
-    "LH": "Lithuania",
-    "MY": "Malaysia",
-    "ML": "Mali",
-    "MX": "Mexico",
-    "MD": "Moldova",
-    "MG": "Mongolia",
-    "MJ": "Montenegro",
-    "MO": "Morocco",
-    "MZ": "Mozambique",
-    "NP": "Nepal",
-    "NL": "Netherlands",
-    "NZ": "New Zealand",
-    "NU": "Nicaragua",
-    "NG": "Niger",
-    "NI": "Nigeria",
-    "NO": "Norway",
-    "MU": "Oman",
-    "PK": "Pakistan",
-    "PM": "Panama",
-    "PE": "Peru",
-    "RP": "Philippines",
-    "PL": "Poland",
-    "PO": "Portugal",
-    "QA": "Qatar",
-    "RO": "Romania",
-    "RS": "Russia",
-    "RW": "Rwanda",
-    "SA": "Saudi Arabia",
-    "SG": "Senegal",
-    "RI": "Serbia",
-    "SL": "Sierra Leone",
-    "SN": "Singapore",
-    "LO": "Slovakia",
-    "SI": "Slovenia",
-    "SO": "Somalia",
-    "SF": "South Africa",
-    "OD": "South Sudan",
-    "SP": "Spain",
-    "CE": "Sri Lanka",
-    "SU": "Sudan",
-    "SW": "Sweden",
-    "SZ": "Switzerland",
-    "SY": "Syria",
-    "TW": "Taiwan",
-    "TI": "Tajikistan",
-    "TZ": "Tanzania",
-    "TH": "Thailand",
-    "TS": "Tunisia",
-    "TU": "Turkey",
-    "TX": "Turkmenistan",
-    "UG": "Uganda",
-    "UP": "Ukraine",
-    "AE": "United Arab Emirates",
-    "UK": "United Kingdom",
-    "UY": "Uruguay",
-    "UZ": "Uzbekistan",
-    "VE": "Venezuela",
-    "VM": "Vietnam",
-    "YM": "Yemen",
-    "ZA": "Zambia",
-    "ZI": "Zimbabwe",
-    "GZ": "Gaza Strip",
-    "WE": "West Bank",
-    "BX": "Brunei",
-    "KV": "Kosovo",
-    "MK": "North Macedonia",
-}
-
-_STOPWORDS = {"the", "and", "for", "are", "was", "has", "had", "with", "that", "this",
-              "from", "have", "been", "will", "its", "not", "but", "they", "their",
-              "said", "says", "over", "after", "more", "also", "than", "into", "about"}
 
 
 def _to_date_str(series):
@@ -207,27 +54,12 @@ def check_outputs(data_dir: Path) -> None:
 
 def load_outputs(data_dir: Path) -> dict:
     out = {}
-    for key, name in {**REQUIRED_OUTPUTS, **OPTIONAL_OUTPUTS}.items():
+    for key, name in REQUIRED_OUTPUTS.items():
         out[key] = pd.read_parquet(data_dir / name) if (data_dir / name).exists() else None
-    for key, col in [("spike_events", "date"), ("geo_tension", "date"),
-                     ("spike_news", "spike_date"), ("reactions", "spike_date")]:
+    for key, col in [("spike_events", "date"), ("spike_news", "spike_date"), ("reactions", "spike_date")]:
         if out[key] is not None:
             out[key][col] = _to_date_str(out[key][col])
     return out
-
-
-def yearly_zscores(geo_tension: pd.DataFrame) -> pd.DataFrame:
-    """Z-score = how many standard deviations above that year's average.
-
-    Spike detection used: index > yearly_mean + 3 * yearly_std, so every
-    spike has z > 3. pandas .std() uses the same sample formula as Spark.
-    """
-    df = geo_tension[["date", "geo_tension_index"]].copy()
-    df["year"] = df["date"].str[:4]
-    stats = df.groupby("year")["geo_tension_index"].agg(["mean", "std"])
-    df = df.join(stats, on="year")
-    df["z_score"] = (df["geo_tension_index"] - df["mean"]) / df["std"]
-    return df.set_index("date")[["z_score"]]
 
 
 def clean_headlines(news: pd.DataFrame) -> pd.DataFrame:
@@ -241,29 +73,6 @@ def clean_headlines(news: pd.DataFrame) -> pd.DataFrame:
         & (t.str.replace(r"[^a-zA-Z]", "", regex=True).str.len() > 15)
     )
     return news[mask]
-
-
-def top_countries(news: pd.DataFrame, n: int = 3) -> list:
-    """Most frequent non-US country codes in the GDELT theme tags."""
-    counts = collections.Counter()
-    for themes in news["themes"].dropna():
-        for code in set(re.findall(r"#([A-Z]{2})#", themes)):
-            if code != "US":
-                counts[code] += 1
-    # Codes not in the table are labelled so they aren't mistaken for words
-    # (e.g. a bare "TX" reads like Texas).
-    return [FIPS_NAMES.get(code, f"unrecognized country code {code}")
-            for code, _ in counts.most_common(n)]
-
-
-def event_label(date: str, news: pd.DataFrame) -> str:
-    """Use the hand-written label if there is one, otherwise top title words
-    (the same fallback the dashboard uses)."""
-    if date in SPIKE_LABELS:
-        return SPIKE_LABELS[date]
-    words = re.findall(r"[a-z]{4,}", " ".join(news["title"].dropna()).lower())
-    top = [w for w, _ in collections.Counter(w for w in words if w not in _STOPWORDS).most_common(3)]
-    return "Unlabeled spike (frequent headline words: " + ", ".join(top) + ")" if top else "Unlabeled spike"
 
 
 def sector_reactions(reactions: pd.DataFrame, date: str):
@@ -321,22 +130,17 @@ def horizon_text(cell: dict, horizon: int) -> str:
 
 
 def build_documents(data: dict) -> list:
-    # Original outputs: index + z-score + threshold. Rebuilt data (all GKG
-    # files): index recomputed for the spike day only, no z-score/threshold.
     se = data["spike_events"]
-    has_index = "geo_tension_index" in se
-    # Data-driven rebuild (build_events.py): events carry their own label,
-    # z-score (on the raw score), dates and top countries/themes.
-    auto = "label" in se and "z_score" in se
-    has_z = auto or (has_index and data["geo_tension"] is not None and "threshold" in se)
-    z = yearly_zscores(data["geo_tension"]) if has_z and not auto else None
+    missing = [c for c in ("label", "z_score", "start_date", "end_date", "top_countries") if c not in se]
+    if missing:
+        sys.exit(f"spike_events.parquet lacks {missing}: run python -m data_collection.build_events first.")
     news_all = data["spike_news"]
     docs = []
 
     for _, ev in data["spike_events"].sort_values("date").iterrows():
         date = ev["date"]
         news = news_all[news_all["spike_date"] == date]
-        label = ev["label"] if auto and pd.notna(ev.get("label")) else event_label(date, news)
+        label = ev["label"]
         headlines = (clean_headlines(news)
                      .assign(dist=lambda d: d["days_from_spike"].abs())
                      .sort_values("dist")
@@ -344,43 +148,26 @@ def build_documents(data: dict) -> list:
                      .head(HEADLINES_PER_EVENT))
         urls = headlines["url"].tolist()
         source_url = urls[0] if urls else ""
-        countries = ([c for c in str(ev["top_countries"]).split(", ") if c]
-                     if auto and pd.notna(ev.get("top_countries")) else top_countries(news))
-        if auto:
-            z_score = float(ev["z_score"])
-        else:
-            z_score = (float(z.loc[date, "z_score"]) if has_z and date in z.index else float("nan"))
+        countries = [c for c in str(ev["top_countries"] or "").split(", ") if c]
+        z_score = float(ev["z_score"])
         sectors, reaction_date, base_date = sector_reactions(data["reactions"], date)
 
         # ── EVENT document ──
         parts = [f"Event: {label}. Spike date: {date}."]
-        if auto:
-            start, end = str(pd.Timestamp(ev["start_date"]).date()), str(pd.Timestamp(ev["end_date"]).date())
-            if start != end:
-                parts.append(f"Tension stayed elevated from {start} to {end} "
-                             f"({int(ev['spike_days'])} spike days).")
-            parts.append(
-                f"Geo-Tension Index: {ev['geo_tension_index']:.2f} out of 10; the raw tension score was "
-                f"{z_score:.2f} standard deviations above the {date[:4]} average (spike rule: above 3).")
-        elif has_z:
-            parts.append(
-                f"Geo-Tension Index: {ev['geo_tension_index']:.2f} out of 10 "
-                f"(z-score {z_score:.2f} versus the {date[:4]} daily average; "
-                f"spike threshold {ev['threshold']:.2f}).")
-        elif has_index and pd.notna(ev["geo_tension_index"]):
-            files = ev.get("gkg_files_used")
-            coverage = (f"; only {int(files)} of 96 GDELT files exist for that day, so it may be "
-                        f"understated" if pd.notna(files) and files < 96 else "")
-            parts.append(
-                f"Geo-Tension Index that day: {ev['geo_tension_index']:.2f} out of 10 "
-                f"(recomputed from GDELT with the original formula{coverage}).")
+        start, end = str(pd.Timestamp(ev["start_date"]).date()), str(pd.Timestamp(ev["end_date"]).date())
+        if start != end:
+            parts.append(f"Tension stayed elevated from {start} to {end} "
+                         f"({int(ev['spike_days'])} spike days).")
+        parts.append(
+            f"Geo-Tension Index: {ev['geo_tension_index']:.2f} out of 10; the raw tension score was "
+            f"{z_score:.2f} standard deviations above the {date[:4]} average (spike rule: above 3).")
         if pd.notna(ev.get("dominant_category")):
             parts.append(f"Dominant news category: {ev['dominant_category']}.")
         if pd.notna(ev.get("total_events")):
             parts.append(f"International articles on the peak day: {int(ev['total_events']):,}.")
         if countries:
             parts.append("Most-mentioned countries in coverage: " + ", ".join(countries) + ".")
-        if auto and pd.notna(ev.get("top_themes")) and ev["top_themes"]:
+        if pd.notna(ev.get("top_themes")) and ev["top_themes"]:
             parts.append("Top GDELT news themes: " + ev["top_themes"].replace("_", " ").lower() + ".")
         if len(headlines):
             parts.append("Sample headlines (taken from article URLs): " + "; ".join(
@@ -406,9 +193,8 @@ def build_documents(data: dict) -> list:
             "sector": None,
             "source_url": source_url,
             "urls": urls,
-            "geo_tension_index": (round(float(ev["geo_tension_index"]), 2)
-                                  if has_index and pd.notna(ev["geo_tension_index"]) else None),
-            "z_score": round(z_score, 2) if has_z else None,
+            "geo_tension_index": round(float(ev["geo_tension_index"]), 2),
+            "z_score": round(z_score, 2),
             "countries": countries,
             "text": " ".join(parts),
         })

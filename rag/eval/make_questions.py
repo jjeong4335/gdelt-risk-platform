@@ -92,8 +92,6 @@ def make(docs):
                    "category": "sector_d30", "expected_answer": pct(cell["return_pct"]),
                    "expected_doc_ids": [f"sector:{date}:{sector}"]})
 
-    # Index values exist only in the original cluster outputs, not in data
-    # rebuilt by data_collection/rebuild_for_rag.py.
     has_index = all(e.get("geo_tension_index") is not None for e in events)
     has_z = all(e.get("z_score") is not None for e in events)
 
