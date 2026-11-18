@@ -21,17 +21,39 @@ def init_db():
     conn.commit()
     conn.close()
 
+LASTUPDATE_URL = "http://data.gdeltproject.org/gdeltv2/lastupdate.txt"
+GKG_URL = "http://data.gdeltproject.org/gdeltv2/{ts}.gkg.csv.zip"
+
+
+def latest_gkg_zip(max_back=4):
+    """Return (zip bytes, timestamp) of the newest GKG file that actually exists.
+
+    lastupdate.txt is sometimes updated before the file itself is uploaded, so
+    the listed URL can return an error page instead of a zip. In that case step
+    back 15 minutes at a time (up to max_back files)."""
+    resp = requests.get(LASTUPDATE_URL, timeout=10)
+    listed = [l.split()[-1] for l in resp.text.strip().split("\n") if "gkg.csv.zip" in l][0]
+    ts = datetime.strptime(re.search(r"(\d{14})", listed).group(1), "%Y%m%d%H%M%S")
+    last_err = None
+    for i in range(max_back):
+        t = ts - pd.Timedelta(minutes=15 * i)
+        url = GKG_URL.format(ts=t.strftime("%Y%m%d%H%M%S"))
+        try:
+            r = requests.get(url, timeout=30)
+            if r.status_code == 200 and r.content[:2] == b"PK":  # zip files start with "PK"
+                return r.content, t
+            last_err = f"HTTP {r.status_code} for {url}"
+        except requests.RequestException as e:
+            last_err = str(e)
+    raise RuntimeError(f"No GKG file available in the last {15 * max_back} min ({last_err})")
+
+
 def fetch_latest_gdelt():
     try:
-        resp = requests.get("http://data.gdeltproject.org/gdeltv2/lastupdate.txt", timeout=10)
-        for line in resp.text.strip().split("\n"):
-            if "gkg.csv.zip" in line:
-                url = line.split()[-1]
-                r = requests.get(url, timeout=30)
-                z = zipfile.ZipFile(io.BytesIO(r.content))
-                fname = [f for f in z.namelist() if f.endswith(".csv")][0]
-                df = pd.read_csv(z.open(fname), sep="\t", header=None, on_bad_lines="skip")
-                return df
+        content, _ = latest_gkg_zip()
+        z = zipfile.ZipFile(io.BytesIO(content))
+        fname = [f for f in z.namelist() if f.endswith(".csv")][0]
+        return pd.read_csv(z.open(fname), sep="\t", header=None, on_bad_lines="skip")
     except Exception as e:
         print(f"Fetch error: {e}")
     return None

@@ -211,11 +211,9 @@ def fetch_live_sector_returns():
 @st.cache_data(ttl=900)
 def fetch_latest_gdelt_news():
     try:
-        resp = requests.get("http://data.gdeltproject.org/gdeltv2/lastupdate.txt", timeout=10)
-        lines = resp.text.strip().split("\n")
-        gkg_url = [l.split()[-1] for l in lines if "gkg.csv.zip" in l][0]
-        r = requests.get(gkg_url, timeout=30)
-        z = zipfile.ZipFile(io.BytesIO(r.content))
+        from dashboard.collect_live import latest_gkg_zip
+        content, _ = latest_gkg_zip()  # steps back 15 min if the newest file isn't up yet
+        z = zipfile.ZipFile(io.BytesIO(content))
         fname = z.namelist()[0]
         with z.open(fname) as f:
             df = pd.read_csv(f, sep="\t", header=None, on_bad_lines="skip",
