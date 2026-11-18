@@ -166,7 +166,8 @@ def build_documents(data: dict) -> list:
         if pd.notna(ev.get("total_events")):
             parts.append(f"International articles on the peak day: {int(ev['total_events']):,}.")
         if countries:
-            parts.append("Most-mentioned countries in coverage: " + ", ".join(countries) + ".")
+            parts.append("Countries that stood out in coverage (mentioned often, and far more than "
+                         "around other spikes), most distinctive first: " + ", ".join(countries) + ".")
         if pd.notna(ev.get("top_themes")) and ev["top_themes"]:
             parts.append("Top GDELT news themes: " + ev["top_themes"].replace("_", " ").lower() + ".")
         if len(headlines):

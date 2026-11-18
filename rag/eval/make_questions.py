@@ -101,9 +101,11 @@ def make(docs):
                    "category": "index_value", "expected_answer": f"{e['geo_tension_index']:.2f}",
                    "expected_doc_ids": [e["doc_id"]]})
 
-    # D. Most-mentioned country (3 questions)
+    # D. Most distinctive country (3 questions). Asked by date, not by event
+    # name: names are built from these countries, so naming the event would
+    # give the answer away.
     for e in spread([e for e in events if e["countries"]][3:], 3):
-        qs.append({"question": f"Which country was mentioned most in news coverage of {name(e)}?",
+        qs.append({"question": f"Which country stood out most in news coverage of the spike on {e['event_date']}?",
                    "category": "top_country", "expected_answer": e["countries"][0],
                    "expected_doc_ids": [e["doc_id"]]})
 
