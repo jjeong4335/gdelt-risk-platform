@@ -598,7 +598,7 @@ with tab_live:
         vix0, vix1 = tm.get("VIX", {}).get("0"), tm.get("VIX", {}).get("1")
         history = ("<div class='dx-hist'><b>What happened after past war/conflict spikes</b> "
                    f"({an['sectors']['groups']['war & conflict']} events): "
-                   + (f"the VIX jumped {vix0:+.1f}% on the first trading day and gave back {vix1:+.1f}% the next; "
+                   + (f"the VIX moved {vix0:+.1f}% on the first trading day and {vix1:+.1f}% the next; "
                       if vix0 is not None and vix1 is not None else "")
                    + (f"defense stocks beat the market by {dfn['event_mean_pct']:+.2f}% over 5 trading days"
                       f"{' (p < 0.05)' if dfn['p_value'] < 0.05 else ''}" if dfn else "")
