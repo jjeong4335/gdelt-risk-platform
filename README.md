@@ -77,7 +77,10 @@ GDELT Archive (2016–2026)          S&P 500 Price Data (yfinance)
 gdelt-risk-platform/
 ├── data_collection/
 │   ├── gdelt_download.sh          # Downloads & filters GDELT GKG (2016–2026)
-│   └── rebuild_for_rag.py         # Rebuilds Q&A inputs for the 31 spikes on a laptop
+│   ├── rebuild_for_rag.py         # Rebuilds Q&A inputs for the 31 spikes on a laptop
+│   ├── bigquery_daily_index.sql   # 10-year daily index inputs, aggregated in BigQuery
+│   ├── download_prices.py         # 10 years of S&P 500 daily closes (yfinance)
+│   └── build_history.py           # Index, thresholds, spike check, reactions (pandas)
 ├── pyspark_pipeline/
 │   ├── geo_tension_index.py       # Builds daily Geo-Tension Index
 │   ├── event_window.py            # Computes ticker reactions ±30d per spike
@@ -331,6 +334,14 @@ The original pipeline outputs lived on the NYU Dataproc cluster, and access ende
 | Weekend/holiday spikes | Borrowed the nearest other spike's numbers | Measured from the next trading day's close |
 
 Only the 161 days around the spikes are downloaded, so this runs on a laptop: data is filtered while it streams and only matching rows are saved (a few hundred MB), though the download itself is large (roughly tens to a hundred-plus GB, a few hours depending on connection). `--files-per-day 4` makes a quick sample instead; then no index is recomputed. The dashboard reads `GEO_DATA_DIR`, else the original cluster folder if present, else `~/dashboard_data_rebuilt`. On rebuilt data the 10-year index chart and the history-based risk level aren't available, so those spots say so; the headline score is computed live from the latest 15-minute GDELT file (same method as `collect_live.py`), and the portfolio card, spike explorer and Q&A work as before. `build_corpus.py` handles all three shapes (original, full rebuild, sample) and only writes the facts that exist.
+
+#### Optional: rebuild the full 10-year history
+
+Restores the 10-year chart, yearly thresholds, z-scores and the S&P 500-wide reactions without the cluster:
+
+1. **Daily index inputs via BigQuery.** Run `data_collection/bigquery_daily_index.sql` in the BigQuery console (a sandbox project without billing). GDELT's public tables are filtered and aggregated on Google's side, so only ~3,700 rows (one per day) come back instead of ~2 TB of raw files. The console shows how many GB the query will read before it runs; keep it under the free 1 TB per month. Save the result as `~/dashboard_data_rebuilt/gdelt_daily.csv`.
+2. **Prices.** `python -m data_collection.download_prices` downloads daily adjusted closes for today's S&P 500 members (2015-11 → today) in batches. Companies that left the index since 2016 are missing (survivorship bias).
+3. **Recompute.** `python -m data_collection.build_history` applies the original formulas in pandas (0–10 scaling with p1/p99, yearly mean + 3σ threshold, ±30-day returns), writes the files the dashboard reads, and saves `spike_check.csv` showing how many of the original 31 spike dates are detected again.
 
 ### Architecture
 
