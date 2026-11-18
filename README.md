@@ -99,7 +99,7 @@ Ask *"Which sector fell most 5 days after the spike on 2019-04-21?"* and get a s
 |---|---|---|
 | Documents | 1 per event (index, z-score, window, countries, themes, headlines, sector ranking) + 1 per event × sector (Day +1/+5/+30 returns) + 7 comparison summaries (per sector across all events, and all events by z-score) | Matches the questions people ask: "what happened on X?", "how did sector Y react?", "after which event did Y fall most?" Event and sector docs stay under the embedding model's 256-token limit. |
 | Embeddings | `sentence-transformers/all-MiniLM-L6-v2`, FAISS exact cosine search | Small, free, runs on a laptop CPU; a corpus of ~200 short docs doesn't need approximate search. |
-| Hybrid retrieval | Embedding rank + BM25 keyword rank, merged with Reciprocal Rank Fusion `1/(60+rank)` | Embeddings miss exact tokens such as dates; BM25 catches them. RRF only uses ranks, so the two scores don't need calibrating. |
+| Hybrid retrieval | Embedding rank + BM25 keyword rank, merged with Reciprocal Rank Fusion `1/(60+rank)` | Added when embeddings alone missed questions that name a date (on the earlier 31-event data, hit@5 went from 56.5% to 87.0%). RRF only uses ranks, so the two scores don't need calibrating. With date-aware retrieval now in place, BM25 adds little on the current eval (see Results); `GEO_QA_RETRIEVER=dense` turns it off. |
 | Date-aware retrieval | If the question names an event date, that date's documents rank first, and the event document is always included | Each date has 7 near-identical documents; without this, six sector docs could push out the event doc that holds the index and the full sector ranking. |
 | Filters | Date range and sector in the UI, applied after scoring | A filter can never hide a better match. |
 | LLM | Gemini (default, free tier) or Claude, chosen with `GEO_QA_PROVIDER`; key from an environment variable | Same prompt and checks with either provider. |
@@ -143,6 +143,8 @@ Run on 2026-11-18 on data through 2026-11-17 (27 events): 29 generated questions
 | False refusals (answerable) | 4/24 (16.7%) | 0/24 (0.0%) |
 
 **What changed between the two runs, and why.** The first run's 6 misses were all retrieval misses. Five were "index on <date>" / "weakest sector on <date>" questions where the six sector documents for that date filled the top 5 and pushed out the event document; in one of them the model then answered from an incomplete set of sectors and got it wrong. The sixth needed comparing all 27 events, which top-k retrieval can't do. The fixes were date-aware retrieval (that date's documents first, event document always included) and the precomputed comparison documents. The three "most-mentioned country" questions were also rephrased to ask by date: event names are built from those countries, so asking by name gave the answer away.
+
+**Embeddings only vs hybrid** (`run_eval --retriever dense --retrieval-only`, same 24 questions): dense-only hit@1/@3/@5 = 18/24, 24/24, 24/24; hybrid = 19/24, 23/24, 24/24. Once date-aware retrieval was added, BM25 no longer makes a clear difference on this set; it is kept because it was what fixed date questions before, and it costs nothing at this corpus size.
 
 **Read with care.** These fixes were made after looking at the failures, on the same kind of generated questions, so the final numbers are optimistic: they show the known failure modes are fixed, not how the system does on new kinds of questions. The set is small (24 answerable), and 100% on it does not mean the system is never wrong.
 
