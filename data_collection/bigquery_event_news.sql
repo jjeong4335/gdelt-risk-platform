@@ -73,7 +73,9 @@ countries AS (
       FROM matched AS m,
            UNNEST(ARRAY(SELECT DISTINCT SPLIT(loc, '#')[SAFE_OFFSET(2)]
                         FROM UNNEST(SPLIT(m.locations, ';')) AS loc)) AS code
-      WHERE code IS NOT NULL AND code NOT IN ('', 'US') AND ABS(m.days_from_spike) <= 1
+      -- the US is counted here (articles must still mention a non-US country to be kept),
+      -- so US-involved events can carry 'United States' in their name
+      WHERE code IS NOT NULL AND code != '' AND ABS(m.days_from_spike) <= 1
     )
     GROUP BY event_date, code
   )

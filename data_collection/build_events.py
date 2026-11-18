@@ -66,8 +66,10 @@ def shares_and_lift(count_strings, totals):
     return share, lift
 
 
-def pick_categories(share, lift, min_share=0.10):
-    """Most over-represented category with at least 10% of the articles."""
+def pick_categories(share, lift, min_share=0.25):
+    """Most over-represented category among those covering at least 25% of the
+    event's articles; otherwise CONFLICT. A small category with a high lift
+    (e.g. 16% "diplomatic" during a war) shouldn't name the event."""
     out = []
     for i in range(len(share)):
         ok = share.iloc[i] >= min_share

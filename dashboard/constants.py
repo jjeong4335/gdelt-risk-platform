@@ -17,6 +17,7 @@ SECTOR_MAP = {
 
 # GDELT uses FIPS 10-4 country codes (e.g. RS = Russia, UP = Ukraine).
 FIPS_NAMES = {
+    "US": "United States",
     "AF": "Afghanistan",
     "AL": "Albania",
     "AG": "Algeria",
