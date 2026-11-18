@@ -18,7 +18,7 @@ st.set_page_config(
     page_title="Geopolitical Risk Dashboard",
     page_icon="🌍",
     layout="wide",
-    initial_sidebar_state="expanded",  # the Q&A chat lives in the sidebar
+    initial_sidebar_state="collapsed",
 )
 
 st.markdown('<meta http-equiv="refresh" content="900">', unsafe_allow_html=True)
@@ -69,7 +69,29 @@ st.markdown("""
     .summary-val-pos { color: #16a34a; font-weight: 600; }
     .summary-val-neg { color: #dc2626; font-weight: 600; }
     .chart-title { font-size: 13px; color: #444; font-weight: 500; margin-bottom: 8px; }
-    .block-container { padding-top: 2rem; }
+    .block-container { padding-top: 1.6rem; max-width: 100%; }
+    /* hide Streamlit's own chrome */
+    .stAppDeployButton, [data-testid="stToolbar"], [data-testid="stDecoration"],
+    [data-testid="stSidebarCollapsedControl"] { display: none !important; }
+    header[data-testid="stHeader"] { height: 0; background: transparent; }
+    /* app header */
+    .app-title { font-size: 26px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px; }
+    .app-sub { font-size: 14px; color: #64748b; margin-top: 2px; }
+    /* tabs */
+    .stTabs [data-baseweb="tab-list"] { gap: 28px; border-bottom: 1px solid #e5e7eb; }
+    .stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: 600; padding: 10px 2px; }
+    /* section headings */
+    .section-title { font-size: 18px; font-weight: 700; color: #0f172a; margin: 22px 0 2px; }
+    .section-sub { font-size: 13px; color: #64748b; margin-bottom: 10px; }
+    .event-title { font-size: 22px; font-weight: 700; color: #0f172a; margin: 26px 0 12px; }
+    .event-date { display: inline-block; font-size: 13px; font-weight: 600; color: #1d4ed8;
+                  background: #eff6ff; border-radius: 999px; padding: 3px 10px; margin-left: 10px;
+                  vertical-align: middle; }
+    .card-title { font-size: 14px; font-weight: 600; color: #0f172a; margin-bottom: 8px; }
+    /* chat panel on the right: stays in view while the dashboard scrolls */
+    div[data-testid="stColumn"]:has(.st-key-chat_panel) { position: sticky; top: 1rem; align-self: flex-start; }
+    .st-key-chat_panel { background: white; border-radius: 14px; box-shadow: 0 1px 6px rgba(15,23,42,0.08);
+                         padding: 18px 18px 8px; max-height: calc(100vh - 2rem); overflow-y: auto; }
     /* bordered st.container() blocks look like the HTML cards */
     .st-key-live_chart_card { background: white; border-radius: 12px; border: none !important;
         box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 20px 24px !important; margin-bottom: 16px; }
@@ -347,26 +369,40 @@ most_exposed = port_df.loc[(port_df["wd"].abs() * port_df["weight"] / 100).idxma
 # ══════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════
-# Q&A chat: in the sidebar so it stays next to every tab.
-from rag.ui import render_chat
-render_chat(sidebar=True)
+# ── Layout: dashboard on the left, Q&A chat panel on the right ────
+# Opening the panel narrows the dashboard; closing it gives it the full width.
+if "chat_open" not in st.session_state:
+    st.session_state.chat_open = True
+if st.session_state.chat_open:
+    main_col, chat_col = st.columns([2.4, 1], gap="large")
+else:
+    main_col, chat_col = st.container(), None
 
-tab1, tab2 = st.tabs(["📊 Live Dashboard", "📅 Historical Events"])
+with main_col:
+    head_l, head_r = st.columns([4, 1], vertical_alignment="center")
+    head_l.markdown(
+        "<div class='app-title'>Geopolitical Risk Monitor</div>"
+        "<div class='app-sub'>VIX tells you how scared the market is. This tells you why — "
+        "and how markets reacted last time.</div>", unsafe_allow_html=True)
+    if st.session_state.chat_open:
+        toggle = head_r.button("Hide assistant", icon=":material/right_panel_close:", width="stretch")
+    else:
+        toggle = head_r.button("Ask the data", icon=":material/forum:", type="primary", width="stretch")
+    if toggle:
+        st.session_state.chat_open = not st.session_state.chat_open
+        st.rerun()
+    tab1, tab2 = st.tabs(["Live", "History"])
+
+if chat_col is not None:
+    from rag.ui import render_chat
+    with chat_col:
+        render_chat()
 
 # ══════════════════════════════════════════════════════════════════
 # TAB 1: LIVE DASHBOARD
 # ══════════════════════════════════════════════════════════════════
 with tab1:
-    col_title, col_badge = st.columns([3, 1])
-    with col_title:
-        st.markdown("## 🌍 Geopolitical Risk Dashboard")
-        st.caption("VIX tells you how scared the market is. This tells you why — and how exposed your portfolio is.")
-    with col_badge:
-        st.markdown("""
-        <div style='text-align:right; padding-top:12px'>
-        </div>
-        """, unsafe_allow_html=True)
-
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
     # Top 4 metric cards
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -582,8 +618,9 @@ with tab1:
         st.markdown(news_html, unsafe_allow_html=True)
 # ══════════════════════════════════════════════════════════════════
 with tab2:
-    st.markdown("## 📅 Historical Geopolitical Spike Events")
-    st.caption("31 major geopolitical events detected from GDELT news sentiment (2016–2026)")
+    st.markdown("<div class='section-title'>Geo-Tension Index, 2016 to today</div>"
+                "<div class='section-sub'>Daily index from GDELT news. Red dots are the 31 "
+                "geopolitical spike events.</div>", unsafe_allow_html=True)
 
     if not HAS_HISTORY:
         st.info("The 10-year daily index isn't available in the rebuilt data (it needs the full "
@@ -621,24 +658,26 @@ with tab2:
         hovermode="closest"
     )
     st.plotly_chart(fig_hist, width="stretch")
-    st.divider()
-    st.subheader("🔍 Explore Spike Event")
+    st.markdown("<div class='section-title'>Explore a spike event</div>"
+                "<div class='section-sub'>Pick an event to see how markets and the news reacted.</div>",
+                unsafe_allow_html=True)
     spike_options = (spike_events.sort_values("date", ascending=False)
                      .apply(lambda r: f"{r['date'].strftime('%Y-%m-%d')} | {r['label']}", axis=1)
                      .tolist())
-    selected_option = st.selectbox("Select a spike event to analyze", spike_options)
+    selected_option = st.selectbox("Spike event", spike_options, label_visibility="collapsed")
     selected_date  = selected_option.split(" | ")[0]
     selected_event = selected_option.split(" | ")[1]
     import datetime
     if selected_date:
-        st.divider()
-        st.markdown(f"### 📌 {selected_event} ({selected_date})")
+        st.markdown(f"<div class='event-title'>{selected_event}"
+                    f"<span class='event-date'>{selected_date}</span></div>", unsafe_allow_html=True)
 
         col_left, col_right = st.columns([1, 1])
 
         # ── Left: ±5 day Geo-Tension + VIX chart ─────────────────────────
         with col_left:
-            st.markdown("#### 📈 Geo-Tension & VIX (±5 days)")
+            st.markdown("<div class='card-title'>Tension and VIX, 5 days either side</div>",
+                        unsafe_allow_html=True)
             if not HAS_HISTORY:
                 st.caption("Daily index around the spike isn't in the rebuilt data; showing VIX only.")
             spike_dt = pd.Timestamp(selected_date)
@@ -679,7 +718,8 @@ with tab2:
             st.plotly_chart(fig_event, width="stretch")
 
             # Sector Impact
-            st.markdown("#### 📊 Sector Impact (Day +5)")
+            st.markdown("<div class='card-title' style='margin-top:18px'>Sector moves 5 days later</div>",
+                        unsafe_allow_html=True)
             try:
                 reaction_df  = load_ticker_reaction_by_spike()
                 spike_date_d = datetime.date.fromisoformat(selected_date)
@@ -689,7 +729,7 @@ with tab2:
                     available = reaction_df["spike_date"].unique()
                     nearest = min(available, key=lambda d: abs((d - spike_date_d).days))
                     spike_data = reaction_df[reaction_df["spike_date"] == nearest].copy()
-                    st.caption(f"ℹ️ No trading data for {selected_date}. Showing nearest date: {nearest}")
+                    st.caption(f"No trading data for {selected_date}. Showing nearest date: {nearest}")
                 ticker_to_sector = {t: s for s, tickers in SECTOR_MAP.items() for t in tickers}
                 spike_data["sector"] = spike_data["ticker"].map(ticker_to_sector)
                 spike_data = spike_data.dropna(subset=["sector"])
@@ -750,4 +790,4 @@ with tab2:
                 st.markdown(news_html, unsafe_allow_html=True)
             except Exception as e:
                 st.error(f"Error: {e}")
-    st.caption("Source: GDELT 2016–2026 + S&P 500 yfinance | NYU Big Data Project")
+    st.caption("Sources: GDELT news (2016 to today) and S&P 500 prices from yfinance · NYU Big Data project")

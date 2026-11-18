@@ -10,4 +10,4 @@ st.set_page_config(page_title="Geo-Risk Q&A", page_icon="💬", layout="wide")
 
 from rag.ui import render_chat  # noqa: E402
 
-render_chat(sidebar=False)
+render_chat(panel=False)

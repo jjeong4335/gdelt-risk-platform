@@ -1,6 +1,6 @@
 """Geo-Risk Q&A as a chat panel.
 
-    streamlit run dashboard/app.py   -> chat in the sidebar, next to every tab
+    streamlit run dashboard/app.py   -> chat panel on the right of the dashboard
     streamlit run rag/qa_app.py      -> the same chat on its own page
 
 Each question is answered on its own (retrieval + grounded answer); earlier
@@ -16,19 +16,26 @@ import streamlit as st
 from dashboard.constants import SECTOR_MAP
 
 EXAMPLES = [
-    ("📉 Hardest-hit sector after the Russia-Ukraine War",
+    ("Which sector fell most after the Russia-Ukraine War?",
      "Which sector fell the most 5 days after the Russia-Ukraine War spike?"),
-    ("✈️ Airlines 30 days after the Israel-Hamas War",
+    ("How did airlines do 30 days after the Israel-Hamas War?",
      "How did Airlines stocks move 30 days after the Israel-Hamas War spike?"),
-    ("🌍 Most-mentioned country: Sudan Civil War",
+    ("Which country dominated news of the Sudan Civil War?",
      "Which country was mentioned most in news coverage of the Sudan Civil War spike?"),
-    ("🚫 \"Should I buy defense stocks?\" (refusal test)",
+    ("Should I buy defense stocks now?",
      "Should I buy defense stocks before the next crisis?"),
 ]
 
 _CSS = """
 <style>
-section[data-testid="stSidebar"] { width: 440px !important; min-width: 440px !important; }
+.qa-title { font-size: 17px; font-weight: 700; color: #0f172a; }
+.qa-intro { font-size: 12.5px; color: #64748b; line-height: 1.5; margin: 4px 0 12px; }
+.qa-hint { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase;
+           letter-spacing: 0.5px; margin: 6px 0 6px; }
+.st-key-qa_examples button { justify-content: flex-start; text-align: left; border-radius: 10px;
+                             padding: 8px 12px; }
+.st-key-qa_examples button div, .st-key-qa_examples button p { justify-content: flex-start;
+                             text-align: left; font-size: 13px; width: 100%; }
 .qa-answer { font-size: 15px; line-height: 1.55; color: #111827; }
 .qa-answer.refused { color: #6b7280; font-style: italic; }
 .qa-cite { display:inline-block; background:#eff6ff; color:#1d4ed8; border-radius:6px;
@@ -101,10 +108,10 @@ def _ask(question, retriever, k, start, end, sectors):
 
 def _show(msg):
     if msg["role"] == "user":
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar=":material/person:"):
             st.markdown(msg["text"])
         return
-    with st.chat_message("assistant", avatar="🌍"):
+    with st.chat_message("assistant", avatar=":material/insights:"):
         if "error" in msg:
             st.warning(msg["error"])
             return
@@ -132,21 +139,23 @@ def _show(msg):
                     st.caption(d["text"])
 
 
-def render_chat(sidebar=True):
+def render_chat(panel=True):
+    """panel=True: a card that sits in the dashboard's right-hand column."""
     from rag import config
 
-    area = st.sidebar if sidebar else st.container()
     history = st.session_state.setdefault("qa_chat", [])
+    area = st.container(key="chat_panel") if panel else st.container()
 
     with area:
         st.markdown(_CSS, unsafe_allow_html=True)
-        head, clear = st.columns([4, 1])
-        head.markdown("### 💬 Ask the data")
-        if history and clear.button("Clear", help="Clear the conversation"):
+        head, clear = st.columns([3, 1], vertical_alignment="center")
+        head.markdown("<div class='qa-title'>Ask the data</div>", unsafe_allow_html=True)
+        if history and clear.button("Clear", type="tertiary", help="Clear the conversation"):
             st.session_state["qa_chat"] = []
             st.rerun()
-        st.caption("Answers use only the 31 spike events and how S&P 500 sectors moved afterwards. "
-                   "Every fact is cited. Historical data only — not investment advice.")
+        st.markdown("<div class='qa-intro'>Answers come only from the 31 spike events and how "
+                    "S&P 500 sectors moved afterwards, with sources for every fact. Historical "
+                    "data only, not investment advice.</div>", unsafe_allow_html=True)
 
         try:
             retriever = load_retriever()
@@ -156,15 +165,16 @@ def render_chat(sidebar=True):
             return
 
         if not history:
-            st.markdown("**Try one:**")
-            for label, q in EXAMPLES:
-                if st.button(label, key=f"ex_{label}", width="stretch", help=q):
-                    st.session_state["qa_pending"] = q
+            st.markdown("<div class='qa-hint'>Try asking</div>", unsafe_allow_html=True)
+            with st.container(key="qa_examples"):
+                for label, q in EXAMPLES:
+                    if st.button(label, key=f"ex_{label}", width="stretch", help=q):
+                        st.session_state["qa_pending"] = q
 
         for msg in history:
             _show(msg)
 
-        with st.expander("⚙️ Options"):
+        with st.expander("Search options", icon=":material/tune:"):
             use_dates = st.checkbox("Limit event dates")
             date_range = st.date_input("Event dates", value=(_dt.date(2016, 1, 1), _dt.date(2026, 12, 31)),
                                        disabled=not use_dates)
