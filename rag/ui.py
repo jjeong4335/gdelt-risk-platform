@@ -202,6 +202,7 @@ def render_chat(panel=True):
         if st.session_state.get("qa_answering"):
             # while the model works, the send arrow spins (no extra spinner text)
             st.markdown("<style>.st-key-chat_panel [data-testid='stChatInputSubmitButton'] svg {display:none;} "
+                        ".st-key-chat_panel [data-testid='stChatInputSubmitButton'] {background:white !important;} "
                         ".st-key-chat_panel [data-testid='stChatInputSubmitButton']::after {content:''; width:16px; "
                         "height:16px; border:2px solid #cbd5e1; border-top-color:#1d4ed8; border-radius:50%; "
                         "animation: qa-spin 0.8s linear infinite;} "

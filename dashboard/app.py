@@ -151,6 +151,11 @@ st.markdown("""
         animation: chat-slide-in 0.28s ease-out;
         overflow-y: auto; background: white; border-radius: 18px;
         border: 1px solid #e2e8f0; border-top: 4px solid #f97316; box-shadow: 0 18px 48px rgba(15,23,42,0.22); padding: 16px 18px 8px; }
+    /* send button: blue with a white arrow */
+    .st-key-chat_panel [data-testid="stChatInputSubmitButton"] { background: #1d4ed8; border-radius: 10px; }
+    .st-key-chat_panel [data-testid="stChatInputSubmitButton"] svg { color: white; fill: white; }
+    .st-key-chat_panel [data-testid="stChatInputSubmitButton"]:disabled { background: #e2e8f0; }
+    .st-key-chat_panel [data-testid="stChatInputSubmitButton"]:disabled svg { color: #94a3b8; fill: #94a3b8; }
     @keyframes chat-slide-in { from { transform: translateX(110%); opacity: 0.4; } to { transform: none; opacity: 1; } }
     .st-key-chat_close button [data-testid="stIconMaterial"] { font-size: 22px; color: #64748b; }
     /* keep the message box at the bottom of the chat window */
@@ -498,8 +503,10 @@ st.markdown(
 tab_live, tab_hist, tab_how = st.tabs(["Overview", "Event history", "How it works"])
 
 if st.session_state.chat_open:
-    from rag.ui import render_chat
-    render_chat()  # floating window with its own close (X) button
+    import importlib
+    import rag.ui
+    importlib.reload(rag.ui)  # rag/ is outside dashboard/, so Streamlit doesn't pick up its edits by itself
+    rag.ui.render_chat()  # floating window with its own close (X) button
 else:
     with st.container(key="chat_fab"):
         if st.button("", icon=":material/chat:", help="Ask the data"):
