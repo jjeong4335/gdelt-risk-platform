@@ -168,6 +168,9 @@ def build_documents(data: dict) -> list:
         if countries:
             parts.append("Countries that stood out in coverage (mentioned often, and far more than "
                          "around other spikes), most distinctive first: " + ", ".join(countries) + ".")
+        if pd.notna(ev.get("most_mentioned")) and ev["most_mentioned"]:
+            parts.append("Countries in the most articles (plain count, including the United States): "
+                         + ev["most_mentioned"] + ".")
         if pd.notna(ev.get("top_themes")) and ev["top_themes"]:
             parts.append("Top GDELT news themes: " + ev["top_themes"].replace("_", " ").lower() + ".")
         if len(headlines):

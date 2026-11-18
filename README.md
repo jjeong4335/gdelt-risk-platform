@@ -69,7 +69,7 @@ share = fraction of this event's articles that mention the item
 lift  = share / the item's average share across all events
 ```
 
-The name is the 1–2 most distinctive countries (frequent *and* high lift) plus the most over-represented category, e.g. `Sri Lanka: unrest` (2019-04-21) or `Belgium: terror attack` (2016-03-22). It is the same idea as TF-IDF, applied to GDELT's country and theme tags, so it is deterministic and explainable. The most distinctive themes (e.g. `TAX_RELIGION_CHURCH` for 2019-04-21) are stored next to the name as evidence.
+The name is the 1–2 most distinctive countries (mentioned at least 1.5× their usual share, ranked by share × log(1 + lift)) plus the most over-represented category that covers at least 25% of the event's articles (otherwise "conflict"), e.g. `Sri Lanka: unrest` (2019-04-21) or `Belgium: terror attack` (2016-03-22). It is the same idea as TF-IDF, applied to GDELT's country and theme tags, so it is deterministic and explainable. The most distinctive themes (e.g. `TAX_RELIGION_CHURCH` for 2019-04-21) are stored next to the name as evidence.
 
 ### 4. Market reactions
 
@@ -152,6 +152,7 @@ Run on 2026-11-18 on data through 2026-11-17 (27 events): 29 generated questions
 
 - **Small eval set** (24 answerable questions): one question moves a rate by about 4 points.
 - **"Grounded" is narrow:** it checks that numbers and dates come from the retrieved documents, not that the right document was used.
+- **Countries that are in almost all coverage rarely make the name.** The US appears in most international news, so even in the 2026 US–Israel war with Iran (2026-03-01) it isn't 1.5× above its usual share and the event is named "Iran & Israel". Each event therefore also lists the countries in the most articles by plain count. The 1.5× and 25% thresholds were chosen after looking at the names, not tuned on a held-out set.
 - **Event names are coarse:** "country: category", not "Christchurch mosque shootings". Some categories are off (the Christchurch and Sri Lanka attacks come out as "unrest"), and two events can share a name; the date tells them apart.
 - **Headlines come from article URLs**, not full text.
 - **Correlation, not causation:** sector returns are averages that include all other market news in the window.

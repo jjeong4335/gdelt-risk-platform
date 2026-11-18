@@ -146,6 +146,9 @@ def main():
             "label": name_event(countries[:2], category),
             "category_counts": first["category_counts"].get(ev.date, ""),
             "top_countries": ", ".join(FIPS_NAMES.get(c, c) for c, _ in countries[:5]),
+            # plain counts, US included: the countries in the most articles
+            "most_mentioned": ", ".join(FIPS_NAMES.get(c, c) for c, _ in
+                                        parse_counts(first["top_countries"].get(ev.date, ""))[:5]),
             "top_themes": ", ".join(themes),
             "articles_in_window": int(pd.to_numeric(first["articles_in_window"].get(ev.date), errors="coerce") or 0)
                                   if pd.notna(first["articles_in_window"].get(ev.date)) else 0,

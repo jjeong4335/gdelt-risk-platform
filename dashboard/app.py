@@ -139,7 +139,7 @@ st.markdown("""
     .event-body { padding: 14px 22px 16px; }
     .event-row { margin-top: 6px; font-size: 13px; } .event-k { color: #64748b; margin-right: 10px; font-weight: 600; }
     .chip { display: inline-block; background: #f3e8ff; color: #7e22ce; border-radius: 999px; padding: 3px 11px; margin: 3px 6px 3px 0; font-size: 12.5px; font-weight: 600; }
-    .chip-blue { background: #e0f2fe; color: #0369a1; }
+    .chip-blue { background: #e0f2fe; color: #0369a1; } .chip-grey { background: #f1f5f9; color: #475569; }
 
     /* how it works */
     .step { min-height: 300px; } .step-n { width: 36px; height: 36px; border-radius: 12px; color: white;
@@ -650,6 +650,8 @@ with tab_hist:
         f"<div><span>Elevated</span><b>{window}</b></div>"
         f"<div><span>Spike days</span><b>{int(ev.get('spike_days', 1))}</b></div></div></div><div class='event-body'>"
         f"<div class='event-row'><span class='event-k'>Countries that stood out</span>{chips(countries, 'chip chip-blue')}</div>"
+        f"<div class='event-row'><span class='event-k'>Most mentioned overall</span>"
+        f"{chips([c for c in str(ev.get('most_mentioned') or '').split(', ') if c], 'chip chip-grey')}</div>"
         f"<div class='event-row'><span class='event-k'>Distinctive news themes</span>{chips(themes)}</div>"
         f"</div></div>", unsafe_allow_html=True)
 
