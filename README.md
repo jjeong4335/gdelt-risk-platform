@@ -83,7 +83,7 @@ For every event and every S&P 500 member (today's constituents via yfinance; com
 
 - **Live:** today's tension in σ and as a past-year percentile ("higher than X% of days"), the risk level (z-score of the latest day vs this year, same rule as spike detection), latest geopolitical headlines from GDELT's 15-minute feed, live sector ETF moves, and the historical average reaction of a sample portfolio.
 - **History:** 10 years of daily tension in standard deviations from each year's average (the same number spike detection uses, so every event sits above the +3σ line), plus a table of all events; an event explorer with the index and VIX around the event, sector returns at Day +5, and the event's news.
-- **Ask the data:** a chat panel on the right (open/close it with the button at the top; the main view widens when it's closed).
+- **Ask the data:** a round chat button in the bottom-right corner that opens a floating chat window.
 
 ---
 

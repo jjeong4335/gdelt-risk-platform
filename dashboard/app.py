@@ -61,6 +61,7 @@ st.markdown("""
     .sec { margin: 30px 0 14px; }
     .sec-eyebrow { display: inline-block; font-size: 11.5px; font-weight: 800; text-transform: uppercase;
         letter-spacing: 0.9px; color: #1d4ed8; background: #e8f0fe; padding: 4px 10px; border-radius: 999px; }
+    .c-pink, .c-orange { color: #c2410c; background: #ffedd5; }
     .sec-title { font-size: 22px; font-weight: 800; color: #0f172a; margin-top: 8px; letter-spacing: -0.3px; }
     .sec-what { font-size: 14.5px; color: #64748b; margin-top: 4px; max-width: 920px; line-height: 1.55; }
 
@@ -74,9 +75,16 @@ st.markdown("""
     .card-sub { font-size: 12.5px; color: #94a3b8; margin: 2px 0 12px; min-height: 18px; }
     .muted { color: #94a3b8; font-size: 13.5px; }
     .pos { color: #059669; } .neg { color: #dc2626; }
+    .bar-val.neg { color: #ea580c; }
 
     /* KPI cards */
-    .kpi { padding: 18px 20px; height: 210px; margin-bottom: 14px; border-top: 4px solid #1d4ed8; overflow: hidden; }
+    .kpi { padding: 18px 20px; min-height: 190px; height: 100%; margin-bottom: 14px; border-top: 4px solid #1d4ed8; }
+    .k-risk { border-top-color: #f97316; } .k-teal { border-top-color: #0ea5e9; } .k-orange { border-top-color: #f59e0b; }
+    /* boxes in one row stretch to the tallest one, so text never spills out */
+    [data-testid="stHorizontalBlock"]:has(.kpi), [data-testid="stHorizontalBlock"]:has(.step),
+    [data-testid="stHorizontalBlock"]:has(.stat) { align-items: stretch; }
+    [data-testid="stColumn"]:has(.kpi) div:has(.kpi), [data-testid="stColumn"]:has(.step) div:has(.step),
+    [data-testid="stColumn"]:has(.stat) div:has(.stat) { height: 100%; }
     .kpi-label { font-size: 13px; color: #475569; font-weight: 700; }
     .kpi-value { font-size: 34px; font-weight: 800; color: #0f172a; margin: 8px 0 2px; letter-spacing: -0.8px; }
     .kpi-unit { font-size: 16px; color: #94a3b8; font-weight: 600; margin-left: 2px; }
@@ -91,7 +99,7 @@ st.markdown("""
     .news:last-child { border-bottom: none; }
     .news a { color: #1e293b; text-decoration: none; } .news a:hover { color: #1d4ed8; text-decoration: underline; }
     .news-meta { font-size: 12px; color: #94a3b8; margin-bottom: 3px; font-weight: 500; }
-    .dayb { margin-left: 8px; background: #e8f0fe; color: #1d4ed8; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
+    .dayb { margin-left: 8px; background: #ffedd5; color: #c2410c; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
     .tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; margin-right: 8px; }
     .tag-red { background: #fee2e2; color: #b91c1c; } .tag-amber { background: #fef3c7; color: #b45309; }
     .tag-blue { background: #e8f0fe; color: #1d4ed8; } .tag-purple { background: #e0f2fe; color: #0369a1; }
@@ -100,7 +108,7 @@ st.markdown("""
     /* sector bars */
     .bar-row { display: grid; grid-template-columns: 130px 1fr 64px; align-items: center; gap: 10px; margin: 11px 0; font-size: 14px; }
     .bar-name { color: #334155; font-weight: 600; } .bar-track { background: #f1f5f9; border-radius: 999px; height: 9px; }
-    .bar { height: 9px; border-radius: 999px; } .bar-pos { background: #10b981; } .bar-neg { background: #ef4444; }
+    .bar { height: 9px; border-radius: 999px; } .bar-pos { background: #10b981; } .bar-neg { background: #f97316; }
     .bar-val { text-align: right; font-weight: 700; }
 
     /* tables */
@@ -111,24 +119,27 @@ st.markdown("""
     .summary b { color: #0f172a; }
 
     /* history stat tiles */
-    .stat { padding: 14px 18px; margin-bottom: 14px; height: 84px; border-left: 4px solid #1d4ed8; }
+    .stat { padding: 14px 18px; margin-bottom: 14px; min-height: 84px; height: 100%; border-left: 4px solid #1d4ed8; }
+    .s2, .s4 { border-left-color: #f97316; }
     .stat-v { font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.4px; } .stat-l { font-size: 12.5px; color: #64748b; font-weight: 600; }
 
     /* event card */
     .event-card { padding: 0; overflow: hidden; margin-bottom: 16px; }
     .event-top { background: linear-gradient(120deg, #0b1f44, #1d4ed8); color: white; padding: 18px 22px; }
     .event-name { font-size: 23px; font-weight: 800; letter-spacing: -0.4px; }
-    .badge { font-size: 12.5px; font-weight: 700; color: #0b1f44; background: #dbeafe; border-radius: 999px; padding: 3px 10px; margin-left: 10px; vertical-align: middle; }
+    .badge { font-size: 12.5px; font-weight: 700; color: #7c2d12; background: #fed7aa; border-radius: 999px; padding: 3px 10px; margin-left: 10px; vertical-align: middle; }
     .event-facts { display: flex; gap: 36px; margin-top: 12px; flex-wrap: wrap; }
     .event-facts span { display: block; font-size: 12px; color: #bfdbfe; font-weight: 600; } .event-facts b { font-size: 17px; color: white; }
     .event-body { padding: 12px 22px 16px; }
     .event-row { margin-top: 6px; font-size: 13px; } .event-k { display: inline-block; width: 180px; color: #64748b; font-weight: 600; }
     .chip { display: inline-block; background: #f1f5f9; color: #334155; border-radius: 999px; padding: 3px 11px; margin: 3px 6px 3px 0; font-size: 12.5px; font-weight: 600; }
-    .chip-blue { background: #e8f0fe; color: #1d4ed8; } .chip-grey { background: #f1f5f9; color: #475569; }
+    .chip-blue { background: #ffedd5; color: #c2410c; } .chip-grey { background: #f1f5f9; color: #475569; }
+    .chip-warm { background: #fef3c7; color: #92400e; }
 
     /* how it works */
-    .step { padding: 18px 20px; height: 300px; } .step-n { width: 34px; height: 34px; border-radius: 10px; color: white; background: #1d4ed8;
+    .step { padding: 18px 20px; height: 100%; margin-bottom: 14px; } .step-n { width: 34px; height: 34px; border-radius: 10px; color: white; background: #1d4ed8;
         font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .n2, .n4 { background: #f97316; }
     .step-t { font-size: 16px; font-weight: 800; color: #0f172a; margin: 12px 0 6px; } .step-b { font-size: 13.5px; color: #64748b; line-height: 1.6; }
     .limits { font-size: 14px; color: #475569; line-height: 1.75; margin: 6px 0 0; }
     .footer { text-align: center; font-size: 12.5px; color: #94a3b8; margin: 40px 0 70px; }
@@ -136,12 +147,12 @@ st.markdown("""
     /* AI assistant: a round button bottom-right that opens a floating chat window */
     .st-key-chat_fab { position: fixed; right: 28px; bottom: 28px; z-index: 1001; width: 60px !important; }
     .st-key-chat_fab button { width: 60px; height: 60px; min-height: 60px; border-radius: 50%; padding: 0;
-        background: #1d4ed8; border: none; box-shadow: 0 8px 22px rgba(29,78,216,0.4); }
-    .st-key-chat_fab button:hover { background: #1e40af; }
+        background: #f97316; border: none; box-shadow: 0 8px 22px rgba(249,115,22,0.45); }
+    .st-key-chat_fab button:hover { background: #ea580c; }
     .st-key-chat_fab button [data-testid="stIconMaterial"] { color: white; font-size: 28px; }
     .st-key-chat_panel { position: fixed; right: 28px; bottom: 102px; z-index: 1000; width: 400px !important;
         max-height: min(680px, calc(100vh - 140px)); overflow-y: auto; background: white; border-radius: 18px;
-        border: 1px solid #e2e8f0; box-shadow: 0 18px 48px rgba(15,23,42,0.22); padding: 16px 18px 8px; }
+        border: 1px solid #e2e8f0; border-top: 4px solid #f97316; box-shadow: 0 18px 48px rgba(15,23,42,0.22); padding: 16px 18px 8px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -652,7 +663,7 @@ with tab_hist:
         + "".join(f"<div class='event-row'><span class='event-k'>{k}</span>{chips(v, c)}</div>"
                   for k, v, c in [("Countries that stood out", countries, "chip chip-blue"),
                                   ("Most mentioned overall", [x for x in str(ev.get("most_mentioned") or "").split(", ") if x], "chip chip-grey"),
-                                  ("Distinctive news themes", themes, "chip")] if v)
+                                  ("Distinctive news themes", themes, "chip chip-warm")] if v)
         + "</div></div>", unsafe_allow_html=True)
 
     col_l, col_r = st.columns([1, 1], gap="medium")
@@ -685,7 +696,7 @@ with tab_hist:
         base_note = ""
         if len(sp):
             days = sorted(d for d in sp["days_from_spike"].unique() if d > 0)
-            colors = {1: "#93c5fd", 5: "#3b82f6", 30: "#1e3a8a"}
+            colors = {1: "#fbbf24", 5: "#f97316", 30: "#1d4ed8"}
             for h in (1, 5, 30):
                 if not days:
                     break
@@ -744,7 +755,7 @@ with tab_how:
          "more often than around other events (a lift score, like TF-IDF). No AI or hand labels."),
         ("4", "Measure markets", "For every event, the return of each S&P 500 stock from the first trading "
          "day on or after the peak, averaged over six sector groups."),
-        ("5", "Ask the data", "The assistant on the right searches these results and answers only from them, "
+        ("5", "Ask the data", "The orange chat button (bottom right) searches these results and answers only from them, "
          "with numbered sources. If the data has no answer, it says so."),
     ]
     cols = st.columns(len(steps))
