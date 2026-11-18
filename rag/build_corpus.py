@@ -67,7 +67,7 @@ def clean_headlines(news: pd.DataFrame) -> pd.DataFrame:
     t = news["title"].fillna("")
     mask = (
         (t.str.len() > 20)
-        & ~t.str.contains(r"#|\.com|\.org|\.net", regex=True)
+        & ~t.str.contains(r"%|#|\.com|\.org|\.net", regex=True)  # % = URL-encoded non-Latin title
         & ~t.str.contains(r"[A-Fa-f0-9]{6,}", regex=True)
         & t.str.contains(" ")
         & (t.str.replace(r"[^a-zA-Z]", "", regex=True).str.len() > 15)
