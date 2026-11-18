@@ -279,6 +279,23 @@ def analysis_documents(a) -> list:
        "Stocks that were among the biggest movers most often: "
        + "; ".join(f"{r['ticker']} in {r['events']} of {v['events']} events" for r in v["most_repeated"][:10]) + ".")
 
+    if "sectors" in a:
+        sx = a["sectors"]
+        parts = []
+        for g, res in sx["tests"].items():
+            sig = [f"{sec} {r['event_mean_pct']:+.2f}% (p = {r['p_value']})" for sec, r in res.items() if r["p_value"] < 0.05]
+            allp = "; ".join(f"{sec} {r['event_mean_pct']:+.2f}% vs {r['normal_mean_pct']:+.2f}% normally (p = {r['p_value']})"
+                             for sec, r in res.items())
+            parts.append(f"After {g} ({sx['groups'][g]} events): "
+                         + (f"clearly different from normal days: {', '.join(sig)}. " if sig else
+                            "no sector moved clearly differently from normal days. ")
+                         + f"All sectors: {allp}.")
+        mk("sectors", "How sectors moved after spikes, by event type",
+           "How did sectors move after geopolitical spikes, compared with normal days and by type of event? "
+           f"Excess return = sector minus the average S&P 500 stock, from the day before the news peak's first "
+           f"trading day to {sx['hold_days']} trading days later; p-values from a random-date test (below 0.05 = "
+           "unlikely to be chance). " + " ".join(parts))
+
     if "vix_lead" in a:
         x = a["vix_lead"]
         corr = x["corr_tension_vs_vix_change_k_days_later"]

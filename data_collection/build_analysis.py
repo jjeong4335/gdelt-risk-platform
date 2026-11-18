@@ -106,11 +106,68 @@ def volatile_overlap(reac: pd.DataFrame) -> dict:
             "most_repeated": [{"ticker": t, "events": int(c)} for t, c in counts.head(12).items()]}
 
 
+EVENT_GROUPS = {  # dominant_category -> group used for the sector tests
+    "CONFLICT": "war & conflict", "SPECIAL": "war & conflict", "ECONOMIC_PRESSURE": "war & conflict",
+    "TERRORISM": "terror attacks",
+}
+HOLD_DAYS = 5   # trading days after the news peak
+
+
+def sector_tests(events: pd.DataFrame, prices: pd.DataFrame, n_sims: int = 10000) -> dict:
+    """Did sectors move differently after spikes than on normal days?
+
+    Excess return = sector return - market return, where a sector is the
+    equal-weighted average of its S&P 500 members (dashboard/constants.py) and
+    the market is the equal-weighted average of all stocks we have, so the
+    2016-2026 bull market doesn't count as an effect. Window: close of the
+    trading day before the news peak's first trading day (day 0) to the close
+    of day +HOLD_DAYS. Compared with the same window on every other start day
+    (at least 7 trading days from any event), with a random-date test
+    (two-sided p-value), for all events and for each event group."""
+    prices = prices.sort_index()
+    ret = prices.pct_change()
+    market = ret.mean(axis=1)
+    sector_ret = pd.DataFrame({s: ret[[t for t in ts if t in ret]].mean(axis=1)
+                               for s, ts in SECTOR_MAP.items() if any(t in ret for t in ts)})
+    excess = sector_ret.sub(market, axis=0)
+    # cumulative excess over days 0..HOLD_DAYS, indexed by the day-0 position
+    win = (np.log1p(excess.fillna(0)).rolling(HOLD_DAYS + 1).sum().shift(-HOLD_DAYS)).pipe(np.expm1) * 100
+    idx = prices.index
+    pos = {str(d.date()): int(idx.searchsorted(d)) for d in events["date"]}
+    pos = {k: v for k, v in pos.items() if v < len(idx) - HOLD_DAYS}
+    near = {p for v in pos.values() for p in range(v - 7, v + 8)}
+    normal_pos = [p for p in range(1, len(idx) - HOLD_DAYS) if p not in near]
+    groups = {"all events": list(pos)}
+    cat = dict(zip(events["date"].dt.date.astype(str), events["dominant_category"]))
+    for d in pos:
+        groups.setdefault(EVENT_GROUPS.get(cat.get(d), "other"), []).append(d)
+    rng = np.random.default_rng(0)
+    out = {}
+    for g, dates in groups.items():
+        if len(dates) < 3:
+            continue
+        res = {}
+        for sec in win.columns:
+            normal = win[sec].iloc[normal_pos].dropna().values
+            ev = win[sec].iloc[[pos[d] for d in dates]].dropna().values
+            if len(ev) < 3 or len(normal) < 100:
+                continue
+            base = normal.mean()
+            sims = rng.choice(normal, size=(n_sims, len(ev))).mean(axis=1)
+            p = float((np.abs(sims - base) >= abs(ev.mean() - base)).mean())
+            res[sec] = {"event_mean_pct": round(float(ev.mean()), 2), "normal_mean_pct": round(float(base), 2),
+                        "up_share": round(float((ev > 0).mean()), 2), "events": int(len(ev)), "p_value": round(p, 4)}
+        out[g] = res
+    return {"hold_days": HOLD_DAYS, "groups": {g: len(v) for g, v in groups.items()}, "tests": out}
+
+
 def build(d: Path) -> dict:
     reac = pd.read_parquet(d / "ticker_reaction_by_spike")
     events = pd.read_parquet(d / "spike_events.parquet")
     events["date"] = pd.to_datetime(events["date"])
     out = {"stocks": stock_ranking(reac, len(events)), "volatile": volatile_overlap(reac)}
+    if (d / "sp500_prices.parquet").exists():
+        out["sectors"] = sector_tests(events, pd.read_parquet(d / "sp500_prices.parquet"))
     tension = pd.read_parquet(d / "geo_tension_index.parquet")
     tension["date"] = pd.to_datetime(tension["date"])
     if (d / "vix.parquet").exists() and "z_score" in tension:
@@ -131,6 +188,12 @@ def main():
     print("  best Day +5 on average:", ", ".join(f"{x['ticker']} {x['avg_return_pct']:+.2f}%" for x in s["best"][:5]))
     v = out["volatile"]
     print(f"  biggest movers overlap between events: {v['mean_jaccard']} (random sets: {v['random_jaccard']})")
+    for g, res in out.get("sectors", {}).get("tests", {}).items():
+        line = ", ".join(f"{sec} {r['event_mean_pct']:+.2f}%{'*' if r['p_value'] < 0.05 else ''}"
+                         for sec, r in res.items())
+        print(f"  {g} ({out['sectors']['groups'][g]}): sector excess return, day 0 to +{HOLD_DAYS}: {line}")
+    if "sectors" in out:
+        print("    (* = p < 0.05 vs normal days)")
     if "vix_lead" in out:
         x = out["vix_lead"]
         c = x["comove"]
