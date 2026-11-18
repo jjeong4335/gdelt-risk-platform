@@ -158,8 +158,16 @@ def load_geo_tension():
         return pd.DataFrame({"date": pd.to_datetime([]), "geo_tension_index": [], "total_events": []})
     df = pd.read_parquet(f"{DATA_DIR}/geo_tension_index.parquet")
     df["date"] = pd.to_datetime(df["date"])
-    df = df[df["date"].dt.year.between(2016, 2026)]
-    return df.sort_values("date")
+    df = df[df["date"].dt.year.between(2016, 2026)].sort_values("date").reset_index(drop=True)
+    score = df["geo_tension_raw"] if "geo_tension_raw" in df else df["geo_tension_index"]
+    if "z_score" not in df:  # older build_history output
+        g = score.groupby(df["date"].dt.year)
+        df["z_score"] = (score - g.transform("mean")) / g.transform("std")
+    # Percentile of each day against the 365 days before it ("higher than X% of
+    # the past year"): bounded, never clipped, and easy to read.
+    df["pct_year"] = score.rolling(366, min_periods=60).apply(
+        lambda w: (w[:-1] < w[-1]).mean() * 100, raw=True)
+    return df
 
 @st.cache_data
 def load_spike_events():
@@ -317,6 +325,8 @@ if HAS_HISTORY:
     prev = geo_tension.iloc[-2]
     current_score = latest["geo_tension_index"]
     delta_score = current_score - prev["geo_tension_index"]
+    pct_now = float(latest["pct_year"]) if pd.notna(latest.get("pct_year")) else float("nan")
+    z_delta = float(latest["z_score"] - prev["z_score"])
     # Same rule as spike detection: z-score of the uncapped raw score versus
     # this year's days (the 0-10 index is capped, so a threshold on it can
     # land above 10 and never fire).
@@ -329,12 +339,13 @@ if HAS_HISTORY:
         risk_level, risk_class = "Low", "risk-low"
 
     events_today = int(latest["total_events"]) if "total_events" in latest else 0
-    score_note = f"{'+' if delta_score >= 0 else ''}{delta_score:.1f} since yesterday"
-    threshold_note = (f"z-score {z_now:+.1f} vs this year (spike: above 3)"
-                      if z_now == z_now else "Re-run build_history for z-scores")
+    score_note = (f"Higher than {pct_now:.0f}% of days in the past year"
+                  if pct_now == pct_now else f"{z_delta:+.1f}σ since the day before")
+    threshold_note = "Spike rule: above +3σ for this year"
     events_note = "Geopolitical news volume"
 else:
     live_score, live_events = fetch_live_tension()
+    z_now = pct_now = float("nan")
     current_score = live_score if live_score is not None else float("nan")
     delta_score = 0.0
     risk_level, risk_class = "n/a", "metric-value"
@@ -454,8 +465,9 @@ with tab_live:
                      f"<div class='kpi-help'>{help_text}</div></div>", unsafe_allow_html=True)
 
     c1, c2, c3, c4 = st.columns(4)
-    kpi(c1, "Geo-Tension Index", "—" if current_score != current_score else f"{current_score:.1f}<span class='kpi-unit'>/10</span>",
-        score_note, help_text="Negative tone × volume of international geopolitical news, scaled 0–10.", color="indigo")
+    kpi(c1, "Tension vs this year", "—" if z_now != z_now else f"{z_now:+.1f}<span class='kpi-unit'>σ</span>",
+        score_note, help_text="Negative tone × volume of geopolitical news; 0σ = this year's average day.",
+        color="indigo")
     kpi(c2, "Risk level", f"<span class='risk-pill {risk_class}'>{risk_level}</span>", threshold_note,
         value_cls="", help_text="High = more than 3 standard deviations above this year's average (a spike).",
         color="risk")
@@ -492,10 +504,11 @@ with tab_live:
             chart_note = f"{len(live_df)} readings today"
         elif HAS_HISTORY:
             recent = geo_tension[geo_tension["date"] >= geo_tension["date"].max() - pd.Timedelta(days=30)]
-            fig.add_trace(go.Scatter(x=recent["date"], y=recent["geo_tension_index"], name="Tension (daily)",
+            fig.add_trace(go.Scatter(x=recent["date"], y=recent["z_score"], name="Tension (σ vs year)",
                                      mode="lines+markers", line=dict(color=BLUE, width=2),
                                      fill="tozeroy", fillcolor="rgba(29,78,216,0.08)"))
-            chart_note = "Last 30 days (no live collector running)"
+            chart_note = "Last 30 days, σ from this year's average · dashed line = spike level (+3σ)"
+            fig.add_hline(y=3, line=dict(color=RED, width=1, dash="dash"))
             if len(vix_df) > 0:
                 v = vix_df[vix_df["date"] >= recent["date"].min()]
                 fig.add_trace(go.Scatter(x=v["date"], y=v["vix"], name="VIX", yaxis="y2",
@@ -509,7 +522,7 @@ with tab_live:
                 st.markdown("<p class='muted'>No readings yet. They appear once GDELT and market data load.</p>",
                             unsafe_allow_html=True)
             else:
-                st.plotly_chart(style_fig(fig, 320, "Tension (0–10)", "VIX"), width="stretch",
+                st.plotly_chart(style_fig(fig, 320, "Tension (σ)" if len(live_df) == 0 else "Tension (0–10)", "VIX"), width="stretch",
                                 config={"displayModeBar": False})
 
     with col_news:
@@ -567,44 +580,52 @@ with tab_live:
 with tab_hist:
     years = spike_events["date"].dt.year
     section("10 years", "Geopolitical tension since 2016",
-            f"Each point is one day of international news. Red dots are the {n_events} spike events "
-            f"detected automatically ({years.min()}–{years.max()}); hover a dot for its name.", "violet")
+            f"Each day's tension in standard deviations (σ) from that year's average. News volume changes "
+            f"from year to year, so each year is measured against itself. Red dots are the {n_events} "
+            f"events detected automatically ({years.min()}–{years.max()}): days above the dashed +3σ line. "
+            f"Hover a dot for its name.", "violet")
     s1, s2, s3, s4 = st.columns(4)
     for k, (col, label, val) in enumerate([(s1, "Days analysed", f"{len(geo_tension):,}" if HAS_HISTORY else "—"),
                             (s2, "Spike events", f"{n_events}"),
-                            (s3, "Largest spike (z-score)", f"{spike_events['z_score'].max():.1f}"),
+                            (s3, "Largest spike (σ)", f"{spike_events['z_score'].max():.1f}"),
                             (s4, "Years covered", f"{years.min()}–{years.max()}")], 1):
         col.markdown(f"<div class='stat s{k}'><div class='stat-v'>{val}</div><div class='stat-l'>{label}</div></div>",
                      unsafe_allow_html=True)
 
     fig_hist = go.Figure()
-    fig_hist.add_trace(go.Scatter(x=geo_tension["date"], y=geo_tension["geo_tension_index"], name="Daily index",
-                                  mode="lines", line=dict(color=BLUE, width=1.2),
-                                  fill="tozeroy", fillcolor="rgba(37,99,235,0.07)",
-                                  hovertemplate="%{x|%Y-%m-%d}: %{y:.1f}<extra></extra>"))
-    fig_hist.add_trace(go.Scatter(x=spike_events["date"], y=spike_events["geo_tension_index"], name="Detected event",
+    fig_hist.add_trace(go.Scatter(x=geo_tension["date"], y=geo_tension["z_score"], name="Daily tension (σ vs its year)",
+                                  mode="lines", line=dict(color=BLUE, width=1),
+                                  hovertemplate="%{x|%Y-%m-%d}: %{y:+.1f}σ<extra></extra>"))
+    fig_hist.add_hline(y=3, line=dict(color=RED, width=1.2, dash="dash"),
+                       annotation_text="spike level +3σ", annotation_position="top left",
+                       annotation_font=dict(color=RED, size=11))
+    fig_hist.add_hline(y=0, line=dict(color="#94a3b8", width=1),
+                       annotation_text="that year's average", annotation_position="top right",
+                       annotation_font=dict(color="#64748b", size=11))
+    fig_hist.add_trace(go.Scatter(x=spike_events["date"], y=spike_events["z_score"], name="Detected event",
                                   mode="markers", marker=dict(color=RED, size=9, line=dict(color="white", width=1.5)),
                                   text=spike_events["label"], customdata=spike_events["z_score"],
                                   hovertemplate="<b>%{text}</b><br>%{x|%Y-%m-%d} · z-score %{customdata:.1f}<extra></extra>"))
-    style_fig(fig_hist, 380, "Geo-Tension Index (0–10)")
+    style_fig(fig_hist, 400, "σ from that year's average")
     fig_hist.update_layout(hovermode="closest")
     with st.container(border=True, key="card_hist_chart"):
         st.plotly_chart(fig_hist, width="stretch", config={"displayModeBar": False})
 
     section("All events", "Detected events",
             "Every spike found in the data, newest first. Names are generated from the countries and "
-            "news themes that stood out, not written by hand. z-score = how far above that year's "
-            "average the day was (spike rule: above 3).", "pink")
+            "news themes that stood out, not written by hand. Size = standard deviations (σ) above that "
+            "year's average on the peak day; a spike is above +3σ.", "pink")
+    pct_by_day = geo_tension.set_index("date")["pct_year"] if HAS_HISTORY else pd.Series(dtype=float)
     table = spike_events.sort_values("date", ascending=False).assign(
         Date=lambda d: d["date"].dt.date, Event=lambda d: d["label"],
-        **{"z-score": lambda d: d["z_score"], "Index": lambda d: d["geo_tension_index"],
+        **{"Size (σ)": lambda d: d["z_score"], "Past-year percentile": lambda d: d["date"].map(pct_by_day),
            "Spike days": lambda d: d["spike_days"], "Countries": lambda d: d["top_countries"]})
-    st.dataframe(table[["Date", "Event", "z-score", "Index", "Spike days", "Countries"]],
+    st.dataframe(table[["Date", "Event", "Size (σ)", "Past-year percentile", "Spike days", "Countries"]],
                  hide_index=True, width="stretch", height=280,
-                 column_config={"z-score": st.column_config.ProgressColumn(
-                                    "z-score", format="%.1f", min_value=0,
+                 column_config={"Size (σ)": st.column_config.ProgressColumn(
+                                    "Size (σ)", format="+%.1fσ", min_value=0,
                                     max_value=float(spike_events["z_score"].max())),
-                                "Index": st.column_config.NumberColumn(format="%.1f")})
+                                "Past-year percentile": st.column_config.NumberColumn(format="%.0f%%")})
 
     section("Deep dive", "What happened, and how markets moved",
             "Pick an event to see its tension around the peak, how each sector moved afterwards, "
@@ -624,8 +645,8 @@ with tab_hist:
         f"<div class='event-card'><div class='event-top'><div class='event-name'>{_html.escape(ev['label'])}"
         f"<span class='badge'>{sel_date}</span></div>"
         f"<div class='event-facts'>"
-        f"<div><span>z-score</span><b>{ev['z_score']:.1f}</b></div>"
-        f"<div><span>Index</span><b>{ev['geo_tension_index']:.1f}/10</b></div>"
+        f"<div><span>Size</span><b>+{ev['z_score']:.1f}σ</b></div>"
+        f"<div><span>Past-year percentile</span><b>{pct_by_day.get(ev['date'], float('nan')):.0f}%</b></div>"
         f"<div><span>Elevated</span><b>{window}</b></div>"
         f"<div><span>Spike days</span><b>{int(ev.get('spike_days', 1))}</b></div></div></div><div class='event-body'>"
         + "".join(f"<div class='event-row'><span class='event-k'>{k}</span>{chips(v, c)}</div>"
@@ -640,17 +661,18 @@ with tab_hist:
         gw = geo_tension[(geo_tension["date"] >= start_dt) & (geo_tension["date"] <= end_dt)]
         vw = vix_df[(vix_df["date"] >= start_dt) & (vix_df["date"] <= end_dt)] if len(vix_df) else vix_df
         fe = go.Figure()
-        fe.add_trace(go.Scatter(x=gw["date"], y=gw["geo_tension_index"], name="Tension", mode="lines+markers",
-                                line=dict(color=BLUE, width=2), fill="tozeroy", fillcolor="rgba(29,78,216,0.08)"))
+        fe.add_trace(go.Scatter(x=gw["date"], y=gw["z_score"], name="Tension (σ)", mode="lines+markers",
+                                line=dict(color=BLUE, width=2)))
+        fe.add_hline(y=3, line=dict(color=RED, width=1, dash="dash"))
         if len(vw):
             fe.add_trace(go.Scatter(x=vw["date"], y=vw["vix"], name="VIX", yaxis="y2", mode="lines+markers",
                                     line=dict(color=AMBER, width=2, dash="dot")))
-        fe.add_vline(x=ev["date"], line=dict(color=RED, width=1, dash="dash"))
+        fe.add_vline(x=ev["date"], line=dict(color="#94a3b8", width=1, dash="dot"))
         with st.container(border=True, key="card_event_chart", height=440):
             st.markdown("<div class='card-h'>Tension and VIX around the peak</div>"
-                        "<div class='card-sub'>10 days either side · dashed line = peak day</div>",
+                        "<div class='card-sub'>10 days either side · vertical line = peak day · red line = +3σ spike level</div>",
                         unsafe_allow_html=True)
-            st.plotly_chart(style_fig(fe, 320, "Tension", "VIX" if len(vw) else None), width="stretch",
+            st.plotly_chart(style_fig(fe, 320, "Tension (σ)", "VIX" if len(vw) else None), width="stretch",
                             config={"displayModeBar": False})
 
     with col_r:
@@ -715,7 +737,7 @@ with tab_how:
     steps = [
         ("1", "Measure tension", "Every day, take GDELT's international news on conflict, sanctions, unrest, "
          "diplomacy, cyber and nuclear topics. Score = average negative tone × log(number of articles), "
-         "shown on a 0–10 scale."),
+         "shown as standard deviations (σ) from that year's average."),
         ("2", "Detect spikes", "A day is a spike when its score is more than 3 standard deviations above that "
          "year's average. Spike days within 3 days of each other are one event, dated by its peak."),
         ("3", "Name events", "Each event is named after the countries and news categories that appear far "
