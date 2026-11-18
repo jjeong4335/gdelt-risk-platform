@@ -29,138 +29,119 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     html, body, .stApp, .stApp p, .stApp div, .stApp input, .stApp label, .stApp li, .stApp td, .stApp th {
         font-family: 'Plus Jakarta Sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-    .stApp { background: #f4f5fb; }
-    .block-container { padding-top: 1rem; max-width: 1560px; }
+    [data-testid="stIconMaterial"] { font-family: 'Material Symbols Rounded' !important; }
+    .stApp { background: #f3f6fb; }
+    .block-container { padding-top: 1rem; max-width: 1320px; }
     .stAppDeployButton, [data-testid="stToolbar"], [data-testid="stDecoration"],
     [data-testid="stSidebarCollapsedControl"] { display: none !important; }
     header[data-testid="stHeader"] { height: 0; background: transparent; }
 
-    /* hero banner */
-    .hero { background: linear-gradient(120deg, #1e1b4b 0%, #3730a3 45%, #7c3aed 80%, #db2777 120%);
-            border-radius: 22px; padding: 28px 32px 26px; color: white; position: relative; overflow: hidden;
-            box-shadow: 0 12px 30px rgba(67,56,202,0.25); }
-    .hero:after { content: ""; position: absolute; right: -80px; top: -80px; width: 320px; height: 320px;
-                  border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.18), transparent 65%); }
-    .hero-kicker { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #c7d2fe; }
-    .hero-title { font-size: 32px; font-weight: 800; letter-spacing: -0.8px; margin: 6px 0 6px; }
-    .hero-sub { font-size: 15px; color: #e0e7ff; max-width: 760px; line-height: 1.5; }
+    /* hero */
+    .hero { background: linear-gradient(120deg, #0b1f44 0%, #123a8a 60%, #1d4ed8 100%); border-radius: 18px;
+            padding: 26px 30px 24px; color: white; }
+    .hero-kicker { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #93c5fd; }
+    .hero-title { font-size: 30px; font-weight: 800; letter-spacing: -0.6px; margin: 6px 0 6px; }
+    .hero-sub { font-size: 15px; color: #dbeafe; max-width: 760px; line-height: 1.5; }
     .hero-pills { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
-    .hero-pill { background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22); color: white;
+    .hero-pill { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: white;
                  border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 600; }
-    .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4ade80;
-                box-shadow: 0 0 0 3px rgba(74,222,128,0.3); margin-right: 6px; }
+    .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4ade80; margin-right: 6px; }
 
-    /* tabs as pills */
-    .stTabs [role="tablist"] { gap: 6px; border-bottom: none !important; margin: 18px 0 4px; background: white;
-        padding: 6px; border-radius: 14px; width: fit-content; box-shadow: 0 1px 3px rgba(30,27,75,0.08); }
-    .stTabs [role="tab"] { padding: 8px 18px !important; border-radius: 10px; height: auto; border: none; }
+    /* tabs */
+    .stTabs [role="tablist"] { gap: 4px; border-bottom: none !important; margin: 18px 0 4px; background: white;
+        padding: 5px; border-radius: 12px; width: fit-content; border: 1px solid #e2e8f0; }
+    .stTabs [role="tab"] { padding: 7px 18px !important; border-radius: 8px; height: auto; border: none; cursor: pointer; }
     .stTabs [role="tab"] p { font-size: 14.5px !important; font-weight: 700; color: #64748b; }
-    .stTabs [role="tab"][aria-selected="true"] { background: linear-gradient(120deg, #4f46e5, #7c3aed); }
+    .stTabs [role="tab"]:hover p { color: #1d4ed8; }
+    .stTabs [role="tab"][aria-selected="true"] { background: #1d4ed8; }
     .stTabs [role="tab"][aria-selected="true"] p { color: white !important; }
-    .stTabs [role="tab"] { cursor: pointer; } .stTabs [role="tab"]:hover p { color: #4f46e5; }
     .stTabs .react-aria-SelectionIndicator { display: none !important; }
-    [data-testid="stIconMaterial"] { font-family: 'Material Symbols Rounded' !important; }
 
     /* sections */
     .sec { margin: 30px 0 14px; }
     .sec-eyebrow { display: inline-block; font-size: 11.5px; font-weight: 800; text-transform: uppercase;
-        letter-spacing: 0.9px; padding: 4px 10px; border-radius: 999px; }
-    .c-indigo { background: #e0e7ff; color: #4338ca; } .c-pink { background: #fce7f3; color: #be185d; }
-    .c-teal { background: #ccfbf1; color: #0f766e; } .c-orange { background: #ffedd5; color: #c2410c; }
-    .c-violet { background: #ede9fe; color: #6d28d9; }
-    .sec-title { font-size: 23px; font-weight: 800; color: #1e1b4b; margin-top: 8px; letter-spacing: -0.4px; }
+        letter-spacing: 0.9px; color: #1d4ed8; background: #e8f0fe; padding: 4px 10px; border-radius: 999px; }
+    .sec-title { font-size: 22px; font-weight: 800; color: #0f172a; margin-top: 8px; letter-spacing: -0.3px; }
     .sec-what { font-size: 14.5px; color: #64748b; margin-top: 4px; max-width: 920px; line-height: 1.55; }
 
-    /* cards */
-    .card, .event-card, .step { background: white; border-radius: 18px; padding: 20px 22px;
-        box-shadow: 0 1px 3px rgba(30,27,75,0.06), 0 8px 24px rgba(30,27,75,0.05); margin-bottom: 16px; border: none; }
-    div[class*="st-key-card_"] { background: white; border: none !important; border-radius: 18px;
-        padding: 20px 22px 8px !important; box-shadow: 0 1px 3px rgba(30,27,75,0.06), 0 8px 24px rgba(30,27,75,0.05);
-        margin-bottom: 16px; }
-    .card-h { font-size: 16px; font-weight: 700; color: #1e1b4b; }
-    .card-sub { font-size: 12.5px; color: #94a3b8; margin: 2px 0 12px; }
+    /* cards: same look everywhere; heights are fixed per row so boxes line up */
+    .card, .event-card, .step, .kpi, .stat { background: white; border: 1px solid #e2e8f0; border-radius: 14px;
+        box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
+    .card { padding: 18px 20px; overflow: auto; margin-bottom: 16px; }
+    div[class*="st-key-card_"] { background: white; border: 1px solid #e2e8f0 !important; border-radius: 14px;
+        padding: 18px 20px 6px !important; box-shadow: 0 1px 2px rgba(15,23,42,0.04); margin-bottom: 16px; }
+    .card-h { font-size: 15.5px; font-weight: 700; color: #0f172a; }
+    .card-sub { font-size: 12.5px; color: #94a3b8; margin: 2px 0 12px; min-height: 18px; }
     .muted { color: #94a3b8; font-size: 13.5px; }
-    .pos { color: #059669; } .neg { color: #e11d48; }
+    .pos { color: #059669; } .neg { color: #dc2626; }
 
-    /* KPI cards, each with its own colour */
-    .kpi { border-radius: 18px; padding: 18px 20px; min-height: 200px; margin-bottom: 14px; color: #1e1b4b;
-           position: relative; overflow: hidden; box-shadow: 0 8px 24px rgba(30,27,75,0.06); }
-    .kpi:before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 5px; }
-    .k-indigo { background: linear-gradient(160deg, #eef2ff, #ffffff 60%); } .k-indigo:before { background: linear-gradient(90deg,#4f46e5,#818cf8); }
-    .k-risk { background: linear-gradient(160deg, #fdf2f8, #ffffff 60%); } .k-risk:before { background: linear-gradient(90deg,#db2777,#f472b6); }
-    .k-teal { background: linear-gradient(160deg, #f0fdfa, #ffffff 60%); } .k-teal:before { background: linear-gradient(90deg,#0d9488,#2dd4bf); }
-    .k-orange { background: linear-gradient(160deg, #fff7ed, #ffffff 60%); } .k-orange:before { background: linear-gradient(90deg,#ea580c,#fb923c); }
+    /* KPI cards */
+    .kpi { padding: 18px 20px; height: 210px; margin-bottom: 14px; border-top: 4px solid #1d4ed8; overflow: hidden; }
     .kpi-label { font-size: 13px; color: #475569; font-weight: 700; }
-    .kpi-value { font-size: 36px; font-weight: 800; color: #1e1b4b; margin: 8px 0 2px; letter-spacing: -1px; }
+    .kpi-value { font-size: 34px; font-weight: 800; color: #0f172a; margin: 8px 0 2px; letter-spacing: -0.8px; }
     .kpi-unit { font-size: 16px; color: #94a3b8; font-weight: 600; margin-left: 2px; }
     .kpi-note { font-size: 13px; color: #334155; font-weight: 500; }
-    .kpi-help { font-size: 12px; color: #64748b; margin-top: 12px; padding-top: 10px; border-top: 1px dashed #e2e8f0; line-height: 1.45; }
-    .risk-pill { display: inline-block; font-size: 22px; font-weight: 800; padding: 4px 16px; border-radius: 999px; margin: 6px 0 4px; }
-    .risk-high { background: #ffe4e6; color: #e11d48; } .risk-medium { background: #fef3c7; color: #d97706; }
-    .risk-low { background: #d1fae5; color: #059669; }
+    .kpi-help { font-size: 12px; color: #64748b; margin-top: 12px; padding-top: 10px; border-top: 1px solid #f1f5f9; line-height: 1.45; }
+    .risk-pill { display: inline-block; font-size: 21px; font-weight: 800; padding: 3px 16px; border-radius: 999px; margin: 8px 0 4px; }
+    .risk-high { background: #fee2e2; color: #dc2626; } .risk-medium { background: #fef3c7; color: #d97706; }
+    .risk-low { background: #dcfce7; color: #059669; }
 
     /* news */
-    .news { padding: 11px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; line-height: 1.45; font-weight: 500; }
+    .news { padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; line-height: 1.45; font-weight: 500; }
     .news:last-child { border-bottom: none; }
-    .news a { color: #1e293b; text-decoration: none; } .news a:hover { color: #4f46e5; }
+    .news a { color: #1e293b; text-decoration: none; } .news a:hover { color: #1d4ed8; text-decoration: underline; }
     .news-meta { font-size: 12px; color: #94a3b8; margin-bottom: 3px; font-weight: 500; }
-    .dayb { margin-left: 8px; background: #ede9fe; color: #6d28d9; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
+    .dayb { margin-left: 8px; background: #e8f0fe; color: #1d4ed8; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
     .tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; margin-right: 8px; }
-    .tag-red { background: #ffe4e6; color: #e11d48; } .tag-amber { background: #fef3c7; color: #b45309; }
-    .tag-blue { background: #e0e7ff; color: #4338ca; } .tag-purple { background: #f3e8ff; color: #7e22ce; }
+    .tag-red { background: #fee2e2; color: #b91c1c; } .tag-amber { background: #fef3c7; color: #b45309; }
+    .tag-blue { background: #e8f0fe; color: #1d4ed8; } .tag-purple { background: #e0f2fe; color: #0369a1; }
     .tag-orange { background: #ffedd5; color: #c2410c; } .tag-grey { background: #f1f5f9; color: #475569; }
 
     /* sector bars */
-    .bar-row { display: grid; grid-template-columns: 130px 1fr 64px; align-items: center; gap: 10px; margin: 10px 0; font-size: 14px; }
-    .bar-name { color: #334155; font-weight: 600; } .bar-track { background: #f1f5f9; border-radius: 999px; height: 10px; }
-    .bar { height: 10px; border-radius: 999px; } .bar-pos { background: linear-gradient(90deg,#34d399,#059669); }
-    .bar-neg { background: linear-gradient(90deg,#fb7185,#e11d48); } .bar-val { text-align: right; font-weight: 700; }
+    .bar-row { display: grid; grid-template-columns: 130px 1fr 64px; align-items: center; gap: 10px; margin: 11px 0; font-size: 14px; }
+    .bar-name { color: #334155; font-weight: 600; } .bar-track { background: #f1f5f9; border-radius: 999px; height: 9px; }
+    .bar { height: 9px; border-radius: 999px; } .bar-pos { background: #10b981; } .bar-neg { background: #ef4444; }
+    .bar-val { text-align: right; font-weight: 700; }
 
     /* tables */
     .tbl { width: 100%; border-collapse: collapse; font-size: 14px; border: none; }
-    .tbl th { text-align: left; font-size: 12px; color: #94a3b8; font-weight: 700; padding: 6px 6px; border: none; border-bottom: 2px solid #f1f5f9; }
-    .tbl td { padding: 9px 6px; border: none; border-bottom: 1px solid #f8fafc; color: #334155; }
+    .tbl th { text-align: left; font-size: 12px; color: #94a3b8; font-weight: 700; padding: 6px; border: none; border-bottom: 1px solid #e2e8f0; }
+    .tbl td { padding: 9px 6px; border: none; border-bottom: 1px solid #f1f5f9; color: #334155; }
     .summary { display: flex; justify-content: space-between; font-size: 14px; color: #64748b; padding: 9px 6px 0; }
-    .summary b { color: #1e1b4b; }
+    .summary b { color: #0f172a; }
 
     /* history stat tiles */
-    .stat { border-radius: 16px; padding: 14px 18px; margin-bottom: 14px; color: white; }
-    .s1 { background: linear-gradient(135deg,#4f46e5,#7c3aed); } .s2 { background: linear-gradient(135deg,#db2777,#f43f5e); }
-    .s3 { background: linear-gradient(135deg,#ea580c,#f59e0b); } .s4 { background: linear-gradient(135deg,#0d9488,#06b6d4); }
-    .stat-v { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; } .stat-l { font-size: 12.5px; opacity: 0.9; font-weight: 600; }
+    .stat { padding: 14px 18px; margin-bottom: 14px; height: 84px; border-left: 4px solid #1d4ed8; }
+    .stat-v { font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.4px; } .stat-l { font-size: 12.5px; color: #64748b; font-weight: 600; }
 
     /* event card */
-    .event-card { padding: 0; overflow: hidden; }
-    .event-top { background: linear-gradient(120deg, #1e1b4b, #4338ca 60%, #7c3aed); color: white; padding: 18px 22px; }
-    .event-name { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
-    .badge { font-size: 12.5px; font-weight: 700; color: #1e1b4b; background: #fde68a; border-radius: 999px; padding: 3px 10px; margin-left: 10px; vertical-align: middle; }
+    .event-card { padding: 0; overflow: hidden; margin-bottom: 16px; }
+    .event-top { background: linear-gradient(120deg, #0b1f44, #1d4ed8); color: white; padding: 18px 22px; }
+    .event-name { font-size: 23px; font-weight: 800; letter-spacing: -0.4px; }
+    .badge { font-size: 12.5px; font-weight: 700; color: #0b1f44; background: #dbeafe; border-radius: 999px; padding: 3px 10px; margin-left: 10px; vertical-align: middle; }
     .event-facts { display: flex; gap: 36px; margin-top: 12px; flex-wrap: wrap; }
-    .event-facts span { display: block; font-size: 12px; color: #c7d2fe; font-weight: 600; } .event-facts b { font-size: 17px; color: white; }
-    .event-body { padding: 14px 22px 16px; }
-    .event-row { margin-top: 6px; font-size: 13px; } .event-k { color: #64748b; margin-right: 10px; font-weight: 600; }
-    .chip { display: inline-block; background: #f3e8ff; color: #7e22ce; border-radius: 999px; padding: 3px 11px; margin: 3px 6px 3px 0; font-size: 12.5px; font-weight: 600; }
-    .chip-blue { background: #e0f2fe; color: #0369a1; } .chip-grey { background: #f1f5f9; color: #475569; }
+    .event-facts span { display: block; font-size: 12px; color: #bfdbfe; font-weight: 600; } .event-facts b { font-size: 17px; color: white; }
+    .event-body { padding: 12px 22px 16px; }
+    .event-row { margin-top: 6px; font-size: 13px; } .event-k { display: inline-block; width: 180px; color: #64748b; font-weight: 600; }
+    .chip { display: inline-block; background: #f1f5f9; color: #334155; border-radius: 999px; padding: 3px 11px; margin: 3px 6px 3px 0; font-size: 12.5px; font-weight: 600; }
+    .chip-blue { background: #e8f0fe; color: #1d4ed8; } .chip-grey { background: #f1f5f9; color: #475569; }
 
     /* how it works */
-    .step { min-height: 300px; } .step-n { width: 36px; height: 36px; border-radius: 12px; color: white;
-        font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-    .n1 { background: linear-gradient(135deg,#4f46e5,#818cf8); } .n2 { background: linear-gradient(135deg,#db2777,#f472b6); }
-    .n3 { background: linear-gradient(135deg,#7c3aed,#a78bfa); } .n4 { background: linear-gradient(135deg,#0d9488,#2dd4bf); }
-    .n5 { background: linear-gradient(135deg,#ea580c,#fb923c); }
-    .step-t { font-size: 16px; font-weight: 800; color: #1e1b4b; margin: 12px 0 6px; } .step-b { font-size: 13.5px; color: #64748b; line-height: 1.6; }
+    .step { padding: 18px 20px; height: 300px; } .step-n { width: 34px; height: 34px; border-radius: 10px; color: white; background: #1d4ed8;
+        font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .step-t { font-size: 16px; font-weight: 800; color: #0f172a; margin: 12px 0 6px; } .step-b { font-size: 13.5px; color: #64748b; line-height: 1.6; }
     .limits { font-size: 14px; color: #475569; line-height: 1.75; margin: 6px 0 0; }
-    .footer { text-align: center; font-size: 12.5px; color: #94a3b8; margin: 40px 0 10px; }
+    .footer { text-align: center; font-size: 12.5px; color: #94a3b8; margin: 40px 0 70px; }
 
-    /* chat panel on the right: stays in view while the page scrolls */
-    div[data-testid="stColumn"]:has(.st-key-chat_panel) { position: sticky; top: 1rem; align-self: flex-start; }
-    .st-key-chat_panel { background: white; border-radius: 20px; box-shadow: 0 12px 32px rgba(30,27,75,0.12);
-                         padding: 18px 18px 8px; max-height: calc(100vh - 2rem); overflow-y: auto;
-                         border-top: 5px solid #7c3aed; }
-    /* floating "Ask the data" button when the panel is closed */
-    .st-key-chat_fab { position: fixed; right: 28px; bottom: 28px; z-index: 1000; width: auto; }
-    .st-key-chat_fab button { background: linear-gradient(120deg,#4f46e5,#7c3aed,#db2777); color: white; border: none;
-        border-radius: 999px; padding: 12px 22px; font-weight: 700; box-shadow: 0 10px 24px rgba(124,58,237,0.4); }
-    .st-key-chat_fab button p { color: white; font-weight: 700; font-size: 15px; }
+    /* AI assistant: a round button bottom-right that opens a floating chat window */
+    .st-key-chat_fab { position: fixed; right: 28px; bottom: 28px; z-index: 1001; width: 60px !important; }
+    .st-key-chat_fab button { width: 60px; height: 60px; min-height: 60px; border-radius: 50%; padding: 0;
+        background: #1d4ed8; border: none; box-shadow: 0 8px 22px rgba(29,78,216,0.4); }
+    .st-key-chat_fab button:hover { background: #1e40af; }
+    .st-key-chat_fab button [data-testid="stIconMaterial"] { color: white; font-size: 28px; }
+    .st-key-chat_panel { position: fixed; right: 28px; bottom: 102px; z-index: 1000; width: 400px !important;
+        max-height: min(680px, calc(100vh - 140px)); overflow-y: auto; background: white; border-radius: 18px;
+        border: 1px solid #e2e8f0; box-shadow: 0 18px 48px rgba(15,23,42,0.22); padding: 16px 18px 8px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -391,7 +372,7 @@ import datetime as _dt
 import pytz
 import html as _html
 
-BLUE, AMBER, RED, GREEN, GREY = "#4f46e5", "#f59e0b", "#db2777", "#059669", "#94a3b8"
+BLUE, AMBER, RED, GREEN, GREY = "#1d4ed8", "#f59e0b", "#dc2626", "#059669", "#94a3b8"
 
 
 def section(eyebrow, title, what, color="indigo"):
@@ -413,6 +394,13 @@ def style_fig(fig, height, ytitle=None, y2title=None):
     return fig
 
 
+def html_card(key, height, body):
+    """A card with a fixed height, built the same way as the chart cards, so
+    boxes in one row line up exactly."""
+    with st.container(border=True, key=f"card_{key}", height=height):
+        st.markdown(body, unsafe_allow_html=True)
+
+
 def humanize_theme(t):
     t = t.replace("TAX_TERROR_GROUP_", "").replace("TAX_RELIGION_", "").replace("TAX_MILITARY_TITLE_", "")
     t = t.replace("TAX_", "").replace("_", " ").lower()
@@ -426,37 +414,31 @@ def chips(items, cls="chip"):
 latest_day = geo_tension["date"].max().strftime("%b %d, %Y") if HAS_HISTORY else "latest 15 minutes"
 n_events = len(spike_events)
 
-# ── Chat panel on the right; the page narrows when it is open ────
+# ── AI assistant: round button bottom-right opens a floating chat window ──
 if "chat_open" not in st.session_state:
-    st.session_state.chat_open = True
+    st.session_state.chat_open = False
+
+st.markdown(
+    "<div class='hero'><div class='hero-kicker'>Geopolitical Risk Monitor</div>"
+    "<div class='hero-title'>When the world gets tense, how do markets move?</div>"
+    "<div class='hero-sub'>A daily tension score from 10 years of global news, every spike found "
+    "automatically, and how S&amp;P 500 sectors moved after each one.</div>"
+    "<div class='hero-pills'>"
+    f"<span class='hero-pill'><span class='live-dot'></span>Data through {latest_day}</span>"
+    f"<span class='hero-pill'>{n_events} events detected</span>"
+    "<span class='hero-pill'>GDELT news · S&amp;P 500 prices</span>"
+    "<span class='hero-pill'>No hand-picked events</span></div></div>", unsafe_allow_html=True)
+tab_live, tab_hist, tab_how = st.tabs(["Overview", "Event history", "How it works"])
+
+with st.container(key="chat_fab"):
+    open_now = st.session_state.chat_open
+    if st.button("", icon=":material/close:" if open_now else ":material/chat:",
+                 help="Close the assistant" if open_now else "Ask the data"):
+        st.session_state.chat_open = not open_now
+        st.rerun()
 if st.session_state.chat_open:
-    main_col, chat_col = st.columns([2.5, 1], gap="large")
-else:
-    main_col, chat_col = st.container(), None
-
-with main_col:
-    st.markdown(
-        "<div class='hero'><div class='hero-kicker'>Geopolitical Risk Monitor</div>"
-        "<div class='hero-title'>When the world gets tense, how do markets move?</div>"
-        "<div class='hero-sub'>A daily tension score from 10 years of global news, every spike found "
-        "automatically, and how S&amp;P 500 sectors moved after each one.</div>"
-        "<div class='hero-pills'>"
-        f"<span class='hero-pill'><span class='live-dot'></span>Data through {latest_day}</span>"
-        f"<span class='hero-pill'>{n_events} events detected</span>"
-        "<span class='hero-pill'>GDELT news · S&amp;P 500 prices</span>"
-        "<span class='hero-pill'>No hand-picked events</span></div></div>", unsafe_allow_html=True)
-    tab_live, tab_hist, tab_how = st.tabs(["Overview", "Event history", "How it works"])
-
-if chat_col is None:
-    with st.container(key="chat_fab"):
-        if st.button("Ask the data", icon=":material/forum:"):
-            st.session_state.chat_open = True
-            st.rerun()
-
-if chat_col is not None:
     from rag.ui import render_chat
-    with chat_col:
-        render_chat()
+    render_chat()
 
 # ══════════════════════════════════════════════════════════════════
 # OVERVIEW
@@ -487,7 +469,7 @@ with tab_live:
     section("Today", "Live news and market fear",
             "The tension score from GDELT's 15-minute feed next to the VIX, and the latest "
             "geopolitical headlines. Refreshes every 15 minutes.", "pink")
-    col_chart, col_news = st.columns([1.15, 1], gap="medium")
+    col_chart, col_news = st.columns(2, gap="medium")
 
     with col_chart:
         et = pytz.timezone("America/New_York")
@@ -506,13 +488,13 @@ with tab_live:
         if len(live_df) > 0:
             fig.add_trace(go.Scatter(x=live_df["timestamp"], y=live_df["tension_score"], name="Tension (live)",
                                      mode="lines+markers", line=dict(color=BLUE, width=2),
-                                     fill="tozeroy", fillcolor="rgba(37,99,235,0.08)"))
+                                     fill="tozeroy", fillcolor="rgba(29,78,216,0.08)"))
             chart_note = f"{len(live_df)} readings today"
         elif HAS_HISTORY:
             recent = geo_tension[geo_tension["date"] >= geo_tension["date"].max() - pd.Timedelta(days=30)]
             fig.add_trace(go.Scatter(x=recent["date"], y=recent["geo_tension_index"], name="Tension (daily)",
                                      mode="lines+markers", line=dict(color=BLUE, width=2),
-                                     fill="tozeroy", fillcolor="rgba(37,99,235,0.08)"))
+                                     fill="tozeroy", fillcolor="rgba(29,78,216,0.08)"))
             chart_note = "Last 30 days (no live collector running)"
             if len(vix_df) > 0:
                 v = vix_df[vix_df["date"] >= recent["date"].min()]
@@ -520,14 +502,14 @@ with tab_live:
                                          mode="lines", line=dict(color=AMBER, width=2, dash="dot")))
         else:
             chart_note = ""
-        with st.container(border=True, key="card_live_chart"):
+        with st.container(border=True, key="card_live_chart", height=430):
             st.markdown(f"<div class='card-h'>Tension vs VIX</div><div class='card-sub'>{chart_note}</div>",
                         unsafe_allow_html=True)
             if len(fig.data) == 0:
                 st.markdown("<p class='muted'>No readings yet. They appear once GDELT and market data load.</p>",
                             unsafe_allow_html=True)
             else:
-                st.plotly_chart(style_fig(fig, 260, "Tension (0–10)", "VIX"), width="stretch",
+                st.plotly_chart(style_fig(fig, 320, "Tension (0–10)", "VIX"), width="stretch",
                                 config={"displayModeBar": False})
 
     with col_news:
@@ -544,14 +526,13 @@ with tab_live:
                      f"{_html.escape(str(r['title']))}</div>")
         if not rows:
             rows = "<p class='muted'>The live GDELT feed is unavailable right now.</p>"
-        st.markdown(f"<div class='card'><div class='card-h'>Latest geopolitical headlines</div>"
-                    f"<div class='card-sub'>From the newest GDELT file · titles come from article URLs</div>"
-                    f"{rows}</div>", unsafe_allow_html=True)
+        html_card("headlines", 430, f"<div class='card-h'>Latest geopolitical headlines</div>"
+                  f"<div class='card-sub'>From the newest GDELT file · titles come from article URLs</div>{rows}")
 
     section("Markets", "How sectors are trading",
             "Live moves of the six sector groups this project tracks, and the sample portfolio's "
             "history after past spikes.", "teal")
-    col_sec, col_port = st.columns([1.15, 1], gap="medium")
+    col_sec, col_port = st.columns(2, gap="medium")
     with col_sec:
         sd = sector_df.dropna(subset=["avg"])
         if len(sd):
@@ -565,22 +546,20 @@ with tab_live:
         else:
             bars = "<p class='muted'>Live ETF prices are unavailable right now.</p>"
         sub = "Today, since the open" if market_open else "Last trading day"
-        st.markdown(f"<div class='card'><div class='card-h'>Sector ETFs</div>"
-                    f"<div class='card-sub'>{sub} · JETS, SOXX, XLE, ITA, XLK, GLD</div>{bars}</div>",
-                    unsafe_allow_html=True)
+        html_card("etfs", 340, f"<div class='card-h'>Sector ETFs</div>"
+                  f"<div class='card-sub'>{sub} · JETS, SOXX, XLE, ITA, XLK, GLD</div>{bars}")
     with col_port:
         prow = "".join(
             f"<tr><td><b>{r.ticker}</b></td><td>{r.sector}</td><td>{r.weight}%</td>"
             f"<td class='{'pos' if r.r5 >= 0 else 'neg'}'>{r.r5:+.2f}%</td>"
             f"<td class='neg'>{r.wd:+.2f}%</td></tr>" for r in port_df.itertuples())
-        st.markdown(f"<div class='card'><div class='card-h'>Sample portfolio, after past spikes</div>"
+        html_card("portfolio", 340, f"<div class='card-h'>Sample portfolio, after past spikes</div>"
                     f"<div class='card-sub'>Average over {n_events} detected events</div>"
                     f"<table class='tbl'><tr><th>Ticker</th><th>Sector</th><th>Weight</th>"
                     f"<th>Day +5</th><th>Worst day</th></tr>{prow}</table>"
                     f"<div class='summary'><span>Weighted Day +5</span>"
                     f"<b class='{'pos' if weighted_5d >= 0 else 'neg'}'>{weighted_5d:+.2f}%</b></div>"
-                    f"<div class='summary'><span>Most exposed</span><b>{most_exposed}</b></div></div>",
-                    unsafe_allow_html=True)
+                    f"<div class='summary'><span>Most exposed</span><b>{most_exposed}</b></div>")
 
 # ══════════════════════════════════════════════════════════════════
 # EVENT HISTORY
@@ -588,7 +567,7 @@ with tab_live:
 with tab_hist:
     years = spike_events["date"].dt.year
     section("10 years", "Geopolitical tension since 2016",
-            f"Each point is one day of international news. Pink dots are the {n_events} spike events "
+            f"Each point is one day of international news. Red dots are the {n_events} spike events "
             f"detected automatically ({years.min()}–{years.max()}); hover a dot for its name.", "violet")
     s1, s2, s3, s4 = st.columns(4)
     for k, (col, label, val) in enumerate([(s1, "Days analysed", f"{len(geo_tension):,}" if HAS_HISTORY else "—"),
@@ -649,11 +628,11 @@ with tab_hist:
         f"<div><span>Index</span><b>{ev['geo_tension_index']:.1f}/10</b></div>"
         f"<div><span>Elevated</span><b>{window}</b></div>"
         f"<div><span>Spike days</span><b>{int(ev.get('spike_days', 1))}</b></div></div></div><div class='event-body'>"
-        f"<div class='event-row'><span class='event-k'>Countries that stood out</span>{chips(countries, 'chip chip-blue')}</div>"
-        f"<div class='event-row'><span class='event-k'>Most mentioned overall</span>"
-        f"{chips([c for c in str(ev.get('most_mentioned') or '').split(', ') if c], 'chip chip-grey')}</div>"
-        f"<div class='event-row'><span class='event-k'>Distinctive news themes</span>{chips(themes)}</div>"
-        f"</div></div>", unsafe_allow_html=True)
+        + "".join(f"<div class='event-row'><span class='event-k'>{k}</span>{chips(v, c)}</div>"
+                  for k, v, c in [("Countries that stood out", countries, "chip chip-blue"),
+                                  ("Most mentioned overall", [x for x in str(ev.get("most_mentioned") or "").split(", ") if x], "chip chip-grey"),
+                                  ("Distinctive news themes", themes, "chip")] if v)
+        + "</div></div>", unsafe_allow_html=True)
 
     col_l, col_r = st.columns([1, 1], gap="medium")
     with col_l:
@@ -662,16 +641,16 @@ with tab_hist:
         vw = vix_df[(vix_df["date"] >= start_dt) & (vix_df["date"] <= end_dt)] if len(vix_df) else vix_df
         fe = go.Figure()
         fe.add_trace(go.Scatter(x=gw["date"], y=gw["geo_tension_index"], name="Tension", mode="lines+markers",
-                                line=dict(color=BLUE, width=2), fill="tozeroy", fillcolor="rgba(37,99,235,0.08)"))
+                                line=dict(color=BLUE, width=2), fill="tozeroy", fillcolor="rgba(29,78,216,0.08)"))
         if len(vw):
             fe.add_trace(go.Scatter(x=vw["date"], y=vw["vix"], name="VIX", yaxis="y2", mode="lines+markers",
                                     line=dict(color=AMBER, width=2, dash="dot")))
         fe.add_vline(x=ev["date"], line=dict(color=RED, width=1, dash="dash"))
-        with st.container(border=True, key="card_event_chart"):
+        with st.container(border=True, key="card_event_chart", height=440):
             st.markdown("<div class='card-h'>Tension and VIX around the peak</div>"
                         "<div class='card-sub'>10 days either side · dashed line = peak day</div>",
                         unsafe_allow_html=True)
-            st.plotly_chart(style_fig(fe, 280, "Tension", "VIX" if len(vw) else None), width="stretch",
+            st.plotly_chart(style_fig(fe, 320, "Tension", "VIX" if len(vw) else None), width="stretch",
                             config={"displayModeBar": False})
 
     with col_r:
@@ -684,7 +663,7 @@ with tab_hist:
         base_note = ""
         if len(sp):
             days = sorted(d for d in sp["days_from_spike"].unique() if d > 0)
-            colors = {1: "#38bdf8", 5: "#6366f1", 30: "#db2777"}
+            colors = {1: "#93c5fd", 5: "#3b82f6", 30: "#1e3a8a"}
             for h in (1, 5, 30):
                 if not days:
                     break
@@ -695,10 +674,10 @@ with tab_hist:
                                     hovertemplate="%{x}: %{y:+.2f}%<extra>Day +" + str(h) + "</extra>"))
             if "base_date" in sp and pd.notna(sp["base_date"].iloc[0]) and pd.Timestamp(sp["base_date"].iloc[0]).date() != sel_d:
                 base_note = f" · not a trading day, measured from the {pd.Timestamp(sp['base_date'].iloc[0]).date()} close"
-        style_fig(fs, 280, "Average return (%)")
+        style_fig(fs, 320, "Average return (%)")
         fs.update_layout(barmode="group", hovermode="closest")
         fs.add_hline(y=0, line=dict(color="#cbd5e1", width=1))
-        with st.container(border=True, key="card_sector_chart"):
+        with st.container(border=True, key="card_sector_chart", height=440):
             st.markdown("<div class='card-h'>Sector returns after the event</div>"
                         f"<div class='card-sub'>Average of S&P 500 members in each group · calendar days after the peak{base_note}</div>",
                         unsafe_allow_html=True)
