@@ -1,487 +1,222 @@
-# Geopolitical Event-Driven Portfolio Risk Analysis Platform
+# Geopolitical Risk Monitor
 
-> "VIX tells you how scared the market is. This tells you *why* — and what happened last time."
+> VIX tells you how scared the market is. This tells you *why*, and what happened last time.
 
-A big data platform that processes 10 years of GDELT global news data alongside S&P 500 price data to detect geopolitical tension spikes, analyze their historical market impact, and visualize the results in an interactive dashboard.
+A data pipeline and dashboard that turns 10 years of GDELT global news (2016–2026) into a daily **Geo-Tension Index**, **detects tension spikes and names them automatically**, measures how S&P 500 sectors moved afterwards, and lets you ask questions about the results in plain English through a **cited RAG chat** that refuses when the data has no answer.
 
-**Team:** David Hong · Jonghyun Jeong · Tinos Vafias — NYU Big Data (Spring 2026)  
-**Cluster:** NYU Dataproc (Google Cloud, YARN)  
-**Dashboard:** Streamlit + Plotly
+No prediction, no hand-labelled events: every spike date, event name and number comes from the data and can be traced back to it.
 
----
-
-## Overview
-
-When geopolitical crises happen — wars, sanctions, coups, protests — markets react. But how? Which sectors go up? Which collapse? How fast does it normalize?
-
-This platform answers those questions by:
-
-1. Building a **Geo-Tension Index** from 10 years of GDELT news (2016–2026)
-2. Detecting **international tension spikes** automatically (uncapped score > yearly mean + 3σ, nearby days grouped into one event)
-3. Computing **sector-level stock reactions** for each spike event (±30 trading days)
-4. Displaying everything in a **Streamlit dashboard** with historical event explorer
-
-No prediction. Pure large-scale data engineering — fully explainable outputs. A small RAG layer (Geo-Risk Q&A) lets users ask questions about these outputs in plain English, with every answer cited back to the data.
-
----
-
-## Team
-
-| Name | NetID |
-|------|-------|
-| David Hong | sh8348 |
-| Jonghyun Jeong | jj4335 |
-| Tinos Vafias | cv2134 |
+**Origin.** Started as an NYU Big Data team project (Spring 2026: David Hong, Jonghyun Jeong, Tinos Vafias) on the NYU Dataproc cluster. After cluster access ended, Jonghyun rebuilt the pipeline on BigQuery + pandas, fixed several problems in the original method (see [What changed from the original](#what-changed-from-the-original)), and added the Q&A. The original Spark code is kept in [`legacy/`](legacy/).
 
 ---
 
 ## Architecture
 
-```
-GDELT Archive (2016–2026)          S&P 500 Price Data (yfinance)
-        |                                       |
-        v                                       v
-  Download + Filter                     Chunk collection
-  (simultaneous, xargs -P 4)            (Parquet format)
-        |                                       |
-        +-------------------+-------------------+
-                            |
-                            v
-              HDFS: /user/jj4335_nyu_edu/gdelt_project/
-                            |
-                            v
-                   PySpark ETL Pipeline
-                   - Daily Geo-Tension Index
-                   - Tension spike detection
-                   - ±30-day event window aggregation
-                   - Spike news extraction
-                            |
-              +-------------+-------------+
-              |                           |
-              v                           v
-     Reaction Pattern Dataset       Spike News Archive
-       (Parquet, per spike)          (TSV, per spike ±3d)
-              |                           |
-              +-------------+-------------+
-                            |
-                            v
-                  Streamlit Dashboard
-                  (Historical Event Explorer + Live Feed)
+```mermaid
+flowchart LR
+    subgraph BQ["BigQuery (GDELT public tables, filtered server-side)"]
+        A1[bigquery_daily_index.sql<br/>one row per day, 2016 → today]
+        A2[event_news.sql<br/>articles, countries, themes per event]
+    end
+    subgraph Laptop["Laptop (pandas)"]
+        B1[build_history.py<br/>index + spike detection<br/>+ group days into events]
+        B2[build_events.py<br/>name events from data<br/>+ ±30-day stock returns]
+        P[download_prices.py<br/>S&P 500 closes, yfinance]
+    end
+    subgraph RAG["Geo-Risk Q&A"]
+        C1[build_corpus.py<br/>event, event×sector,<br/>comparison docs]
+        C2[index.py<br/>MiniLM embeddings + FAISS]
+        C3[retrieve.py → generate.py<br/>hybrid search, cited answer<br/>or refusal]
+    end
+    A1 --> B1 -- writes --> A2
+    A2 --> B2
+    P --> B2
+    B2 --> C1 --> C2 --> C3
+    B1 --> D[Streamlit dashboard<br/>Live · History · chat panel]
+    B2 --> D
+    C3 --> D
 ```
 
+The BigQuery steps return small CSVs (about 4,000 daily rows, then a few thousand articles per run), so nothing large is downloaded.
+
 ---
 
-## Repository Structure
+## Pipeline
+
+### 1. Daily Geo-Tension Index
 
 ```
-gdelt-risk-platform/
-├── data_collection/
-│   ├── gdelt_download.sh          # Downloads & filters GDELT GKG (2016–2026)
-│   ├── rebuild_for_rag.py         # Rebuilds Q&A inputs for the 31 spikes on a laptop
-│   ├── bigquery_daily_index.sql   # 10-year daily index inputs, aggregated in BigQuery
-│   ├── download_prices.py         # 10 years of S&P 500 daily closes (yfinance)
-│   ├── build_history.py           # Index + automatic spike/event detection (pandas)
-│   ├── bigquery_event_news.sql    # Template: news per detected event (filled by build_history)
-│   └── build_events.py            # Names events from data, news, stock reactions
-├── pyspark_pipeline/
-│   ├── geo_tension_index.py       # Builds daily Geo-Tension Index
-│   ├── event_window.py            # Computes ticker reactions ±30d per spike
-│   ├── risk_engine.py             # Aggregates sector-level risk scores
-│   └── spike_news_extract.py      # Extracts news URLs per spike event
-├── dashboard/
-│   ├── app.py                     # Streamlit dashboard (Live, History + Q&A chat panel)
-│   └── constants.py               # Sector map + spike labels (shared with rag/)
-├── rag/                           # Geo-Risk Q&A (RAG) — see section below
-│   ├── build_corpus.py            # Parquet outputs -> text documents
-│   ├── index.py                   # Embeddings + FAISS index
-│   ├── retrieve.py                # Top-k search with date/sector filters
-│   ├── generate.py                # Grounded answer from an LLM (Gemini or Claude)
-│   ├── ui.py / qa_app.py          # Streamlit Q&A (tab or standalone)
-│   └── eval/                      # Eval questions + eval script
-├── MODEL_CARD.md                  # Intended use, limits, eval results
-└── requirements.txt
-```
----
-
-## Geo-Tension Index
-
-### Formula
-geo_tension_raw = avg(negative_tone) × log(article_count + 1)
-
-### Why this formula?
-
-**`avg(negative_tone)`** — GDELT's V2Tone column provides comma-separated sentiment scores computed automatically from article full text. The third value is the negative score (range: 0–50). We use the daily average across all filtered articles.
-
-Using raw sentiment alone has a flaw: a single highly negative article would score the same as a hundred moderately negative ones. Volume matters.
-
-**`log(article_count + 1)`** — We weight sentiment by article volume to capture the "how much the world is talking about this" dimension. Log scale is used instead of linear because:
-- News volume during major crises can spike 10x–50x above normal
-- Linear scaling would make crisis days dominate the index and compress all other variation
-- Log dampens explosive growth while still rewarding higher volume
-
-**Multiplying the two** captures both *intensity* (how negative) and *scale* (how many articles). A ceasefire with many positive articles scores low. An invasion with massive negative coverage scores high.
-
-**International filter** — Only articles referencing non-US country codes (e.g. `#RS#` for Russia, `#UP#` for Ukraine) are included. This removes US domestic news that would otherwise dominate the index and distort geopolitical signals.
-
-**Normalization** — Final scores are scaled to 0–10 using p1–p99 percentile normalization, making the index interpretable across different time periods without being distorted by extreme outliers.
-
----
-
-## Spike Detection
-
-### Method (data-driven rebuild)
-
-1. **Score before capping.** `raw = avg_negative_tone × ln(article_count + 1)` per day. Spikes are found on `raw`, not on the 0–10 index: the index is clipped at 10, so a "mean + 3σ" rule on it can need a value above 10 and never fire (this happened in 2017–2020 in the original).
-2. **Spike day** = `raw` more than 3 standard deviations above that year's mean (per year, because news volume changes over time). A partial last day is dropped.
-3. **Events, not days.** Spike days at most 3 days apart form one event, dated by its peak day; the event keeps its start/end dates and number of spike days.
-
-### Labeling (automatic)
-
-No event names are typed by hand. For each event, BigQuery collects the matching articles from peak ±3 days (`bigquery_event_news.sql`), and `build_events.py` names it from the data: the most-mentioned countries plus the most common article category, e.g. "Ukraine & Russia: conflict". The top GDELT themes are kept next to the name as evidence. (The original project used 31 hand-picked dates with hand-written labels; they stay in `dashboard/constants.py` only for the old outputs.)
-
----
-
-## Data Pipeline
-
-### Phase 1 — Historical Batch (PySpark on NYU Dataproc)
-
-```bash
-# 1. Download & filter GDELT
-bash data_collection/gdelt_download.sh 2016 2026
-
-# 2. Build Geo-Tension Index
-spark-submit --deploy-mode client pyspark_pipeline/geo_tension_index.py
-
-# 3. Detect spikes & compute ticker reactions
-spark-submit --deploy-mode client pyspark_pipeline/event_window.py
-
-# 4. Extract supporting news per spike
-spark-submit --deploy-mode client pyspark_pipeline/spike_news_extract.py
+raw   = avg(negative tone) × ln(article_count + 1)
+index = raw scaled to 0–10 with the 1st/99th percentiles (for display)
 ```
 
-### Phase 2 — Live Feed (in dashboard)
+- **Articles counted:** GDELT GKG articles whose **Themes** contain a geopolitical category (conflict, sanctions, unrest, diplomacy, ceasefire, espionage/cyber, nuclear/blockade; whole theme tokens, so `WAR` doesn't match `AWARD`), that mention at least one **non-US country** in **Locations**, with a valid tone.
+- **Negative tone** is the 3rd value of GDELT's `V2Tone`. Multiplying by log volume captures both how negative and how much the world is talking about it; the log keeps crisis days (10–50× normal volume) from swamping everything else.
 
-`app.py` polls `gdeltproject.org/gdeltv2/lastupdate.txt` every 15 minutes to fetch the latest GDELT GKG file and display current geopolitical headlines. Sector ETF returns are fetched via yfinance every 1 minute. This matches GDELT's own update frequency.
+### 2. Spike detection
 
----
+1. A **spike day** is a day whose **raw** score is more than **3 standard deviations above that year's mean**. Per year, because news volume changes over time. The raw score is used rather than the 0–10 index, because the index is capped at 10 and a threshold on it can land above 10 and never fire.
+2. Spike days at most 3 days apart are grouped into one **event**, dated by its peak day.
 
-## Why PySpark?
+On data through 2026-11-17: **45 spike days → 27 events** over 3,956 days, with events in every year from 2016 to 2026.
 
-| Task | Why Spark? |
-|------|-----------|
-| Filter keywords from billions of records | Single machine cannot load the full GDELT archive (2TB+) |
-| 500 tickers × 31 spikes × ±30-day windows | Distributed join across partitioned datasets |
-| Sector-level aggregations across 500 tickers | Parallel groupBy + window operations |
-| Daily tension index from 7.6M articles | Distributed aggregation at scale |
+### 3. Naming events from the data (no LLM, no hand labels)
 
-We initially planned real-time Kafka streaming, but GDELT and yfinance rate limits made sub-15-minute updates infeasible. We switched to 15-minute batch collection, which matches GDELT's own update frequency.
+For each event, BigQuery counts the countries, categories and GDELT themes in its articles from peak −1 to +1 day. Raw counts don't work: the UK, Russia and military themes appear around almost every event. So each item gets a **lift** score:
 
----
-
-## Infrastructure
-
-| Component | Tool |
-|-----------|------|
-| Cluster | NYU Dataproc (Google Cloud Dataproc) |
-| Resource Manager | YARN |
-| Distributed Processing | Apache Spark (PySpark) |
-| Storage | HDFS + Parquet |
-| Dashboard | Streamlit + Plotly |
-| Live News Feed | GDELT GKG lastupdate.txt polling (15 min) |
-| Live Sector Returns | yfinance ETF data (1 min cache) |
-| Version Control | Git / GitHub |
-
----
-
-## Data Sources
-
-| Source | Description | Cost |
-|--------|-------------|------|
-| [GDELT Project](https://gdeltproject.org) | Global news events, sentiment (2016–present) | Free |
-| [yfinance](https://github.com/ranaroussi/yfinance) | S&P 500 daily prices + live ETF data | Free |
-
----
-
-## GDELT Data Schema
-
-Raw GDELT GKG has 60+ columns. We extract and store only 7:
-
-| Column | Description |
-|--------|-------------|
-| `record_id` | Unique article identifier |
-| `date` | Publication date (yyyyMMddHHmmss) |
-| `source` | News outlet |
-| `url` | Article URL |
-| `themes` | GDELT auto-assigned theme tags including country codes (e.g. `#RS#`, `#UP#`) |
-| `tone` | Comma-separated sentiment scores: overall, positive, **negative**, polarity, ... |
-| `category` | Geopolitical event category |
-
-We use `themes` for international filtering and the 3rd value of `tone` (negative score) for the Geo-Tension Index.
-
----
-
-## Data Collection Strategy
-
-We tested four approaches for 1 month of GDELT data (January 2016):
-
-| Method | Time | Size |
-|--------|------|------|
-| Download only | 15 min | 26 GB |
-| Download then filter (sequential) | 44 min | 58 MB |
-| Filter only (pre-downloaded) | 29 min | 58 MB |
-| **Download + filter simultaneously** ✅ | **5 min** | **58 MB** |
-
-**Final strategy:** Stream directly from GDELT → filter geopolitical keywords on-the-fly → write to HDFS. No intermediate 26 GB storage required.
-
-Geopolitical keywords: `MILITARY`, `SANCTION`, `TERROR`, `CONFLICT`, `WAR`, `PROTEST`, `WEAPON`, `NUCLEAR`
-
----
-
-## Data Specs
-
-| Dataset | Size | Rows | Period |
-|---------|------|------|--------|
-| GDELT Raw (original) | ~2TB | ~billions | 2016–2026 |
-| GDELT Filtered (geopolitical) | ~5GB | 7.6M | 2016–2026 |
-| Geo-Tension Index | ~1MB | 3,744 | 2016–2026 |
-| Spike Events | <1MB | 31 | 2016–2026 |
-| Ticker Reactions | ~50MB | 878K | per spike |
-| Spike News Archive | ~5MB | 6,200 | per spike ±3d |
-
----
-
-## Dashboard Features
-
-### Tab 1: Live Dashboard
-
-- **4 metric cards**: Current Geo-Tension score, Risk Level (Low/Medium/High), Events Today, Historical Avg Portfolio Change
-- **Live chart**: Geo-Tension Index (today vs. last 5 days, 15-min granularity)
-- **Latest news**: Real-time geopolitical headlines from GDELT (updates every 15 min)
-- **Sector Reaction**: Live ETF returns — JETS, SOXX, XLE, ITA, XLK, GLD (1-min cache refresh). Shows last trading day when market is closed.
-
-### Tab 2: Historical Events
-
-- **10-year chart**: Full Geo-Tension Index (2016–2026) with VIX overlay and spike markers
-- **Event Explorer**: Selectbox to choose any of 31 spike events
-  - Geo-Tension & VIX chart (±5 days around spike)
-  - Sector Impact bar chart (Day +5 returns)
-  - Supporting News from GDELT archive (keyword-filtered by event)
-
----
-
-## VIX vs Geo-Tension Index
-
-VIX and the Geo-Tension Index often move together during major geopolitical events, but not always. VIX reflects all market risk — interest rates, earnings, liquidity, credit — while the Geo-Tension Index is purely news-sentiment based. During major geopolitical shocks (e.g. Russia-Ukraine War, Israel-Hamas War), both tend to spike simultaneously because geopolitical risk dominates market sentiment. During routine market volatility (e.g. Fed decisions), VIX moves while Geo-Tension stays flat.
-
----
-
-## Challenges & Solutions
-
-| Challenge | Solution |
-|-----------|----------|
-| 2TB+ raw GDELT data | Keyword filter during download → 5GB |
-| US domestic event noise | Filter to articles with non-US country codes only |
-| Noisy URL-based titles | Multi-layer regex filter: remove hex strings, URLs, short tokens |
-| GDELT/yfinance rate limits | Pre-computed parquet + 15-min batch collection |
-| Weekend trading gaps | Nearest trading day fallback |
-| Spark datetime bug | Date range filter + CORRECTED rebase mode |
-| Irrelevant news in spike explorer | Proper noun keyword filter + conflict context filter |
-
----
-
-## Setup & Reproduction
-
-### Prerequisites
-
-- NYU Dataproc cluster access
-- Python 3.11, PySpark 3.5
-- HDFS write access
-
-### Install Dependencies
-
-```bash
-pip install -r requirements.txt
+```
+share = fraction of this event's articles that mention the item
+lift  = share / the item's average share across all events
 ```
 
-### Run Dashboard
+The name is the 1–2 most distinctive countries (frequent *and* high lift) plus the most over-represented category, e.g. `Sri Lanka: unrest` (2019-04-21) or `Belgium: terror attack` (2016-03-22). It is the same idea as TF-IDF, applied to GDELT's country and theme tags, so it is deterministic and explainable. The most distinctive themes (e.g. `TAX_RELIGION_CHURCH` for 2019-04-21) are stored next to the name as evidence.
 
-```bash
-streamlit run dashboard/app.py --server.port 8501 --theme.base light
-```
+### 4. Market reactions
 
-### Expose via ngrok
+For every event and every S&P 500 member (today's constituents via yfinance; companies that left the index are missing, so there is survivorship bias), the return from the **first trading day on/after the peak** to each day within ±30 calendar days. The dashboard and Q&A average these over 6 sector groups (`dashboard/constants.py`).
 
-```bash
-~/ngrok http 8501
-```
+---
+
+## Dashboard
+
+`streamlit run dashboard/app.py`
+
+- **Live:** the current index and risk level (z-score of the latest day vs this year, same rule as spike detection), latest geopolitical headlines from GDELT's 15-minute feed, live sector ETF moves, and the historical average reaction of a sample portfolio.
+- **History:** the 10-year index with VIX and the detected events marked; an event explorer with the index and VIX around the event, sector returns at Day +5, and the event's news.
+- **Ask the data:** a chat panel on the right (open/close it with the button at the top; the main view widens when it's closed).
 
 ---
 
 ## Geo-Risk Q&A (RAG)
 
-A **chat panel on the right of the dashboard** (open or close it with the button at the top; the dashboard widens when it is closed), where you can ask things like *"Which sector fell most 5 days after the Russia-Ukraine War spike?"* and get a short answer with numbered citations (event date and news source), plus the documents it used. Each question is answered on its own: earlier messages stay on screen but aren't sent to the model, so every answer can be checked against its own sources.
+Ask *"Which sector fell most 5 days after the spike on 2019-04-21?"* and get a short answer with numbered citations (event date and news source) plus the documents it used. If the data doesn't contain the answer, it says **"I don't have evidence for that in the data."** It never gives investment advice.
 
-**RAG (Retrieval-Augmented Generation) in one line:** first *retrieve* the few pieces of our own data that match the question, then ask an LLM to *generate* an answer using only those pieces. The LLM writes the sentence; the facts come from our pipeline outputs.
+**RAG in one line:** first *retrieve* the few pieces of our own data that match the question, then have an LLM *write* the answer using only those pieces.
 
-### Data provenance (read this first)
+### Design
 
-The original pipeline outputs lived on the NYU Dataproc cluster, and access ended with the course. The recommended path is the data-driven rebuild below ("Rebuild the full 10-year history"). The older quick path, `data_collection/rebuild_for_rag.py`, rebuilds inputs for the original 31 hand-picked dates (kept in `dashboard/constants.py`):
-
-| | Original cluster outputs | Rebuilt for the Q&A |
+| Choice | What | Why |
 |---|---|---|
-| Spike dates & labels | 31, detected by `geo_tension_index.py` | Same 31 dates and labels |
-| Geo-Tension Index on the spike day | Yes | **Recomputed** from every GKG file that day with the original formula and the p1/p99 constants kept in `collect_live.py` |
-| z-score, yearly threshold | Yes | **No** (need 10 years of daily values) |
-| News around each spike (±3 days) | All GDELT GKG files, top 50 per spike | All GKG files for the 161 needed days (same keyword filter), up to 300 per spike |
-| Sector returns, Day −30…+30 | All S&P 500 members (yfinance) | The ~50 stocks in the 6 sector groups (yfinance, adjusted closes), same return formula |
-| Weekend/holiday spikes | Borrowed the nearest other spike's numbers | Measured from the next trading day's close |
+| Documents | 1 per event (index, z-score, window, countries, themes, headlines, sector ranking) + 1 per event × sector (Day +1/+5/+30 returns) + 7 comparison summaries (per sector across all events, and all events by z-score) | Matches the questions people ask: "what happened on X?", "how did sector Y react?", "after which event did Y fall most?" Event and sector docs stay under the embedding model's 256-token limit. |
+| Embeddings | `sentence-transformers/all-MiniLM-L6-v2`, FAISS exact cosine search | Small, free, runs on a laptop CPU; a corpus of ~200 short docs doesn't need approximate search. |
+| Hybrid retrieval | Embedding rank + BM25 keyword rank, merged with Reciprocal Rank Fusion `1/(60+rank)` | Embeddings miss exact tokens such as dates; BM25 catches them. RRF only uses ranks, so the two scores don't need calibrating. |
+| Date-aware retrieval | If the question names an event date, that date's documents rank first, and the event document is always included | Each date has 7 near-identical documents; without this, six sector docs could push out the event doc that holds the index and the full sector ranking. |
+| Filters | Date range and sector in the UI, applied after scoring | A filter can never hide a better match. |
+| LLM | Gemini (default, free tier) or Claude, chosen with `GEO_QA_PROVIDER`; key from an environment variable | Same prompt and checks with either provider. |
+| Refusal | Similarity gate before the LLM (no call if nothing relevant), plus a prompt rule | The model can't make something up from irrelevant documents. |
+| Citations | The model cites document IDs (`[event:2019-04-21]`); code checks each was actually retrieved and shows it as a numbered source | Short IDs are easy to copy exactly and to verify. |
 
-Only the 161 days around the spikes are downloaded, so this runs on a laptop: data is filtered while it streams and only matching rows are saved (a few hundred MB), though the download itself is large (roughly tens to a hundred-plus GB, a few hours depending on connection). `--files-per-day 4` makes a quick sample instead; then no index is recomputed. The dashboard reads `GEO_DATA_DIR`, else the original cluster folder if present, else `~/dashboard_data_rebuilt`. On rebuilt data the 10-year index chart and the history-based risk level aren't available, so those spots say so; the headline score is computed live from the latest 15-minute GDELT file (same method as `collect_live.py`), and the portfolio card, spike explorer and Q&A work as before. `build_corpus.py` handles all three shapes (original, full rebuild, sample) and only writes the facts that exist.
-
-#### Rebuild the full 10-year history (data-driven)
-
-Everything below is computed from data — spike dates, event names, categories and stock reactions. The BigQuery steps filter and aggregate on Google's side, so only small CSVs come back. Use a sandbox project without billing and check the "will process N GB" estimate before each run (free tier: 1 TB/month).
-
-1. **Daily index inputs (BigQuery).** Run `data_collection/bigquery_daily_index.sql`; save as `~/dashboard_data_rebuilt/gdelt_daily.csv` (one row per day). An article is kept when its **Themes** match a category (token-boundary regexes), at least one non-US country appears in **Locations**, and its tone is valid.
-2. **Prices.** `python -m data_collection.download_prices` — daily adjusted closes for today's S&P 500 members (survivorship bias: companies that left the index are missing).
-3. **Detect events.** `python -m data_collection.build_history` builds the index, detects spike days, groups them into events (`events.csv`) and writes a ready-to-run `event_news.sql` with those dates filled in.
-4. **News per event (BigQuery).** Run `event_news.sql` (it reads only the event days, so it is much cheaper than step 1); save as `~/dashboard_data_rebuilt/event_news.csv`.
-5. **Name events + reactions.** `python -m data_collection.build_events` names each event, saves its news and computes ±30-day returns (base = first trading day on/after the peak).
-6. Then `python -m rag.build_corpus`, `python -m rag.index`, `python -m rag.eval.make_questions`, `python -m rag.eval.run_eval`, and `streamlit run dashboard/app.py`.
-
-**Problems in the original project that this fixes:**
-
-- **Hand-picked events.** The 31 spike dates and their names were chosen by hand; re-running the original rule on BigQuery data matched only 8 of 31. Now dates and names come from the data.
-- **Unreachable threshold.** The index is capped at 10, but in 2017–2020 the yearly mean + 3σ threshold was above 10 (10.13, 10.25, 11.88, 10.69), so those years could have no spikes. Detection now runs on the uncapped score.
-- **Wrong column.** `gdelt_download.sh` matched keywords against GKG column 7 (V2Counts), not Themes, so the "dominant category" was POLITICAL_INSTABILITY on every day. The new SQL filters on Themes and checks "international" with Locations country codes.
-- **Weekend spikes.** Returns use the first trading day on/after the spike as the base, so a weekend spike no longer borrows another day's numbers.
-
-### Architecture
-
-```mermaid
-flowchart LR
-    subgraph Offline["Offline (run once)"]
-        P[Parquet inputs — original or rebuilt<br/>spike_events · spike_news<br/>ticker_reaction_by_spike]
-        P --> C[build_corpus.py<br/>217 short text docs]
-        C --> E[index.py<br/>all-MiniLM-L6-v2 embeddings]
-        E --> F[(FAISS index)]
-    end
-    subgraph Online["Per question"]
-        Q[Question] --> R[retrieve.py<br/>hybrid: embeddings + BM25, RRF<br/>+ date/sector filter]
-        F --> R
-        R --> G{best similarity<br/>>= threshold?}
-        G -- no --> X["I don't have evidence for that in the data."]
-        G -- yes --> L[generate.py<br/>Gemini or Claude + grounded prompt]
-        L --> A[Answer with citations<br/>+ retrieved docs in UI]
-    end
-```
-
-### Design choices
-
-| Choice | What we did | Why |
-|---|---|---|
-| Embedding model | `sentence-transformers/all-MiniLM-L6-v2` (384-dim) | Small (~80 MB), runs on a laptop CPU, free, strong at short English sentence similarity. Our documents are short and factual, so a larger model isn't needed. |
-| Chunking | 1 document per spike event + 1 per event × sector (31 + 186 = 217) | Matches the two kinds of questions people ask ("what happened on X?" / "how did sector Y react?"). Each document stays under the model's 256-token limit; `index.py` warns if one doesn't. |
-| Vector store | FAISS `IndexFlatIP` (exact search) on normalised vectors | Inner product of unit vectors = cosine similarity. With 217 documents exact search is instant; approximate indexes would only add complexity. |
-| Hybrid retrieval | Embedding ranking + BM25 keyword ranking, merged with Reciprocal Rank Fusion: `1/(60+rank_dense) + 1/(60+rank_bm25)` | The first eval run showed embeddings miss exact tokens: 9 of the 10 retrieval misses were questions that name a date (e.g. "the spike on 2024-05-02"). BM25 scores rare exact tokens (a date, a sector name) highly. RRF only uses ranks, so the two score scales don't need calibrating. `GEO_QA_RETRIEVER=dense` turns it off for comparison. |
-| Filters | Date range and sector, applied to metadata after scoring all documents | Scoring everything first means a filter can never hide a good match. |
-| LLM | `GEO_QA_PROVIDER=gemini` (default, `gemini-3.8-flash`, key in `GEMINI_API_KEY`) or `anthropic` (`claude-sonnet-5-5`, key in `ANTHROPIC_API_KEY`) | Gemini's free tier makes the project free to run; the same prompt and safety rails work with either provider. Keys come from environment variables, never the code. Calls are spaced to respect free-tier per-minute limits, and the eval caches answers so a daily quota just pauses it. Answers can vary slightly between runs; eval numbers are from a single run. |
-| Refusal | Two layers: similarity gate before the LLM, then a prompt rule | If nothing relevant is retrieved the LLM is never called, so it can't make something up. |
-| Citations | Model cites document IDs (`[event:2022-02-25]`); code checks each ID was retrieved, then shows it as `[date · URL]` | Short IDs are easy for the model to copy exactly and easy for code to verify. |
-
-### Prompt template (abridged — full text in `rag/generate.py`)
+Prompt (abridged; full text in `rag/generate.py`):
 
 ```text
-System:
-  Use ONLY the facts in the <documents>. No outside knowledge, no guessed numbers.
-  After every factual sentence, cite the document id in [brackets].
-  If the documents don't contain the answer, reply exactly:
-    "I don't have evidence for that in the data."
-  Never give investment advice; if asked, start with "I can't give investment advice."
-  "Day +N" = N calendar days after the spike. Headlines come from article URLs.
-User:
-  <documents>
-    <document id="event:2022-02-25" event_date="2022-02-25"> ... </document>
-    ...
-  </documents>
-  Question: ...
+Use ONLY the facts in the <documents>. No outside knowledge, no guessed numbers.
+Cite the document id in [brackets] after every factual sentence.
+If the documents don't contain the answer, reply exactly:
+  "I don't have evidence for that in the data."
+Never give investment advice; if asked, start with "I can't give investment advice."
 ```
 
-### Evaluation method
+### Evaluation
 
-`rag/eval/make_questions.py` builds the eval set **from the data** (expected answers are computed from the corpus, not typed by hand). On the full rebuild it made 23 answerable questions: weakest sector at Day +5, one sector's Day +30 move, the index value on a date, the most-mentioned country, questions that name only the event (no date), and questions that need comparing many events (only when the answer is unique — tied "highest index" questions are skipped). It adds 5 questions the data can't answer (advice, prediction, Bitcoin, 2008, the Fed), for 28 total. If a fact isn't in the data (e.g. no index in a sample run), questions about it are swapped for other data-derived ones.
+`rag/eval/make_questions.py` generates the questions **from the data**, so expected answers are computed, not typed: weakest sector at Day +5 on a date, a sector's Day +30 move, the index on a date, the most-mentioned country, questions that name only the event, and questions that compare all events (only when the answer is unique). Plus 5 questions the data can't answer (advice, prediction, Bitcoin, 2008, the Fed).
 
-`rag/eval/run_eval.py --retriever dense|hybrid` reports (run both to compare retrieval):
+`rag/eval/run_eval.py` reports:
 
-- **Retrieval hit rate @k** — did an expected document appear in the top k (k = 1, 3, 5)?
-- **Answer accuracy** — does the answer contain the expected sector / country / date / number?
-- **Groundedness** — every cited ID must be a retrieved document, and every number and date in the answer must appear in the retrieved documents. Answers with no numbers or dates are listed in `results.md` for manual review.
-- **Refusal accuracy** — on unanswerable questions, did it refuse (or decline advice)? It also reports **false refusals** on answerable questions.
+- **Retrieval hit rate @k:** an expected document is in the top k.
+- **Answer accuracy:** the answer contains the expected sector, country, date or number.
+- **Groundedness:** every cited ID was retrieved, and every number and date in the answer appears in the retrieved documents.
+- **Refusal accuracy** on unanswerable questions, and **false refusals** on answerable ones.
 
 ### Results
 
-> These numbers are from the earlier run on the 31 hand-picked events. Re-run steps 1–6 above for numbers on the automatically detected events.
+Run on 2026-11-18 on data through 2026-11-17 (27 events): 29 generated questions (24 answerable, 5 unanswerable), k = 5, `all-MiniLM-L6-v2`, LLM `gemini-3.5-flash-lite` (free tier). Numbers are copied from `rag/eval/results.md`, not edited.
 
-Run on 2026-11-17 on the full rebuild (every GKG file for the 161 days): 28 data-derived questions (23 answerable, 5 unanswerable), k = 5, embedding model `all-MiniLM-L6-v2`, LLM `gemini-3.5-flash-lite` (Gemini free tier). Numbers are copied from `rag/eval/results.md` and `results_dense_retrieval.md`, not edited.
-
-| Metric | Dense only (baseline) | Hybrid (BM25 + dense, RRF) |
+| Metric | First run on the 27 events | Final |
 |---|---|---|
-| Retrieval hit rate @1 | 9/23 (39.1%) | 13/23 (56.5%) |
-| Retrieval hit rate @3 | 12/23 (52.2%) | 20/23 (87.0%) |
-| Retrieval hit rate @5 | 13/23 (56.5%) | 20/23 (87.0%) |
-| Answer accuracy (answerable) | — | 20/23 (87.0%) |
-| Grounded answers (every number/date found in retrieved docs) | — | 21/21 (100.0%) |
-| Answers citing a document that wasn't retrieved | — | 0/21 (0.0%) |
-| Refusal accuracy (unanswerable) | — | 5/5 (100.0%) |
-| False refusals (answerable) | — | 2/23 (8.7%) |
+| Retrieval hit rate @1 | 15/24 (62.5%) | 19/24 (79.2%) |
+| Retrieval hit rate @3 | 18/24 (75.0%) | 23/24 (95.8%) |
+| Retrieval hit rate @5 | 18/24 (75.0%) | 24/24 (100.0%) |
+| Answer accuracy (answerable) | 18/24 (75.0%) | 24/24 (100.0%) |
+| Grounded answers (every number/date found in retrieved docs) | 17/17 (100.0%) | 24/24 (100.0%) |
+| Answers citing a document that wasn't retrieved | 0/20 (0.0%) | 0/24 (0.0%) |
+| Refusal accuracy (unanswerable) | 5/5 (100.0%) | 5/5 (100.0%) |
+| False refusals (answerable) | 4/24 (16.7%) | 0/24 (0.0%) |
 
-How to read this:
-- **Small eval set.** 23 answerable questions, so one question moves a rate by about 4 points.
-- **"Grounded" is narrow.** It checks that every number and date in an answer appears in the retrieved documents. It doesn't check that the answer picked the *right* document; an answer can be fully grounded and still answer a slightly different question.
-- **What fails.** All 3 misses were retrieval misses: two "What was the index on <date>?" questions (the six sector documents for the same date outrank the event document) and one question that needs comparing all 31 events. When the right document wasn't retrieved, the model refused instead of guessing in 2 of 3 cases.
-- **Development history.** Hybrid retrieval and two document-wording fixes were added after earlier eval runs on a 4-files-per-day sample, so the questions influenced the design. The final numbers come from a freshly generated question set on the full data.
+**What changed between the two runs, and why.** The first run's 6 misses were all retrieval misses. Five were "index on <date>" / "weakest sector on <date>" questions where the six sector documents for that date filled the top 5 and pushed out the event document; in one of them the model then answered from an incomplete set of sectors and got it wrong. The sixth needed comparing all 27 events, which top-k retrieval can't do. The fixes were date-aware retrieval (that date's documents first, event document always included) and the precomputed comparison documents. The three "most-mentioned country" questions were also rephrased to ask by date: event names are built from those countries, so asking by name gave the answer away.
 
-### Known limitations
+**Read with care.** These fixes were made after looking at the failures, on the same kind of generated questions, so the final numbers are optimistic: they show the known failure modes are fixed, not how the system does on new kinds of questions. The set is small (24 answerable), and 100% on it does not mean the system is never wrong.
 
-- **Rebuilt data:** index values are recomputed for spike days only (no z-scores or thresholds), and may differ slightly from the originals because the p1/p99 constants are rounded.
-- **Gaps in GDELT's archive:** about 1.6% of the needed 15-minute GKG files don't exist on GDELT's server. When a spike day is missing files, its recomputed index can be understated; the rebuild records how many of the 96 files were used, and the event document says so.
-- **Small corpus:** 31 events and 6 hand-picked sector groups (~50 S&P 500 stocks), so many reasonable questions have no answer here.
-- **Headline text only:** "headlines" are rebuilt from article URLs, not full article text, so the system knows *what* was in the news only roughly.
-- **Day +N is calendar days:** when Day +N falls on a weekend or holiday, the nearest trading day is used and written in the document.
-- **Comparison questions are hard:** "Which spike was the biggest?" needs all 31 events, but the LLM only sees the top k.
-- **Index saturates at 10.00:** several spike days hit the 0–10 scale's cap, so "highest index" has no single answer; the eval skips such questions.
-- **Same-date documents compete:** each spike has 7 documents with the same date, and short sector documents can outrank the event document for "index on <date>" questions.
-- **The LLM can still be wrong:** citations and automatic checks reduce this but don't eliminate it. Always check the retrieved documents shown under the answer.
-- **Not investment advice.** Historical correlations only; see `MODEL_CARD.md`.
+### Limitations
 
-### How to run
+- **Small eval set** (24 answerable questions): one question moves a rate by about 4 points.
+- **"Grounded" is narrow:** it checks that numbers and dates come from the retrieved documents, not that the right document was used.
+- **Event names are coarse:** "country: category", not "Christchurch mosque shootings". Some categories are off (the Christchurch and Sri Lanka attacks come out as "unrest"), and two events can share a name; the date tells them apart.
+- **Headlines come from article URLs**, not full text.
+- **Correlation, not causation:** sector returns are averages that include all other market news in the window.
+- **The LLM can still be wrong.** The UI shows the retrieved documents so every answer can be checked.
+- **Not investment advice.** See [MODEL_CARD.md](MODEL_CARD.md).
+
+---
+
+## What changed from the original
+
+| Original (course project) | Now |
+|---|---|
+| 31 spike dates and names **picked by hand** | Detected and named from the data (27 events) |
+| Keywords matched against GKG column 7, which is **V2Counts, not Themes**, so every day's category was the same | Themes matched as whole tokens; "international" decided from Locations |
+| Spikes detected on the **capped** 0–10 index; in 2017–2020 the threshold was above 10 (10.13, 10.25, 11.88, 10.69), so those years could have **no spikes** | Detected on the uncapped raw score |
+| Consecutive spike days counted as separate events | Grouped into one event dated by its peak |
+| Weekend spike: no day-0 close, so the dashboard **borrowed another spike's numbers** | Base = first trading day on/after the peak |
+| Needed the 2 TB archive on a cluster | Two BigQuery queries (free tier) + pandas on a laptop |
+
+---
+
+## Repository
+
+```
+data_collection/
+  bigquery_daily_index.sql   step 1: daily inputs (BigQuery)
+  download_prices.py         S&P 500 daily closes (yfinance)
+  build_history.py           step 2: index, spike detection, events; writes event_news.sql
+  bigquery_event_news.sql    template for step 3 (filled in by build_history.py)
+  build_events.py            step 4: name events, news, stock reactions
+  common.py                  shared helpers
+dashboard/
+  app.py, collect_live.py    Streamlit dashboard and live GDELT feed
+  constants.py               sector groups, country codes
+rag/
+  build_corpus.py, index.py, retrieve.py, generate.py, ui.py, qa_app.py
+  eval/                      question generator, eval script, results
+legacy/                      original Spark pipeline (reference only)
+MODEL_CARD.md
+```
+
+---
+
+## How to run
 
 ```bash
 pip install -r requirements.txt
-
-# 0. Rebuild the inputs (laptop; resumable — re-run the same command if interrupted)
-python -m data_collection.rebuild_for_rag      # -> ~/dashboard_data_rebuilt/ (all files; a few hours)
-
-# 1. Build the corpus (no Spark needed)
-python -m rag.build_corpus --data-dir ~/dashboard_data_rebuilt   # -> rag/data/corpus.jsonl (commit it)
-
-# 2. Build the vector index (downloads the embedding model the first time)
-python -m rag.index                   # -> rag/artifacts/ (git-ignored)
-
-# 3. Ask a question from the terminal
-export GEMINI_API_KEY=...             # free key from aistudio.google.com; never commit it
-python -m rag.generate "Which sector fell most 5 days after the Russia-Ukraine War spike?"
-
-# 4. Evaluate
-python -m rag.eval.make_questions     # -> rag/eval/questions.jsonl
-python -m rag.eval.run_eval --retrieval-only   # free, no API calls
-python -m rag.eval.run_eval                    # full eval (~30 LLM calls, ~6 min on the free tier;
-                                               #  if the daily quota stops it, re-run later to continue)
-
-# 5. UI
-streamlit run dashboard/app.py        # full dashboard; Q&A chat panel on the right
-                                      #  (run from the repo root so .streamlit/config.toml applies the light theme)
-streamlit run rag/qa_app.py           # Q&A on its own
 ```
 
-Optional settings (environment variables): `GEO_QA_PROVIDER` (`gemini`/`anthropic`), `GEO_QA_MODEL`, `GEO_QA_TOP_K` (default 5), `GEO_QA_MIN_SIM` (refusal threshold, default 0.30), `GEO_EMBED_MODEL`.
+**Data** (everything lands in `~/dashboard_data_rebuilt/`; set `GEO_DATA_DIR` to use another folder). For the BigQuery steps use a project without billing and check the "This query will process N GB" estimate before running (free tier: 1 TB/month).
+
+1. Run `data_collection/bigquery_daily_index.sql` in the BigQuery console; save the result as `gdelt_daily.csv`.
+2. `python -m data_collection.download_prices`
+3. `python -m data_collection.build_history` (writes `events.csv` and `event_news.sql`)
+4. Run `event_news.sql` in BigQuery; save the result as `event_news.csv`.
+5. `python -m data_collection.build_events`
+
+**Q&A and dashboard**
+
+```bash
+python -m rag.build_corpus            # -> rag/data/corpus.jsonl
+python -m rag.index                   # embeddings + FAISS (downloads the model the first time)
+export GEMINI_API_KEY=...             # free key from aistudio.google.com; never commit it
+python -m rag.eval.make_questions
+python -m rag.eval.run_eval --retrieval-only   # no API calls
+python -m rag.eval.run_eval                    # full eval; re-run to resume after a quota stop
+streamlit run dashboard/app.py        # run from the repo root (applies the light theme)
+```
+
+Optional environment variables: `GEO_QA_PROVIDER` (`gemini`/`anthropic`), `GEO_QA_MODEL`, `GEO_QA_TOP_K` (default 5), `GEO_QA_MIN_SIM` (refusal threshold, default 0.30), `GEO_QA_RETRIEVER` (`hybrid`/`dense`).

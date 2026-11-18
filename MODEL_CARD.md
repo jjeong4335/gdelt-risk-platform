@@ -17,36 +17,32 @@ A question-answering feature on top of the GDELT Geopolitical Risk Platform. It 
 - Real-time news. The live feed in the dashboard is not part of the Q&A corpus.
 
 ## Data sources
-The original cluster outputs are no longer accessible, so the knowledge base is **rebuilt** from GDELT's BigQuery tables with automatic spike detection and naming (`build_history.py` → `build_events.py`). Index values, z-scores and event windows are computed from the data (details in the README's "Data provenance" section).
+Rebuilt from GDELT's public BigQuery tables after the original cluster outputs became unavailable. Spike dates, event names and categories are generated from the data (`build_history.py` → `build_events.py`); no event is labelled by hand.
 
-- [GDELT 2.0 GKG](https://www.gdeltproject.org/): news articles filtered to geopolitical themes, international coverage only
-- S&P 500 daily closing prices via [yfinance](https://github.com/ranaroussi/yfinance)
-- Event names generated from the data (most-mentioned countries + most common news category); no hand-written labels
+- [GDELT 2.0 GKG](https://www.gdeltproject.org/): articles whose Themes match a geopolitical category and that mention a non-US country
+- S&P 500 daily closing prices (today's constituents) via [yfinance](https://github.com/ranaroussi/yfinance)
+- Event names: the most distinctive countries + category for each event, scored by lift against the other events (no LLM)
 
 ## Evaluation
-Method: see "Evaluation method" in the README. The eval set is generated from the data (23 answerable and 5 unanswerable questions on the full rebuild).
-
-Run 2026-11-17 on the full rebuild; LLM `gemini-3.5-flash-lite`, k = 5.
+Method: see "Evaluation" in the README. 29 questions generated from the data (24 answerable, 5 unanswerable). Run 2026-11-18, 27 events, LLM `gemini-3.5-flash-lite`, k = 5.
 
 | Metric | Result |
 |---|---|
-| Retrieval hit rate @1 / @3 / @5 (hybrid) | 56.5% / 87.0% / 87.0% (13, 20, 20 of 23) |
-| Retrieval hit rate @5, dense-only baseline | 56.5% (13/23) |
-| Answer accuracy (answerable) | 87.0% (20/23) |
-| Grounded answers (numbers/dates found in retrieved docs) | 100.0% (21/21) |
+| Retrieval hit rate @1 / @3 / @5 (hybrid) | 79.2% / 95.8% / 100.0% (19, 23, 24 of 24) |
+| Answer accuracy (answerable) | 100.0% (24/24) |
+| Grounded answers (numbers/dates found in retrieved docs) | 100.0% (24/24) |
 | Refusal accuracy (unanswerable) | 100.0% (5/5) |
-| False refusals (answerable) | 8.7% (2/23) |
+| False refusals (answerable) | 0.0% (0/24) |
 
-The set is small (23 answerable questions), so treat these as indicative. "Grounded" means every number and date in the answer appears in the retrieved documents, not that the answer is correct. See the README for what failed and why.
+The first run on the same 27 events scored 75.0% hit@5 and 75.0% answer accuracy; retrieval was changed after looking at those failures (see the README), so these numbers are optimistic. The set is small, and "grounded" means every number and date comes from the retrieved documents, not that the answer is correct.
 
 ## Limitations and risks
-- Rebuilt data: index values are recomputed for spike days only and may differ slightly from the original pipeline.
 - Small corpus (a few dozen events, ~50 stocks in 6 sectors), so coverage is narrow.
 - Headlines are reconstructed from article URLs, not full text, and can be noisy.
 - Auto-generated names (countries + category) can oversimplify an event, and several events can share a name; the date tells them apart.
 - Returns are averages over a few stocks per sector and don't control for other market news (correlation, not causation).
-- Questions that need comparing all events can fail, because the LLM only sees the top k documents.
-- Recomputed index values are capped at 10.00, so several spikes tie at the top.
+- Questions that compare all events rely on precomputed comparison documents; comparisons they don't cover can fail, because the LLM only sees the top k documents.
+- The 0–10 index is capped, so several events tie at 10.00; the z-score is the better measure of size.
 - The LLM can still misstate a number or cite the wrong document. The UI shows the retrieved documents so users can check, and the eval measures how often this happens.
 
 ## Safety measures
