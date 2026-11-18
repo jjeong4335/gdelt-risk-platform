@@ -35,8 +35,8 @@ def examples_from(docs):
                     f"How did Airlines stocks move 30 days after the spike on {e['event_date']}?"))
     if len(events) > 2:
         e = events[2]
-        out.append((f"Which countries dominated the news on {e['event_date']}?",
-                    f"Which country was mentioned most in news coverage of the spike on {e['event_date']}?"))
+        out.append((f"Which country stood out in the news on {e['event_date']}?",
+                    f"Which country stood out most in news coverage of the spike on {e['event_date']}?"))
     return out + [REFUSAL_EXAMPLE]
 
 _CSS = """

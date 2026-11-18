@@ -26,77 +26,98 @@ st.markdown('<meta http-equiv="refresh" content="900">', unsafe_allow_html=True)
 # ── Custom CSS ────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    .main { background-color: #f8f9fa; }
-    .card {
-        background: white;
-        border-radius: 12px;
-        padding: 20px 24px;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-        margin-bottom: 16px;
-    }
-    .metric-label { font-size: 12px; color: #888; margin-bottom: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-    .metric-value { font-size: 32px; font-weight: 700; color: #1a1a1a; line-height: 1.1; }
-    .metric-delta-pos { font-size: 13px; color: #16a34a; }
-    .metric-delta-neg { font-size: 13px; color: #dc2626; }
-    .metric-delta-neu { font-size: 13px; color: #888; }
-    .risk-high { color: #dc2626; font-size: 28px; font-weight: 700; }
-    .risk-medium { color: #f59e0b; font-size: 28px; font-weight: 700; }
-    .risk-low { color: #16a34a; font-size: 28px; font-weight: 700; }
-    .live-badge { background: #dcfce7; color: #16a34a; border-radius: 20px; padding: 4px 12px; font-size: 13px; font-weight: 600; display: inline-block; }
-    .news-time { font-size: 11px; color: #888; margin-bottom: 2px; }
-    .news-item { padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
-    .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 6px; }
-    .tag-military { background: #fee2e2; color: #dc2626; }
-    .tag-sanctions { background: #fef3c7; color: #d97706; }
-    .tag-diplomatic { background: #dbeafe; color: #2563eb; }
-    .tag-nuclear { background: #f3e8ff; color: #7c3aed; }
-    .tag-political { background: #ffedd5; color: #ea580c; }
-    .tag-other { background: #f1f5f9; color: #64748b; }
-    .sector-row { display: flex; align-items: center; margin-bottom: 10px; }
-    .sector-name { width: 120px; font-size: 13px; color: #444; }
-    .sector-bar-pos { background: #86efac; height: 8px; border-radius: 4px; }
-    .sector-bar-neg { background: #fca5a5; height: 8px; border-radius: 4px; }
-    .sector-val-pos { color: #16a34a; font-size: 13px; font-weight: 600; margin-left: 8px; }
-    .sector-val-neg { color: #dc2626; font-size: 13px; font-weight: 600; margin-left: 8px; }
-    .port-row { display: flex; align-items: center; padding: 6px 0; font-size: 13px; }
-    .port-ticker { font-weight: 700; width: 50px; }
-    .port-sector { color: #888; width: 90px; }
-    .port-weight { color: #444; width: 40px; }
-    .port-return-pos { color: #16a34a; font-weight: 600; margin-left: auto; }
-    .port-return-neg { color: #dc2626; font-weight: 600; margin-left: auto; }
-    .summary-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-top: 1px solid #f0f0f0; }
-    .summary-label { color: #666; }
-    .summary-val-pos { color: #16a34a; font-weight: 600; }
-    .summary-val-neg { color: #dc2626; font-weight: 600; }
-    .chart-title { font-size: 13px; color: #444; font-weight: 500; margin-bottom: 8px; }
-    .block-container { padding-top: 1.6rem; max-width: 100%; }
-    /* hide Streamlit's own chrome */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    html, body, [class*="css"], .stApp { font-family: 'Inter', system-ui, sans-serif; }
+    .stApp { background: #f6f7f9; }
+    .block-container { padding-top: 1.2rem; max-width: 1500px; }
     .stAppDeployButton, [data-testid="stToolbar"], [data-testid="stDecoration"],
     [data-testid="stSidebarCollapsedControl"] { display: none !important; }
     header[data-testid="stHeader"] { height: 0; background: transparent; }
-    /* app header */
-    .app-title { font-size: 26px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px; }
-    .app-sub { font-size: 14px; color: #64748b; margin-top: 2px; }
-    /* tabs */
-    .stTabs [data-baseweb="tab-list"] { gap: 28px; border-bottom: 1px solid #e5e7eb; }
-    .stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: 600; padding: 10px 2px; }
-    /* section headings */
-    .section-title { font-size: 18px; font-weight: 700; color: #0f172a; margin: 22px 0 2px; }
-    .section-sub { font-size: 13px; color: #64748b; margin-bottom: 10px; }
-    .event-title { font-size: 22px; font-weight: 700; color: #0f172a; margin: 26px 0 12px; }
-    .event-date { display: inline-block; font-size: 13px; font-weight: 600; color: #1d4ed8;
-                  background: #eff6ff; border-radius: 999px; padding: 3px 10px; margin-left: 10px;
-                  vertical-align: middle; }
-    .card-title { font-size: 14px; font-weight: 600; color: #0f172a; margin-bottom: 8px; }
-    /* chat panel on the right: stays in view while the dashboard scrolls */
+
+    /* header */
+    .brand { font-size: 22px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px; display: flex; align-items: center; gap: 10px; }
+    .brand-dot { width: 12px; height: 12px; border-radius: 50%; background: #2563eb; box-shadow: 0 0 0 4px #dbeafe; }
+    .brand-sub { font-size: 14px; color: #64748b; margin: 4px 0 2px 22px; }
+
+    /* tabs look like a site nav */
+    .stTabs [data-baseweb="tab-list"] { gap: 6px; border-bottom: 1px solid #e2e8f0; margin-top: 6px; }
+    .stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: 600; padding: 10px 14px; color: #64748b; }
+    .stTabs [aria-selected="true"] { color: #0f172a; }
+    .stTabs [data-baseweb="tab-highlight"] { background: #2563eb; height: 3px; }
+
+    /* sections */
+    .sec { margin: 30px 0 14px; }
+    .sec-eyebrow { font-size: 12px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 0.8px; }
+    .sec-title { font-size: 21px; font-weight: 700; color: #0f172a; margin-top: 2px; letter-spacing: -0.2px; }
+    .sec-what { font-size: 14px; color: #64748b; margin-top: 4px; max-width: 900px; line-height: 1.5; }
+
+    /* cards */
+    .card, .kpi, .event-card, .step { background: white; border: 1px solid #e8ebf0; border-radius: 14px;
+        padding: 18px 20px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); margin-bottom: 14px; }
+    div[class*="st-key-card_"] { background: white; border: 1px solid #e8ebf0 !important; border-radius: 14px;
+        padding: 18px 20px 8px !important; box-shadow: 0 1px 2px rgba(15,23,42,0.04); margin-bottom: 14px; }
+    .card-h { font-size: 15px; font-weight: 600; color: #0f172a; }
+    .card-sub { font-size: 12.5px; color: #94a3b8; margin: 2px 0 12px; }
+    .muted { color: #94a3b8; font-size: 13px; }
+    .pos { color: #16a34a; } .neg { color: #dc2626; }
+
+    /* KPIs */
+    .kpi { min-height: 196px; }
+    .kpi-label { font-size: 13px; color: #64748b; font-weight: 500; }
+    .kpi-value { font-size: 32px; font-weight: 700; color: #0f172a; margin: 6px 0 2px; letter-spacing: -0.5px; }
+    .kpi-unit { font-size: 16px; color: #94a3b8; font-weight: 500; margin-left: 2px; }
+    .kpi-note { font-size: 13px; color: #334155; }
+    .kpi-help { font-size: 12px; color: #94a3b8; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; line-height: 1.45; }
+    .risk-high { color: #dc2626; } .risk-medium { color: #d97706; } .risk-low { color: #16a34a; }
+
+    /* news */
+    .news { padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #0f172a; line-height: 1.4; }
+    .news:last-child { border-bottom: none; }
+    .news a { color: #0f172a; text-decoration: none; } .news a:hover { color: #2563eb; text-decoration: underline; }
+    .news-meta { font-size: 12px; color: #94a3b8; margin-bottom: 3px; }
+    .dayb { margin-left: 8px; background: #f1f5f9; color: #475569; border-radius: 999px; padding: 1px 8px; font-size: 11px; }
+    .tag { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-right: 8px; }
+    .tag-red { background: #fee2e2; color: #b91c1c; } .tag-amber { background: #fef3c7; color: #b45309; }
+    .tag-blue { background: #dbeafe; color: #1d4ed8; } .tag-purple { background: #ede9fe; color: #6d28d9; }
+    .tag-orange { background: #ffedd5; color: #c2410c; } .tag-grey { background: #f1f5f9; color: #475569; }
+
+    /* sector bars */
+    .bar-row { display: grid; grid-template-columns: 130px 1fr 64px; align-items: center; gap: 10px; margin: 9px 0; font-size: 14px; }
+    .bar-name { color: #334155; } .bar-track { background: #f1f5f9; border-radius: 999px; height: 8px; }
+    .bar { height: 8px; border-radius: 999px; } .bar-pos { background: #22c55e; } .bar-neg { background: #ef4444; }
+    .bar-val { text-align: right; font-weight: 600; }
+
+    /* tables */
+    .tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .tbl th { text-align: left; font-size: 12px; color: #94a3b8; font-weight: 500; padding: 6px 4px; border-bottom: 1px solid #f1f5f9; }
+    .tbl td { padding: 8px 4px; border-bottom: 1px solid #f8fafc; color: #334155; }
+    .summary { display: flex; justify-content: space-between; font-size: 14px; color: #64748b; padding: 8px 4px 0; }
+    .summary b { color: #0f172a; }
+
+    /* history stats */
+    .stat { background: white; border: 1px solid #e8ebf0; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; }
+    .stat-v { font-size: 22px; font-weight: 700; color: #0f172a; } .stat-l { font-size: 12.5px; color: #64748b; }
+
+    /* event card */
+    .event-name { font-size: 22px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px; }
+    .badge { font-size: 13px; font-weight: 600; color: #1d4ed8; background: #eff6ff; border-radius: 999px; padding: 3px 10px; margin-left: 10px; vertical-align: middle; }
+    .event-facts { display: flex; gap: 34px; margin: 14px 0 12px; flex-wrap: wrap; }
+    .event-facts span { display: block; font-size: 12px; color: #94a3b8; } .event-facts b { font-size: 16px; color: #0f172a; }
+    .event-row { margin-top: 8px; font-size: 13px; } .event-k { color: #64748b; margin-right: 10px; }
+    .chip { display: inline-block; background: #f1f5f9; color: #334155; border-radius: 999px; padding: 3px 10px; margin: 3px 6px 3px 0; font-size: 12.5px; }
+    .chip-blue { background: #eff6ff; color: #1d4ed8; }
+
+    /* how it works */
+    .step { min-height: 290px; } .step-n { width: 28px; height: 28px; border-radius: 50%; background: #eff6ff; color: #2563eb;
+        font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .step-t { font-size: 15px; font-weight: 600; color: #0f172a; margin: 10px 0 6px; } .step-b { font-size: 13px; color: #64748b; line-height: 1.55; }
+    .limits { font-size: 13.5px; color: #475569; line-height: 1.7; margin: 6px 0 0; }
+    .footer { text-align: center; font-size: 12px; color: #94a3b8; margin: 40px 0 10px; }
+
+    /* chat panel on the right: stays in view while the page scrolls */
     div[data-testid="stColumn"]:has(.st-key-chat_panel) { position: sticky; top: 1rem; align-self: flex-start; }
-    .st-key-chat_panel { background: white; border-radius: 14px; box-shadow: 0 1px 6px rgba(15,23,42,0.08);
+    .st-key-chat_panel { background: white; border: 1px solid #e8ebf0; border-radius: 16px; box-shadow: 0 4px 16px rgba(15,23,42,0.06);
                          padding: 18px 18px 8px; max-height: calc(100vh - 2rem); overflow-y: auto; }
-    /* bordered st.container() blocks look like the HTML cards */
-    .st-key-live_chart_card { background: white; border-radius: 12px; border: none !important;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 20px 24px !important; margin-bottom: 16px; }
-    .muted { color:#888; font-size:13px; }
-    .sector-legend { font-size:11px; color:#888; margin-top:4px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -105,27 +126,6 @@ st.markdown("""
 DATA_DIR = os.path.expanduser(os.environ.get("GEO_DATA_DIR") or "~/dashboard_data_rebuilt")
 # Without the daily history the parts that need it say so instead of crashing.
 HAS_HISTORY = os.path.exists(f"{DATA_DIR}/geo_tension_index.parquet")
-
-# ── Keyword filter for supporting news ───────────────────────────
-import re as _re
-
-_STOPWORDS = {"war", "tensions", "protests", "crisis", "escalation", "airstrikes", "peak", "ceasefire", "civil", "political", "geopolitical", "border", "strait"}
-_CONFLICT_CONTEXT = {"attack", "missile", "strike", "military", "troops", "invasion", "bomb", "nuclear", "riot", "clash", "conflict", "threat", "shoot", "kill", "dead", "wound", "protest", "warn", "launch"}
-
-def _extract_primary_keywords(label):
-    """Extract proper nouns from spike label, excluding generic conflict words."""
-    words = _re.findall(r'[A-Z][a-z]+', label)
-    return [w.lower() for w in words if w.lower() not in _STOPWORDS]
-
-def _passes_news_filter(title, label):
-    """Return True if title contains a primary keyword AND a conflict context keyword."""
-    if not isinstance(title, str):
-        return False
-    primary = _extract_primary_keywords(label)
-    t = title.lower()
-    if not primary:
-        return True
-    return any(k in t for k in primary) and any(k in t for k in _CONFLICT_CONTEXT)
 
 # ── Load data ─────────────────────────────────────────────────────
 @st.cache_data
@@ -342,31 +342,69 @@ weighted_wd = (port_df["wd"] * port_df["weight"] / 100).sum()
 most_exposed = port_df.loc[(port_df["wd"].abs() * port_df["weight"] / 100).idxmax(), "ticker"]
 
 # ══════════════════════════════════════════════════════════════════
-# TABS
+# PAGE LAYOUT
 # ══════════════════════════════════════════════════════════════════
-# ── Layout: dashboard on the left, Q&A chat panel on the right ────
-# Opening the panel narrows the dashboard; closing it gives it the full width.
+import datetime as _dt
+import pytz
+import html as _html
+
+BLUE, AMBER, RED, GREEN, GREY = "#2563eb", "#f59e0b", "#dc2626", "#16a34a", "#94a3b8"
+
+
+def section(eyebrow, title, what):
+    """Section header: small label, title, and one line saying what it shows."""
+    st.markdown(f"<div class='sec'><div class='sec-eyebrow'>{eyebrow}</div>"
+                f"<div class='sec-title'>{title}</div><div class='sec-what'>{what}</div></div>",
+                unsafe_allow_html=True)
+
+
+def style_fig(fig, height, ytitle=None, y2title=None):
+    fig.update_layout(
+        height=height, margin=dict(l=8, r=8, t=8, b=8), plot_bgcolor="white", paper_bgcolor="white",
+        font=dict(family="Inter, system-ui, sans-serif", size=12, color="#334155"),
+        legend=dict(orientation="h", y=1.08, x=0, font=dict(size=12)), hovermode="x unified",
+        xaxis=dict(showgrid=False, linecolor="#e2e8f0"),
+        yaxis=dict(showgrid=True, gridcolor="#f1f5f9", zeroline=False, title=ytitle))
+    if y2title:
+        fig.update_layout(yaxis2=dict(overlaying="y", side="right", showgrid=False, title=y2title))
+    return fig
+
+
+def humanize_theme(t):
+    t = t.replace("TAX_TERROR_GROUP_", "").replace("TAX_RELIGION_", "").replace("TAX_MILITARY_TITLE_", "")
+    t = t.replace("TAX_", "").replace("_", " ").lower()
+    return t
+
+
+def chips(items, cls="chip"):
+    return "".join(f"<span class='{cls}'>{_html.escape(str(x))}</span>" for x in items if x)
+
+
+latest_day = geo_tension["date"].max().strftime("%b %d, %Y") if HAS_HISTORY else "latest 15 minutes"
+n_events = len(spike_events)
+
+# ── Chat panel on the right; the page narrows when it is open ────
 if "chat_open" not in st.session_state:
     st.session_state.chat_open = True
 if st.session_state.chat_open:
-    main_col, chat_col = st.columns([2.4, 1], gap="large")
+    main_col, chat_col = st.columns([2.5, 1], gap="large")
 else:
     main_col, chat_col = st.container(), None
 
 with main_col:
-    head_l, head_r = st.columns([4, 1], vertical_alignment="center")
-    head_l.markdown(
-        "<div class='app-title'>Geopolitical Risk Monitor</div>"
-        "<div class='app-sub'>VIX tells you how scared the market is. This tells you why — "
-        "and how markets reacted last time.</div>", unsafe_allow_html=True)
+    nav_l, nav_r = st.columns([5, 1], vertical_alignment="center")
+    nav_l.markdown(
+        "<div class='brand'><span class='brand-dot'></span>Geopolitical Risk Monitor</div>"
+        "<div class='brand-sub'>How tense is the world right now, which past events looked like this, "
+        "and how did markets move afterwards.</div>", unsafe_allow_html=True)
     if st.session_state.chat_open:
-        toggle = head_r.button("Hide assistant", icon=":material/right_panel_close:", width="stretch")
+        toggle = nav_r.button("Hide assistant", icon=":material/right_panel_close:", width="stretch")
     else:
-        toggle = head_r.button("Ask the data", icon=":material/forum:", type="primary", width="stretch")
+        toggle = nav_r.button("Ask the data", icon=":material/forum:", type="primary", width="stretch")
     if toggle:
         st.session_state.chat_open = not st.session_state.chat_open
         st.rerun()
-    tab1, tab2 = st.tabs(["Live", "History"])
+    tab_live, tab_hist, tab_how = st.tabs(["Overview", "Event history", "How it works"])
 
 if chat_col is not None:
     from rag.ui import render_chat
@@ -374,395 +412,300 @@ if chat_col is not None:
         render_chat()
 
 # ══════════════════════════════════════════════════════════════════
-# TAB 1: LIVE DASHBOARD
+# OVERVIEW
 # ══════════════════════════════════════════════════════════════════
-with tab1:
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-    # Top 4 metric cards
+with tab_live:
+    section("At a glance", f"Geopolitical tension · {latest_day}",
+            "Today's level of international tension in the news, measured the same way as the "
+            "10-year history, and what past spikes meant for a sample portfolio.")
+
+    def kpi(col, label, value, note, value_cls="kpi-value", help_text=""):
+        col.markdown(f"<div class='kpi'><div class='kpi-label'>{label}</div>"
+                     f"<div class='{value_cls}'>{value}</div><div class='kpi-note'>{note}</div>"
+                     f"<div class='kpi-help'>{help_text}</div></div>", unsafe_allow_html=True)
+
     c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        delta_class = ("metric-delta-neu" if not HAS_HISTORY
-                       else "metric-delta-pos" if delta_score >= 0 else "metric-delta-neg")
-        sign = "+" if delta_score >= 0 else ""
-        st.markdown(f"""<div class='card'>
-            <div class='metric-label'>Geo-Tension Index</div>
-            <div class='metric-value'>{"—" if current_score != current_score else f"{current_score:.1f}"}</div>
-            <div class='{delta_class}'>{score_note}</div>
-        </div>""", unsafe_allow_html=True)
+    kpi(c1, "Geo-Tension Index", "—" if current_score != current_score else f"{current_score:.1f}<span class='kpi-unit'>/10</span>",
+        score_note, help_text="Negative tone × volume of international geopolitical news, scaled 0–10.")
+    kpi(c2, "Risk level", risk_level, threshold_note, value_cls=f"kpi-value {risk_class}",
+        help_text="High = more than 3 standard deviations above this year's average (a spike).")
+    kpi(c3, "Geopolitical articles", f"{events_today:,}", events_note,
+        help_text="International articles on conflict, sanctions, unrest, diplomacy and more.")
+    exp_cls = "pos" if weighted_5d >= 0 else "neg"
+    kpi(c4, "Sample portfolio after a spike", f"<span class='{exp_cls}'>{'+' if weighted_5d >= 0 else ''}{weighted_5d:.1f}%</span>",
+        "average 5 days after past spikes",
+        help_text="30% AAPL, 50% XOM, 20% LMT, averaged over all detected events.")
 
-    with c2:
-        st.markdown(f"""<div class='card'>
-            <div class='metric-label'>Risk Level</div>
-            <div class='{risk_class}'>{risk_level}</div>
-            <div class='metric-delta-neu'>{threshold_note}</div>
-        </div>""", unsafe_allow_html=True)
-
-    with c3:
-        st.markdown(f"""<div class='card'>
-            <div class='metric-label'>Events Today</div>
-            <div class='metric-value'>{events_today:,}</div>
-            <div class='metric-delta-neu'>{events_note}</div>
-        </div>""", unsafe_allow_html=True)
-
-    with c4:
-        exp_class = "metric-delta-pos" if weighted_5d >= 0 else "metric-delta-neg"
-        exp_sign = "+" if weighted_5d >= 0 else ""
-        st.markdown(f"""<div class='card'>
-            <div class='metric-label'>Portfolio Exposure</div>
-            <div class='metric-value'>{exp_sign}{weighted_5d:.1f}%</div>
-            <div class='{exp_class}'>Hist. avg on similar events</div>
-        </div>""", unsafe_allow_html=True)
-
-    # Chart + News
-    col_chart, col_news = st.columns([1, 1])
+    section("Today", "Live news and market fear",
+            "The tension score from GDELT's 15-minute feed next to the VIX, and the latest "
+            "geopolitical headlines. Refreshes every 15 minutes.")
+    col_chart, col_news = st.columns([1.15, 1], gap="medium")
 
     with col_chart:
-        fig = go.Figure()
-        # Check if US market is open (Mon-Fri 9:30-16:00 ET)
-        from datetime import datetime
-        import pytz
         et = pytz.timezone("America/New_York")
         now_et = datetime.now(et)
-        market_open = (
-            now_et.weekday() < 5 and
-            (now_et.hour, now_et.minute) >= (9, 30) and
-            now_et.hour < 16
-        )
-        if True:  # Always show live tension
-            # Live mode: show today's GDELT tension
+        market_open = now_et.weekday() < 5 and (now_et.hour, now_et.minute) >= (9, 30) and now_et.hour < 16
+        try:
             import sqlite3
-            DB_PATH = f"{DATA_DIR}/live_tension.db"
-            try:
-                conn = sqlite3.connect(DB_PATH)
-                live_df = pd.read_sql("SELECT timestamp, tension_score FROM live_tension WHERE date(timestamp) >= date('now') ORDER BY timestamp", conn, parse_dates=["timestamp"])
-                conn.close()
-            except:
-                live_df = pd.DataFrame(columns=["timestamp", "tension_score"])
-
-
-
-
-
-
-
-                live_df = pd.DataFrame(columns=["timestamp", "tension_score"])
-
-
-
-
-
-
-
-
-
-
-
-
-            if len(live_df) == 0 and not HAS_HISTORY and current_score == current_score:
-                # No live collector running: show the one score computed above.
-                live_df = pd.DataFrame({"timestamp": [now_et.replace(tzinfo=None)],
-                                        "tension_score": [current_score]})
-            if len(live_df) > 0:
-                fig.add_trace(go.Scatter(
-                    x=live_df["timestamp"], y=live_df["tension_score"],
-                    mode="lines+markers", fill="tozeroy", name="Geo-Tension Index",
-                    line=dict(color="#3b82f6", width=2),
-                    fillcolor="rgba(59,130,246,0.1)",
-                    yaxis="y1"
-                ))
-            # VIX intraday
-            try:
-                import yfinance as yf
-                vix_live = yf.download("^VIX", period="1d", interval="5m", progress=False)
-                if len(vix_live) > 0:
-                    vix_live = vix_live["Close"].reset_index()
-                    vix_live.columns = ["datetime", "vix"]
-                    vix_live["datetime"] = pd.to_datetime(vix_live["datetime"], utc=True).dt.tz_localize(None)
-                    vix_live = vix_live[(vix_live["datetime"].dt.hour >= 9) & ((vix_live["datetime"].dt.hour > 9) | (vix_live["datetime"].dt.minute >= 30)) & (vix_live["datetime"].dt.hour < 16)]
-                    fig.add_trace(go.Scatter(
-                        x=vix_live["datetime"], y=vix_live["vix"],
-                        mode="lines", name="VIX",
-                        line=dict(color="#f59e0b", width=2, dash="dot"),
-                        yaxis="y2"
-                    ))
-            except:
-                pass
-            n_points = len(live_df)
-            chart_title = f"Geo-Tension Index — Today ({n_points} readings, updates every 15 min)"
-            fig.update_layout(
-                height=250, margin=dict(l=0, r=40, t=10, b=0),
-                xaxis=dict(showgrid=False, tickformat="%H:%M"),
-                yaxis=dict(showgrid=True, gridcolor="#f0f0f0", title="Tension", side="left"),
-                yaxis2=dict(overlaying="y", side="right", title="VIX", showgrid=False),
-                plot_bgcolor="white", paper_bgcolor="white",
-                legend=dict(orientation="h", y=1.1, x=0)
-            )
+            conn = sqlite3.connect(f"{DATA_DIR}/live_tension.db")
+            live_df = pd.read_sql("SELECT timestamp, tension_score FROM live_tension "
+                                  "WHERE date(timestamp) >= date('now') ORDER BY timestamp",
+                                  conn, parse_dates=["timestamp"])
+            conn.close()
+        except Exception:
+            live_df = pd.DataFrame(columns=["timestamp", "tension_score"])
+        fig = go.Figure()
+        if len(live_df) > 0:
+            fig.add_trace(go.Scatter(x=live_df["timestamp"], y=live_df["tension_score"], name="Tension (live)",
+                                     mode="lines+markers", line=dict(color=BLUE, width=2),
+                                     fill="tozeroy", fillcolor="rgba(37,99,235,0.08)"))
+            chart_note = f"{len(live_df)} readings today"
+        elif HAS_HISTORY:
+            recent = geo_tension[geo_tension["date"] >= geo_tension["date"].max() - pd.Timedelta(days=30)]
+            fig.add_trace(go.Scatter(x=recent["date"], y=recent["geo_tension_index"], name="Tension (daily)",
+                                     mode="lines+markers", line=dict(color=BLUE, width=2),
+                                     fill="tozeroy", fillcolor="rgba(37,99,235,0.08)"))
+            chart_note = "Last 30 days (no live collector running)"
+            if len(vix_df) > 0:
+                v = vix_df[vix_df["date"] >= recent["date"].min()]
+                fig.add_trace(go.Scatter(x=v["date"], y=v["vix"], name="VIX", yaxis="y2",
+                                         mode="lines", line=dict(color=AMBER, width=2, dash="dot")))
         else:
-            # Market closed: show historical chart
-            cutoff_5d = pd.Timestamp.now() - pd.Timedelta(days=5)
-            geo_5d = geo_tension[geo_tension["date"] >= cutoff_5d]
-            vix_5d = vix_df[vix_df["date"] >= cutoff_5d] if len(vix_df) > 0 else vix_df
-            fig.add_trace(go.Scatter(
-                x=geo_5d["date"], y=geo_5d["geo_tension_index"],
-                mode="lines+markers", fill="tozeroy", name="Geo-Tension Index",
-                line=dict(color="#3b82f6", width=2),
-                fillcolor="rgba(59,130,246,0.1)",
-                yaxis="y1"
-            ))
-            if len(vix_5d) > 0:
-                fig.add_trace(go.Scatter(
-                    x=vix_5d["date"], y=vix_5d["vix"],
-                    mode="lines+markers", name="VIX",
-                    line=dict(color="#f59e0b", width=2, dash="dot"),
-                    yaxis="y2"
-                ))
-            chart_title = "Geo-Tension Index vs VIX — Last 5 Days (Market Closed)"
-            fig.update_layout(
-                height=250, margin=dict(l=0, r=40, t=10, b=0),
-                xaxis=dict(showgrid=False, tickformat="%m/%d"),
-                yaxis=dict(showgrid=True, gridcolor="#f0f0f0", title="Tension", side="left"),
-                yaxis2=dict(overlaying="y", side="right", title="VIX", showgrid=False),
-                plot_bgcolor="white", paper_bgcolor="white",
-                legend=dict(orientation="h", y=1.1, x=0)
-            )
-        with st.container(border=True, key="live_chart_card"):
-            st.markdown(f"<div class='chart-title'>{chart_title}</div>", unsafe_allow_html=True)
+            chart_note = ""
+        with st.container(border=True, key="card_live_chart"):
+            st.markdown(f"<div class='card-h'>Tension vs VIX</div><div class='card-sub'>{chart_note}</div>",
+                        unsafe_allow_html=True)
             if len(fig.data) == 0:
-                st.markdown("<p class='muted'>No live readings yet. The tension score and VIX "
-                            "appear here once GDELT and market data load.</p>", unsafe_allow_html=True)
+                st.markdown("<p class='muted'>No readings yet. They appear once GDELT and market data load.</p>",
+                            unsafe_allow_html=True)
             else:
-                st.plotly_chart(fig, width="stretch")
-        # Sector + Portfolio
-
-
-
-        live_ok = sector_df["avg"].notna().any()
-        sector_df = sector_df.dropna(subset=["avg"])
-        max_abs = sector_df["avg"].abs().max() if live_ok else 0
-        sector_title = "Sector reaction — live today · refreshes every 1 min" if market_open else "Sector reaction — last trading day"
-        sector_html = f"<div class='card'><div class='chart-title'>{sector_title}</div>"
-        for _, row in sector_df.iterrows():
-            v = row["avg"]
-            bar_w = int(abs(v) / max_abs * 180) if max_abs > 0 else 0
-            bar_cls = "sector-bar-pos" if v >= 0 else "sector-bar-neg"
-            val_cls = "sector-val-pos" if v >= 0 else "sector-val-neg"
-            sign = "+" if v >= 0 else ""
-            sector_html += f"""<div class='sector-row'>
-                <div class='sector-name'>{row['sector']}</div>
-                <div class='{bar_cls}' style='width:{bar_w}px'></div>
-                <div class='{val_cls}'>{sign}{v:.1f}%</div>
-            </div>"""
-        if not live_ok:
-            sector_html += "<p class='muted'>Live ETF prices are unavailable right now.</p>"
-        else:
-            sector_html += ("<div class='sector-legend'>Sector ETFs (JETS, SOXX, XLE, ITA, XLK, GLD), "
-                            "change since the open · green = up, red = down</div>")
-        sector_html += "</div>"
-        st.markdown(sector_html, unsafe_allow_html=True)
-
+                st.plotly_chart(style_fig(fig, 260, "Tension (0–10)", "VIX"), width="stretch",
+                                config={"displayModeBar": False})
 
     with col_news:
-        tag_classes = {
-            "Military": "tag-military", "Sanctions": "tag-sanctions",
-            "Diplomatic": "tag-diplomatic", "Nuclear": "tag-nuclear",
-            "Political": "tag-political", "Other": "tag-other"
-        }
-        news_html = "<div class='card' style='height:100%'><div class='chart-title'>Latest news events · updates every 15 min</div>"
-        # Filter out low-quality titles: hex UUIDs, URLs, short or symbol-heavy strings
-        news_df_filtered = news_df[
-            (news_df["title"].str.replace(r"[\d\s]", "", regex=True).str.len() > 5) &
-            (~news_df["title"].str.contains(r"#|\.com|\.org|\.net", na=False)) &
-            (~news_df["title"].str.contains(r"[A-Fa-f0-9]{6,}", regex=True, na=False)) &
-            (news_df["title"].str.contains(" ", na=False)) &
-            (news_df["title"].str.replace(r"[^a-zA-Z]", "", regex=True).str.len() > 15)
-        ] if len(news_df) > 0 else news_df
-        if len(news_df_filtered) > 0:
-            for _, row in news_df_filtered.head(6).iterrows():
-                time_str = row["time"] if pd.notna(row["time"]) else ""
-                cat = row["category"]
-                tag_cls = tag_classes.get(cat, "tag-other")
-                title = str(row["title"]) if pd.notna(row["title"]) else "Unknown"
-                source = str(row["source"]) if pd.notna(row["source"]) else ""
-                news_html += f"""<div class='news-item'>
-                    <div class='news-time'>{time_str} · {source}</div>
-                    <span class='tag {tag_cls}'>{cat}</span>{title}
-                </div>"""
-        elif len(news_df) == 0:
-            news_html += "<p style='color:#888;font-size:13px'>No recent events found.</p>"
-        news_html += "</div>"
-        st.markdown(news_html, unsafe_allow_html=True)
+        tag_cls = {"Military": "tag-red", "Sanctions": "tag-amber", "Diplomatic": "tag-blue",
+                   "Nuclear": "tag-purple", "Political": "tag-orange"}
+        rows = ""
+        nd = news_df
+        if len(nd) > 0:
+            nd = nd[(nd["title"].str.replace(r"[^a-zA-Z]", "", regex=True).str.len() > 15)
+                    & ~nd["title"].str.contains(r"#|\.com|\.org|\.net|[A-Fa-f0-9]{6,}", regex=True, na=False)]
+        for _, r in nd.head(6).iterrows():
+            rows += (f"<div class='news'><div class='news-meta'>{r['time']} · {_html.escape(str(r['source']))}</div>"
+                     f"<span class='tag {tag_cls.get(r['category'], 'tag-grey')}'>{r['category']}</span>"
+                     f"{_html.escape(str(r['title']))}</div>")
+        if not rows:
+            rows = "<p class='muted'>The live GDELT feed is unavailable right now.</p>"
+        st.markdown(f"<div class='card'><div class='card-h'>Latest geopolitical headlines</div>"
+                    f"<div class='card-sub'>From the newest GDELT file · titles come from article URLs</div>"
+                    f"{rows}</div>", unsafe_allow_html=True)
+
+    section("Markets", "How sectors are trading",
+            "Live moves of the six sector groups this project tracks, and the sample portfolio's "
+            "history after past spikes.")
+    col_sec, col_port = st.columns([1.15, 1], gap="medium")
+    with col_sec:
+        sd = sector_df.dropna(subset=["avg"])
+        if len(sd):
+            m = sd["avg"].abs().max() or 1
+            bars = "".join(
+                f"<div class='bar-row'><div class='bar-name'>{r['sector']}</div>"
+                f"<div class='bar-track'><div class='bar {'bar-pos' if r['avg'] >= 0 else 'bar-neg'}' "
+                f"style='width:{abs(r['avg']) / m * 100:.0f}%'></div></div>"
+                f"<div class='bar-val {'pos' if r['avg'] >= 0 else 'neg'}'>{r['avg']:+.1f}%</div></div>"
+                for _, r in sd.iterrows())
+        else:
+            bars = "<p class='muted'>Live ETF prices are unavailable right now.</p>"
+        sub = "Today, since the open" if market_open else "Last trading day"
+        st.markdown(f"<div class='card'><div class='card-h'>Sector ETFs</div>"
+                    f"<div class='card-sub'>{sub} · JETS, SOXX, XLE, ITA, XLK, GLD</div>{bars}</div>",
+                    unsafe_allow_html=True)
+    with col_port:
+        prow = "".join(
+            f"<tr><td><b>{r.ticker}</b></td><td>{r.sector}</td><td>{r.weight}%</td>"
+            f"<td class='{'pos' if r.r5 >= 0 else 'neg'}'>{r.r5:+.2f}%</td>"
+            f"<td class='neg'>{r.wd:+.2f}%</td></tr>" for r in port_df.itertuples())
+        st.markdown(f"<div class='card'><div class='card-h'>Sample portfolio, after past spikes</div>"
+                    f"<div class='card-sub'>Average over {n_events} detected events</div>"
+                    f"<table class='tbl'><tr><th>Ticker</th><th>Sector</th><th>Weight</th>"
+                    f"<th>Day +5</th><th>Worst day</th></tr>{prow}</table>"
+                    f"<div class='summary'><span>Weighted Day +5</span>"
+                    f"<b class='{'pos' if weighted_5d >= 0 else 'neg'}'>{weighted_5d:+.2f}%</b></div>"
+                    f"<div class='summary'><span>Most exposed</span><b>{most_exposed}</b></div></div>",
+                    unsafe_allow_html=True)
+
 # ══════════════════════════════════════════════════════════════════
-with tab2:
-    st.markdown("<div class='section-title'>Geo-Tension Index, 2016 to today</div>"
-                f"<div class='section-sub'>Daily index from GDELT news. Red dots are the "
-                f"{len(spike_events)} spike events detected in the data.</div>", unsafe_allow_html=True)
+# EVENT HISTORY
+# ══════════════════════════════════════════════════════════════════
+with tab_hist:
+    years = spike_events["date"].dt.year
+    section("10 years", "Geopolitical tension since 2016",
+            f"Each point is one day of international news. Red dots are the {n_events} spike events "
+            f"detected automatically ({years.min()}–{years.max()}); hover a dot for its name.")
+    s1, s2, s3, s4 = st.columns(4)
+    for col, label, val in [(s1, "Days analysed", f"{len(geo_tension):,}" if HAS_HISTORY else "—"),
+                            (s2, "Spike events", f"{n_events}"),
+                            (s3, "Largest spike (z-score)", f"{spike_events['z_score'].max():.1f}"),
+                            (s4, "Years covered", f"{years.min()}–{years.max()}")]:
+        col.markdown(f"<div class='stat'><div class='stat-v'>{val}</div><div class='stat-l'>{label}</div></div>",
+                     unsafe_allow_html=True)
 
-    if not HAS_HISTORY:
-        st.info("The 10-year daily index isn't available in the rebuilt data (it needs the full "
-                "GDELT archive). The chart shows the spike days, with each day's index "
-                "recomputed from every GDELT file for that day.")
     fig_hist = go.Figure()
-    fig_hist.add_trace(go.Scatter(
-        x=geo_tension["date"], y=geo_tension["geo_tension_index"],
-        mode="lines", name="Geo-Tension Index",
-        line=dict(color="#3b82f6", width=1.5),
-        fillcolor="rgba(59,130,246,0.1)", fill="tozeroy"
-    ))
-    fig_hist.add_trace(go.Scatter(
-        x=spike_events["date"], y=spike_events["geo_tension_index"],
-        mode="markers", name="Spike Events",
-        marker=dict(color="#dc2626", size=8),
-        text=spike_events["label"],
-        hovertemplate="<b>%{text}</b><br>Date: %{x}<br>Score: %{y:.2f}<extra></extra>"
-    ))
-    # Show 5 years by default with rangeslider to scroll through all data
-    end_date   = geo_tension["date"].max() if HAS_HISTORY else spike_events["date"].max() + pd.Timedelta(days=30)
-    start_date = end_date - pd.Timedelta(days=365*5) if HAS_HISTORY else pd.Timestamp("2017-10-01")
+    fig_hist.add_trace(go.Scatter(x=geo_tension["date"], y=geo_tension["geo_tension_index"], name="Daily index",
+                                  mode="lines", line=dict(color=BLUE, width=1.2),
+                                  fill="tozeroy", fillcolor="rgba(37,99,235,0.07)",
+                                  hovertemplate="%{x|%Y-%m-%d}: %{y:.1f}<extra></extra>"))
+    fig_hist.add_trace(go.Scatter(x=spike_events["date"], y=spike_events["geo_tension_index"], name="Detected event",
+                                  mode="markers", marker=dict(color=RED, size=9, line=dict(color="white", width=1.5)),
+                                  text=spike_events["label"], customdata=spike_events["z_score"],
+                                  hovertemplate="<b>%{text}</b><br>%{x|%Y-%m-%d} · z-score %{customdata:.1f}<extra></extra>"))
+    style_fig(fig_hist, 380, "Geo-Tension Index (0–10)")
+    fig_hist.update_layout(hovermode="closest")
+    with st.container(border=True, key="card_hist_chart"):
+        st.plotly_chart(fig_hist, width="stretch", config={"displayModeBar": False})
 
-    fig_hist.update_layout(
-        height=400,
-        xaxis=dict(
-            showgrid=False, title="Date",
-            range=[start_date, end_date],
-            minallowed="2016-01-01",
-            maxallowed=str(end_date.date()),
-        ),
-        yaxis=dict(showgrid=True, gridcolor="#f0f0f0", title="Tension Score", rangemode="nonnegative", fixedrange=True),
-        plot_bgcolor="white", paper_bgcolor="white",
-        legend=dict(orientation="h", y=1.05),
-        hovermode="closest"
-    )
-    st.plotly_chart(fig_hist, width="stretch")
-    st.markdown("<div class='section-title'>Explore a spike event</div>"
-                "<div class='section-sub'>Pick an event to see how markets and the news reacted.</div>",
+    section("All events", "Detected events",
+            "Every spike found in the data, newest first. Names are generated from the countries and "
+            "news themes that stood out, not written by hand. z-score = how far above that year's "
+            "average the day was (spike rule: above 3).")
+    table = spike_events.sort_values("date", ascending=False).assign(
+        Date=lambda d: d["date"].dt.date, Event=lambda d: d["label"],
+        **{"z-score": lambda d: d["z_score"], "Index": lambda d: d["geo_tension_index"],
+           "Spike days": lambda d: d["spike_days"], "Countries": lambda d: d["top_countries"]})
+    st.dataframe(table[["Date", "Event", "z-score", "Index", "Spike days", "Countries"]],
+                 hide_index=True, width="stretch", height=280,
+                 column_config={"z-score": st.column_config.ProgressColumn(
+                                    "z-score", format="%.1f", min_value=0,
+                                    max_value=float(spike_events["z_score"].max())),
+                                "Index": st.column_config.NumberColumn(format="%.1f")})
+
+    section("Deep dive", "What happened, and how markets moved",
+            "Pick an event to see its tension around the peak, how each sector moved afterwards, "
+            "and the news coverage it came from.")
+    opts = spike_events.sort_values("date", ascending=False)
+    labels = [f"{r.date_str} · {r.label}" for r in opts.itertuples()]
+    choice = st.selectbox("Event", labels, label_visibility="collapsed")
+    ev = opts.iloc[labels.index(choice)]
+    sel_date = ev["date_str"]
+    sel_d = ev["date"].date()
+
+    window = (f"{pd.Timestamp(ev['start_date']).date()} → {pd.Timestamp(ev['end_date']).date()}"
+              if "start_date" in ev else sel_date)
+    themes = [humanize_theme(t) for t in str(ev.get("top_themes") or "").split(", ") if t][:6]
+    countries = [c for c in str(ev.get("top_countries") or "").split(", ") if c]
+    st.markdown(
+        f"<div class='event-card'><div class='event-name'>{_html.escape(ev['label'])}"
+        f"<span class='badge'>{sel_date}</span></div>"
+        f"<div class='event-facts'>"
+        f"<div><span>z-score</span><b>{ev['z_score']:.1f}</b></div>"
+        f"<div><span>Index</span><b>{ev['geo_tension_index']:.1f}/10</b></div>"
+        f"<div><span>Elevated</span><b>{window}</b></div>"
+        f"<div><span>Spike days</span><b>{int(ev.get('spike_days', 1))}</b></div></div>"
+        f"<div class='event-row'><span class='event-k'>Countries that stood out</span>{chips(countries, 'chip chip-blue')}</div>"
+        f"<div class='event-row'><span class='event-k'>Distinctive news themes</span>{chips(themes)}</div>"
+        f"</div>", unsafe_allow_html=True)
+
+    col_l, col_r = st.columns([1, 1], gap="medium")
+    with col_l:
+        start_dt, end_dt = ev["date"] - pd.Timedelta(days=10), ev["date"] + pd.Timedelta(days=10)
+        gw = geo_tension[(geo_tension["date"] >= start_dt) & (geo_tension["date"] <= end_dt)]
+        vw = vix_df[(vix_df["date"] >= start_dt) & (vix_df["date"] <= end_dt)] if len(vix_df) else vix_df
+        fe = go.Figure()
+        fe.add_trace(go.Scatter(x=gw["date"], y=gw["geo_tension_index"], name="Tension", mode="lines+markers",
+                                line=dict(color=BLUE, width=2), fill="tozeroy", fillcolor="rgba(37,99,235,0.08)"))
+        if len(vw):
+            fe.add_trace(go.Scatter(x=vw["date"], y=vw["vix"], name="VIX", yaxis="y2", mode="lines+markers",
+                                    line=dict(color=AMBER, width=2, dash="dot")))
+        fe.add_vline(x=ev["date"], line=dict(color=RED, width=1, dash="dash"))
+        with st.container(border=True, key="card_event_chart"):
+            st.markdown("<div class='card-h'>Tension and VIX around the peak</div>"
+                        "<div class='card-sub'>10 days either side · dashed line = peak day</div>",
+                        unsafe_allow_html=True)
+            st.plotly_chart(style_fig(fe, 280, "Tension", "VIX" if len(vw) else None), width="stretch",
+                            config={"displayModeBar": False})
+
+    with col_r:
+        reac = load_ticker_reaction_by_spike()
+        sp = reac[reac["spike_date"] == sel_d].copy()
+        t2s = {t: s for s, ts in SECTOR_MAP.items() for t in ts}
+        sp["sector"] = sp["ticker"].map(t2s)
+        sp = sp.dropna(subset=["sector"])
+        fs = go.Figure()
+        base_note = ""
+        if len(sp):
+            days = sorted(d for d in sp["days_from_spike"].unique() if d > 0)
+            colors = {1: "#93c5fd", 5: BLUE, 30: "#1e3a8a"}
+            for h in (1, 5, 30):
+                if not days:
+                    break
+                used = min(days, key=lambda x: abs(x - h))
+                g = sp[sp["days_from_spike"] == used].groupby("sector")["avg_return_pct"].mean()
+                g = g.reindex(list(SECTOR_MAP))
+                fs.add_trace(go.Bar(x=g.index, y=g.values, name=f"Day +{h}", marker_color=colors[h],
+                                    hovertemplate="%{x}: %{y:+.2f}%<extra>Day +" + str(h) + "</extra>"))
+            if "base_date" in sp and pd.notna(sp["base_date"].iloc[0]) and pd.Timestamp(sp["base_date"].iloc[0]).date() != sel_d:
+                base_note = f" · not a trading day, measured from the {pd.Timestamp(sp['base_date'].iloc[0]).date()} close"
+        style_fig(fs, 280, "Average return (%)")
+        fs.update_layout(barmode="group", hovermode="closest")
+        fs.add_hline(y=0, line=dict(color="#cbd5e1", width=1))
+        with st.container(border=True, key="card_sector_chart"):
+            st.markdown("<div class='card-h'>Sector returns after the event</div>"
+                        f"<div class='card-sub'>Average of S&P 500 members in each group · calendar days after the peak{base_note}</div>",
+                        unsafe_allow_html=True)
+            if len(fs.data):
+                st.plotly_chart(fs, width="stretch", config={"displayModeBar": False})
+            else:
+                st.markdown("<p class='muted'>No price data for this event.</p>", unsafe_allow_html=True)
+
+    try:
+        sn = pd.read_parquet(f"{DATA_DIR}/spike_news/")
+        sn["spike_date"] = pd.to_datetime(sn["spike_date"]).dt.date
+        sn = sn[sn["spike_date"] == sel_d].copy()
+        t = sn["title"].fillna("")
+        sn = sn[(t.str.len() > 20) & t.str.contains(" ") & ~t.str.contains(r"%|#|\.com|\.org|\.net|[A-Fa-f0-9]{6,}", regex=True)
+                & (t.str.replace(r"[^a-zA-Z]", "", regex=True).str.len() > 15)]
+        sn = sn.assign(dist=sn["days_from_spike"].abs()).sort_values("dist").drop_duplicates("title").head(8)
+        items = "".join(
+            f"<div class='news'><div class='news-meta'>{r.article_date} · {_html.escape(str(r.domain))}"
+            f"<span class='dayb'>{'peak day' if r.days_from_spike == 0 else f'{r.days_from_spike:+d} d'}</span></div>"
+            f"<a href='{_html.escape(str(r.url))}' target='_blank'>{_html.escape(r.title)}</a></div>"
+            for r in sn.itertuples()) or "<p class='muted'>No readable headlines for this event.</p>"
+    except Exception:
+        items = "<p class='muted'>News for this event isn't available.</p>"
+    st.markdown(f"<div class='card'><div class='card-h'>News coverage</div>"
+                f"<div class='card-sub'>Articles from 3 days before to 3 days after the peak, closest first · "
+                f"titles come from article URLs</div>{items}</div>", unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════
+# HOW IT WORKS
+# ══════════════════════════════════════════════════════════════════
+with tab_how:
+    section("Method", "How the numbers are made",
+            "Everything on this site is computed from public data. Nothing is labelled by hand, "
+            "and nothing here is a prediction or investment advice.")
+    steps = [
+        ("1", "Measure tension", "Every day, take GDELT's international news on conflict, sanctions, unrest, "
+         "diplomacy, cyber and nuclear topics. Score = average negative tone × log(number of articles), "
+         "shown on a 0–10 scale."),
+        ("2", "Detect spikes", "A day is a spike when its score is more than 3 standard deviations above that "
+         "year's average. Spike days within 3 days of each other are one event, dated by its peak."),
+        ("3", "Name events", "Each event is named after the countries and news categories that appear far "
+         "more often than around other events (a lift score, like TF-IDF). No AI or hand labels."),
+        ("4", "Measure markets", "For every event, the return of each S&P 500 stock from the first trading "
+         "day on or after the peak, averaged over six sector groups."),
+        ("5", "Ask the data", "The assistant on the right searches these results and answers only from them, "
+         "with numbered sources. If the data has no answer, it says so."),
+    ]
+    cols = st.columns(len(steps))
+    for col, (n, title, body) in zip(cols, steps):
+        col.markdown(f"<div class='step'><div class='step-n'>{n}</div><div class='step-t'>{title}</div>"
+                     f"<div class='step-b'>{body}</div></div>", unsafe_allow_html=True)
+    st.markdown("<div class='card' style='margin-top:18px'><div class='card-h'>Limits worth knowing</div>"
+                "<ul class='limits'><li>Returns are averages that include all other market news in the window: "
+                "correlation, not causation.</li><li>Stock list = today's S&P 500, so companies that left the "
+                "index are missing.</li><li>Event names are coarse (country + category) and can miss the "
+                "specifics.</li><li>Headlines are rebuilt from article URLs, not full text.</li></ul></div>",
                 unsafe_allow_html=True)
-    spike_options = (spike_events.sort_values("date", ascending=False)
-                     .apply(lambda r: f"{r['date'].strftime('%Y-%m-%d')} | {r['label']}", axis=1)
-                     .tolist())
-    selected_option = st.selectbox("Spike event", spike_options, label_visibility="collapsed")
-    selected_date  = selected_option.split(" | ")[0]
-    selected_event = selected_option.split(" | ")[1]
-    import datetime
-    if selected_date:
-        st.markdown(f"<div class='event-title'>{selected_event}"
-                    f"<span class='event-date'>{selected_date}</span></div>", unsafe_allow_html=True)
 
-        col_left, col_right = st.columns([1, 1])
-
-        # ── Left: ±5 day Geo-Tension + VIX chart ─────────────────────────
-        with col_left:
-            st.markdown("<div class='card-title'>Tension and VIX, 5 days either side</div>",
-                        unsafe_allow_html=True)
-            if not HAS_HISTORY:
-                st.caption("Daily index around the spike isn't in the rebuilt data; showing VIX only.")
-            spike_dt = pd.Timestamp(selected_date)
-            start_dt = spike_dt - pd.Timedelta(days=5)
-            end_dt   = spike_dt + pd.Timedelta(days=5)
-            geo_window = geo_tension[
-                (geo_tension["date"] >= start_dt) & (geo_tension["date"] <= end_dt)
-            ]
-            vix_window = vix_df[
-                (vix_df["date"] >= start_dt) & (vix_df["date"] <= end_dt)
-            ] if len(vix_df) > 0 else pd.DataFrame()
-
-            fig_event = go.Figure()
-            fig_event.add_trace(go.Scatter(
-                x=geo_window["date"], y=geo_window["geo_tension_index"],
-                mode="lines+markers", name="Geo-Tension",
-                line=dict(color="#3b82f6", width=2),
-                fill="tozeroy", fillcolor="rgba(59,130,246,0.1)",
-                yaxis="y1"
-            ))
-            if len(vix_window) > 0:
-                fig_event.add_trace(go.Scatter(
-                    x=vix_window["date"], y=vix_window["vix"],
-                    mode="lines+markers", name="VIX",
-                    line=dict(color="#f59e0b", width=2, dash="dot"),
-                    yaxis="y2"
-                ))
-
-            fig_event.update_layout(
-                height=280,
-                margin=dict(l=0, r=40, t=10, b=0),
-                xaxis=dict(showgrid=False, tickformat="%m/%d"),
-                yaxis=dict(showgrid=True, gridcolor="#f0f0f0", title="Tension"),
-                yaxis2=dict(overlaying="y", side="right", title="VIX", showgrid=False),
-                plot_bgcolor="white", paper_bgcolor="white",
-                legend=dict(orientation="h", y=1.1, x=0)
-            )
-            st.plotly_chart(fig_event, width="stretch")
-
-            # Sector Impact
-            st.markdown("<div class='card-title' style='margin-top:18px'>Sector moves 5 days later</div>",
-                        unsafe_allow_html=True)
-            try:
-                reaction_df  = load_ticker_reaction_by_spike()
-                spike_date_d = datetime.date.fromisoformat(selected_date)
-                spike_data   = reaction_df[reaction_df["spike_date"] == spike_date_d].copy()
-                # If no data for exact date, use nearest available date
-                if len(spike_data) == 0:
-                    available = reaction_df["spike_date"].unique()
-                    nearest = min(available, key=lambda d: abs((d - spike_date_d).days))
-                    spike_data = reaction_df[reaction_df["spike_date"] == nearest].copy()
-                    st.caption(f"No trading data for {selected_date}. Showing nearest date: {nearest}")
-                ticker_to_sector = {t: s for s, tickers in SECTOR_MAP.items() for t in tickers}
-                spike_data["sector"] = spike_data["ticker"].map(ticker_to_sector)
-                spike_data = spike_data.dropna(subset=["sector"])
-                # Use day 5 or nearest available trading day
-                available_days = sorted(spike_data[spike_data["days_from_spike"] > 0]["days_from_spike"].unique())
-                target_day = min(available_days, key=lambda x: abs(x-5)) if available_days else None
-                if target_day:
-                    sector_5d = spike_data[spike_data["days_from_spike"] == target_day].groupby("sector")["avg_return_pct"].mean().sort_values()
-                else:
-                    sector_5d = pd.Series(dtype=float)
-                if not sector_5d.empty:
-                    max_abs = sector_5d.abs().max()
-                    sec_html = "<div class='card'>"
-                    for sector, ret in sector_5d.items():
-                        bar_w = int(abs(ret) / max_abs * 180) if max_abs > 0 else 0
-                        bar_cls = "sector-bar-pos" if ret >= 0 else "sector-bar-neg"
-                        val_cls = "sector-val-pos" if ret >= 0 else "sector-val-neg"
-                        sign = "+" if ret >= 0 else ""
-                        sec_html += f"<div class='sector-row'><div class='sector-name'>{sector}</div><div class='{bar_cls}' style='width:{bar_w}px'></div><div class='{val_cls}'>{sign}{ret:.1f}%</div></div>"
-                    sec_html += "</div>"
-                    st.markdown(sec_html, unsafe_allow_html=True)
-                else:
-                    st.warning("No sector data for this date.")
-            except Exception as e:
-                st.error(f"Error: {e}")
-
-        # ── Right: Supporting News ────────────────────────────────────────
-        # ── Right: Supporting News ────────────────────────────────────────
-        with col_right:
-            try:
-                spike_news_df = pd.read_parquet(f"{DATA_DIR}/spike_news/")
-                spike_news_df["article_date"] = pd.to_datetime(spike_news_df["article_date"]).dt.date
-                spike_dt_hist = datetime.date.fromisoformat(selected_date)
-                news_filtered = spike_news_df[
-                    spike_news_df["article_date"].apply(lambda d: abs((d - spike_dt_hist).days) <= 3)
-                ].copy()
-                mask = (
-                    (news_filtered["title"].str.len() > 20) &
-                    (~news_filtered["title"].str.contains(r"#|\.com|\.org|\.net", na=False)) &
-                    (~news_filtered["title"].str.contains(r"[A-Fa-f0-9]{6,}", regex=True, na=False)) &
-                    (news_filtered["title"].str.contains(" ", na=False)) &
-                    (news_filtered["title"].str.replace(r"[^a-zA-Z]", "", regex=True).str.len() > 15) &
-                    (~news_filtered["title"].str.contains(r"^Article [A-Z][a-z]+ [A-Z][a-z]+", regex=True, na=False))
-                )
-                news_filtered = news_filtered[mask]
-                # Apply keyword relevance filter based on spike event label
-                news_filtered = news_filtered[news_filtered["title"].apply(lambda t: _passes_news_filter(t, selected_event))].head(6)
-                news_html = "<div class='card'><div class='chart-title'>Supporting News — GDELT Archive</div>"
-                if len(news_filtered) == 0:
-                    news_html += "<p style='color:#888;font-size:13px'>No articles found.</p>"
-                else:
-                    for _, row in news_filtered.iterrows():
-                        news_html += f"""<div class='news-item'>
-                            <div class='news-time'>{row['article_date']} · {row['domain']}</div>
-                            <span class='tag tag-military'>Geopolitical</span> {row['title']}
-                        </div>"""
-                news_html += "</div>"
-                st.markdown(news_html, unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"Error: {e}")
-    st.caption("Sources: GDELT news (2016 to today) and S&P 500 prices from yfinance · NYU Big Data project")
+st.markdown("<div class='footer'>Data: GDELT 2.0 (via BigQuery) and S&amp;P 500 prices from yfinance · "
+            "Started as an NYU Big Data project · Not investment advice</div>", unsafe_allow_html=True)
