@@ -11,14 +11,14 @@
     "id": "q01",
     "retrieved": [
       "event:2016-03-22",
-      "sector:2016-03-22:Defense",
       "summary:Defense",
+      "sector:2016-03-22:Defense",
       "summary:Energy",
       "sector:2016-03-22:Airlines"
     ],
-    "best_similarity": 0.6907,
+    "best_similarity": 0.6837,
     "hit@5": true,
-    "answer": "At Day +5 after the Belgium terror attack spike on 2016-03-22, the Energy sector fell the most with an average return of -2.18% [event:2016-03-22]. (\"Day +N\" means N calendar days after the spike.)",
+    "answer": "Based on the historical data, the Energy sector fell the most 5 days after the Belgium terror attack spike on 2016-03-22, with an average return of -2.18% [event:2016-03-22].",
     "refused": false,
     "gated": false,
     "cited": [
@@ -53,7 +53,7 @@
     ],
     "best_similarity": 0.6807,
     "hit@5": true,
-    "answer": "The Gold/Safe Haven sector fell the most (was the weakest) at Day +5 after the spike on 2017-03-23 [event:2017-03-23].",
+    "answer": "Five days after the geopolitical tension spike on March 23, 2017 (United Kingdom: terror attack), the Gold/Safe Haven sector fell the most, with an average return of -0.61% [event:2017-03-23]. (\"Day +5\" means 5 calendar days after the spike.)",
     "refused": false,
     "gated": false,
     "cited": [
@@ -63,13 +63,15 @@
     "correct": true,
     "facts_checked": [
       "2017-03-23",
+      "-0.61",
+      "5.0",
       "5.0"
     ],
     "unsupported": [],
     "grounded": true
   },
   {
-    "question": "Which sector fell the most 5 days after the Iran & North Korea: unrest spike?",
+    "question": "Which sector fell the most 5 days after the Iran: unrest spike?",
     "category": "weakest_sector_d5",
     "expected_answer": "Airlines",
     "expected_doc_ids": [
@@ -81,13 +83,13 @@
     "retrieved": [
       "summary:Tech",
       "event:2018-01-02",
+      "event:2024-04-14",
       "sector:2018-01-02:Defense",
-      "sector:2018-01-02:Energy",
-      "event:2020-01-03"
+      "sector:2018-01-02:Energy"
     ],
-    "best_similarity": 0.6843,
+    "best_similarity": 0.7273,
     "hit@5": true,
-    "answer": "Five days after the Iran & North Korea: unrest spike on 2018-01-02, Airlines fell the most and was the weakest sector [event:2018-01-02].",
+    "answer": "Five days after the Iran: unrest spike on January 2, 2018, the sector that fell the most (was the weakest) was Airlines, with an average return of -1.48% [event:2018-01-02].",
     "refused": false,
     "gated": false,
     "cited": [
@@ -96,13 +98,14 @@
     "invalid_citations": [],
     "correct": true,
     "facts_checked": [
-      "2018-01-02"
+      "2018-01-02",
+      "-1.48"
     ],
     "unsupported": [],
     "grounded": true
   },
   {
-    "question": "Which sector fell the most 5 days after the China & Mexico: unrest spike?",
+    "question": "Which sector fell the most 5 days after the China & Mexico: conflict spike?",
     "category": "weakest_sector_d5",
     "expected_answer": "Energy",
     "expected_doc_ids": [
@@ -112,30 +115,26 @@
     "answerable": true,
     "id": "q04",
     "retrieved": [
-      "summary:Semiconductors",
-      "summary:Defense",
-      "sector:2019-08-05:Energy",
+      "event:2019-08-05",
       "sector:2019-08-05:Defense",
-      "summary:Tech"
+      "summary:Semiconductors",
+      "sector:2019-08-05:Energy",
+      "sector:2019-08-05:Semiconductors"
     ],
-    "best_similarity": 0.6046,
+    "best_similarity": 0.5944,
     "hit@5": true,
-    "answer": "Energy stocks fell the most 5 days after the China & Mexico unrest spike on 2019-08-05, recording an average return of -0.11% [sector:2019-08-05:Energy]. At Day +5, this sector ranked 1 of 6 by return, with 1 indicating the lowest return [sector:2019-08-05:Energy].",
+    "answer": "Five days after the China & Mexico: conflict spike on 2019-08-05, the Energy sector fell the most with an average return of -0.11% [event:2019-08-05, sector:2019-08-05:Energy].",
     "refused": false,
     "gated": false,
     "cited": [
+      "event:2019-08-05",
       "sector:2019-08-05:Energy"
     ],
     "invalid_citations": [],
     "correct": true,
     "facts_checked": [
       "2019-08-05",
-      "5.0",
-      "-0.11",
-      "5.0",
-      "1.0",
-      "6.0",
-      "1.0"
+      "-0.11"
     ],
     "unsupported": [],
     "grounded": true
@@ -154,28 +153,32 @@
       "summary:Energy",
       "sector:2022-02-24:Energy",
       "sector:2022-02-24:Defense",
-      "event:2022-02-24",
-      "sector:2022-02-24:Tech"
+      "sector:2022-02-24:Airlines",
+      "sector:2022-02-24:Semiconductors"
     ],
-    "best_similarity": 0.685,
+    "best_similarity": 0.6248,
     "hit@5": true,
-    "answer": "At Day +5 after the Ukraine & Russia: sanctions & trade spike, Airlines fell the most, with an average return of -6.24% [event:2022-02-24].",
+    "answer": "Five days after the Ukraine & Russia: sanctions & trade spike on 2022-02-24, Airlines fell the most with an average return of -6.24% [sector:2022-02-24:Airlines]. At Day +5, this sector ranked 1 of 6 by return, where 1 is the lowest return [sector:2022-02-24:Airlines].",
     "refused": false,
     "gated": false,
     "cited": [
-      "event:2022-02-24"
+      "sector:2022-02-24:Airlines"
     ],
     "invalid_citations": [],
     "correct": true,
     "facts_checked": [
+      "2022-02-24",
+      "-6.24",
       "5.0",
-      "-6.24"
+      "1.0",
+      "6.0",
+      "1.0"
     ],
     "unsupported": [],
     "grounded": true
   },
   {
-    "question": "Which sector fell the most 5 days after the Iran & Israel: conflict spike?",
+    "question": "Which sector fell the most 5 days after the spike on 2024-04-14?",
     "category": "weakest_sector_d5",
     "expected_answer": "Semiconductors",
     "expected_doc_ids": [
@@ -185,30 +188,35 @@
     "answerable": true,
     "id": "q06",
     "retrieved": [
+      "sector:2024-04-14:Semiconductors",
       "event:2024-04-14",
-      "summary:Tech",
+      "sector:2024-04-14:Tech",
       "sector:2024-04-14:Defense",
-      "event:2026-03-01",
-      "sector:2024-04-14:Energy"
+      "sector:2024-04-14:Airlines"
     ],
-    "best_similarity": 0.7118,
+    "best_similarity": 0.6311,
     "hit@5": true,
-    "answer": "Semiconductors fell the most 5 days after the Iran & Israel: conflict spike [event:2024-04-14].",
+    "answer": "The semiconductors sector fell the most 5 days after the geopolitical tension spike on 2024-04-14, recording an average return of -6.56% [event:2024-04-14, sector:2024-04-14:Semiconductors]. Day +5 refers to 5 calendar days after the spike [event:2024-04-14].",
     "refused": false,
     "gated": false,
     "cited": [
-      "event:2024-04-14"
+      "event:2024-04-14",
+      "sector:2024-04-14:Semiconductors"
     ],
     "invalid_citations": [],
     "correct": true,
     "facts_checked": [
+      "2024-04-14",
+      "5.0",
+      "-6.56",
+      "5.0",
       "5.0"
     ],
     "unsupported": [],
     "grounded": true
   },
   {
-    "question": "How did Airlines stocks move 30 days after the Turkey & United Kingdom: diplomatic tension spike?",
+    "question": "How did Airlines stocks move 30 days after the Turkey: terror attack spike?",
     "category": "sector_d30",
     "expected_answer": "+9.45%",
     "expected_doc_ids": [
@@ -218,26 +226,33 @@
     "id": "q07",
     "retrieved": [
       "sector:2016-06-29:Airlines",
-      "summary:Airlines",
-      "event:2016-06-29",
-      "sector:2025-12-14:Airlines",
-      "sector:2017-05-23:Airlines"
+      "sector:2016-07-15:Airlines",
+      "sector:2017-01-01:Airlines",
+      "sector:2016-06-29:Defense",
+      "event:2016-06-29"
     ],
-    "best_similarity": 0.5759,
+    "best_similarity": 0.6116,
     "hit@5": true,
-    "answer": "After the Turkey & United Kingdom diplomatic tension spike on June 29, 2016, Airlines stocks had an average return of +9.45% at Day +30 [sector:2016-06-29:Airlines]. \"Day +30\" means 30 calendar days after the spike.",
+    "answer": "After the Turkey terror attack spike on 2016-06-29, Airlines stocks had an average return of +9.45% at Day +30 [sector:2016-06-29:Airlines]. After the Turkey and France terror attack spike on 2016-07-15, Airlines stocks had an average return of -4.51% (measured on the nearest trading day, +28) at Day +30 [sector:2016-07-15:Airlines]. After the Turkey and Syria terror attack spike on 2017-01-01, Airlines stocks had an average return of +2.90% at Day +30 [sector:2017-01-01:Airlines].",
     "refused": false,
     "gated": false,
     "cited": [
-      "sector:2016-06-29:Airlines"
+      "sector:2016-06-29:Airlines",
+      "sector:2016-07-15:Airlines",
+      "sector:2017-01-01:Airlines"
     ],
     "invalid_citations": [],
     "correct": true,
     "facts_checked": [
       "2016-06-29",
+      "2016-07-15",
+      "2017-01-01",
       "9.45",
       "30.0",
+      "-4.51",
+      "28.0",
       "30.0",
+      "2.9",
       "30.0"
     ],
     "unsupported": [],
@@ -256,12 +271,12 @@
       "sector:2017-04-09:Defense",
       "summary:Defense",
       "sector:2017-01-01:Defense",
-      "event:2017-04-09",
-      "sector:2018-04-14:Defense"
+      "sector:2018-04-14:Defense",
+      "event:2017-04-09"
     ],
-    "best_similarity": 0.6683,
+    "best_similarity": 0.6739,
     "hit@5": true,
-    "answer": "After the Syria & Egypt terror attack spike on April 9, 2017, Defense stocks had an average return of +2.80% at Day +30 [sector:2017-04-09:Defense]. \"Day +N\" means N calendar days after the spike.",
+    "answer": "Thirty days after the Syria & Egypt: terror attack spike on 2017-04-09, Defense stocks had an average return of +2.80% [sector:2017-04-09:Defense].",
     "refused": false,
     "gated": false,
     "cited": [
@@ -271,14 +286,13 @@
     "correct": true,
     "facts_checked": [
       "2017-04-09",
-      "2.8",
-      "30.0"
+      "2.8"
     ],
     "unsupported": [],
     "grounded": true
   },
   {
-    "question": "How did Energy stocks move 30 days after the Iran & North Korea: unrest spike?",
+    "question": "How did Energy stocks move 30 days after the Iran: unrest spike?",
     "category": "sector_d30",
     "expected_answer": "+3.57%",
     "expected_doc_ids": [
@@ -288,19 +302,18 @@
     "id": "q09",
     "retrieved": [
       "sector:2018-01-02:Energy",
-      "event:2018-01-02",
-      "summary:Energy",
       "summary:Tech",
-      "sector:2020-01-03:Energy"
+      "summary:Energy",
+      "sector:2024-04-14:Energy",
+      "event:2018-01-02"
     ],
-    "best_similarity": 0.6487,
+    "best_similarity": 0.6348,
     "hit@5": true,
-    "answer": "After the Iran & North Korea: unrest spike on 2018-01-02, Energy stocks had an average return of +3.57% at Day +30 [sector:2018-01-02:Energy]. (\"Day +N\" means N calendar days after the spike) [event:2018-01-02].",
+    "answer": "After the Iran: unrest spike on 2018-01-02, Energy stocks had an average return of +3.57% at Day +30 (measured from the spike-day close) [sector:2018-01-02:Energy].",
     "refused": false,
     "gated": false,
     "cited": [
-      "sector:2018-01-02:Energy",
-      "event:2018-01-02"
+      "sector:2018-01-02:Energy"
     ],
     "invalid_citations": [],
     "correct": true,
@@ -313,7 +326,7 @@
     "grounded": true
   },
   {
-    "question": "How did Gold/Safe Haven stocks move 30 days after the Iraq & Iran: unrest spike?",
+    "question": "How did Gold/Safe Haven stocks move 30 days after the Iraq & Iran: conflict spike?",
     "category": "sector_d30",
     "expected_answer": "+2.15%",
     "expected_doc_ids": [
@@ -322,15 +335,15 @@
     "answerable": true,
     "id": "q10",
     "retrieved": [
-      "sector:2020-01-03:Gold/Safe Haven",
-      "event:2020-01-03",
       "summary:Gold/Safe Haven",
-      "sector:2018-01-02:Gold/Safe Haven",
-      "sector:2024-04-14:Gold/Safe Haven"
+      "sector:2020-01-03:Gold/Safe Haven",
+      "sector:2024-04-14:Gold/Safe Haven",
+      "sector:2026-03-01:Gold/Safe Haven",
+      "sector:2018-01-02:Gold/Safe Haven"
     ],
-    "best_similarity": 0.7406,
+    "best_similarity": 0.735,
     "hit@5": true,
-    "answer": "After the Iraq & Iran: unrest spike on January 3, 2020, Gold/Safe Haven stocks had an average return of +2.15% at Day +30 (measured at the nearest trading day, +28) [sector:2020-01-03:Gold/Safe Haven].",
+    "answer": "After the Iraq & Iran: conflict spike on 2020-01-03, Gold/Safe Haven stocks had an average return of +2.15% at Day +30 (measured on the nearest trading day, +28) [sector:2020-01-03:Gold/Safe Haven].",
     "refused": false,
     "gated": false,
     "cited": [
@@ -359,13 +372,13 @@
     "retrieved": [
       "sector:2022-02-24:Semiconductors",
       "event:2022-02-24",
-      "sector:2022-02-24:Defense",
       "sector:2022-02-24:Tech",
+      "sector:2022-02-24:Defense",
       "summary:Semiconductors"
     ],
     "best_similarity": 0.6557,
     "hit@5": true,
-    "answer": "Thirty days after the Ukraine & Russia: sanctions & trade spike on February 24, 2022, Semiconductors stocks had an average return of +3.36% (measured on the nearest trading day, +29) [sector:2022-02-24:Semiconductors].",
+    "answer": "After the Ukraine & Russia: sanctions & trade spike on 2022-02-24, Semiconductors stocks had an average return of +3.36% at Day +30 (measured on the nearest trading day, +29) from the spike-day close [sector:2022-02-24:Semiconductors].",
     "refused": false,
     "gated": false,
     "cited": [
@@ -376,13 +389,14 @@
     "facts_checked": [
       "2022-02-24",
       "3.36",
+      "30.0",
       "29.0"
     ],
     "unsupported": [],
     "grounded": true
   },
   {
-    "question": "How did Tech stocks move 30 days after the Iran & Israel: conflict spike?",
+    "question": "How did Tech stocks move 30 days after the spike on 2024-04-14?",
     "category": "sector_d30",
     "expected_answer": "+3.78%",
     "expected_doc_ids": [
@@ -391,15 +405,15 @@
     "answerable": true,
     "id": "q12",
     "retrieved": [
-      "summary:Tech",
       "sector:2024-04-14:Tech",
-      "sector:2026-03-01:Tech",
+      "event:2024-04-14",
+      "sector:2024-04-14:Semiconductors",
       "sector:2024-04-14:Defense",
-      "sector:2024-04-14:Semiconductors"
+      "sector:2024-04-14:Gold/Safe Haven"
     ],
-    "best_similarity": 0.6905,
+    "best_similarity": 0.5954,
     "hit@5": true,
-    "answer": "Thirty days after the Iran & Israel: conflict spike on 2024-04-14, Tech stocks had an average return of +3.78% [sector:2024-04-14:Tech].",
+    "answer": "Thirty days after the geopolitical tension spike on 2024-04-14, Tech stocks had an average return of +3.78% [sector:2024-04-14:Tech]. (\"Day +30\" means 30 calendar days after the spike.)",
     "refused": false,
     "gated": false,
     "cited": [
@@ -409,7 +423,9 @@
     "correct": true,
     "facts_checked": [
       "2024-04-14",
-      "3.78"
+      "3.78",
+      "30.0",
+      "30.0"
     ],
     "unsupported": [],
     "grounded": true
@@ -430,7 +446,7 @@
       "sector:2016-07-15:Tech",
       "sector:2016-07-15:Airlines"
     ],
-    "best_similarity": 0.3914,
+    "best_similarity": 0.4077,
     "hit@5": true,
     "answer": "The Geo-Tension Index on 2016-07-15 was 10.00 out of 10 [event:2016-07-15].",
     "refused": false,
@@ -464,9 +480,9 @@
       "sector:2017-08-18:Tech",
       "sector:2017-08-18:Semiconductors"
     ],
-    "best_similarity": 0.3718,
+    "best_similarity": 0.4095,
     "hit@5": true,
-    "answer": "On 2017-08-18, the Geo-Tension Index was 10.00 out of 10 [event:2017-08-18].",
+    "answer": "The Geo-Tension Index on 2017-08-18 was 10.00 out of 10 [event:2017-08-18].",
     "refused": false,
     "gated": false,
     "cited": [
@@ -498,7 +514,7 @@
       "sector:2020-01-03:Defense",
       "sector:2020-01-03:Semiconductors"
     ],
-    "best_similarity": 0.4026,
+    "best_similarity": 0.4335,
     "hit@5": true,
     "answer": "The Geo-Tension Index on 2020-01-03 was 8.58 out of 10 [event:2020-01-03].",
     "refused": false,
@@ -532,9 +548,9 @@
       "sector:2023-10-18:Defense",
       "sector:2023-10-18:Semiconductors"
     ],
-    "best_similarity": 0.3325,
+    "best_similarity": 0.3462,
     "hit@5": true,
-    "answer": "The Geo-Tension Index on 2023-10-18 was 10.00 out of 10 [event:2023-10-18].",
+    "answer": "On 2023-10-18, the Geo-Tension Index was 10.00 out of 10 [event:2023-10-18].",
     "refused": false,
     "gated": false,
     "cited": [
@@ -566,7 +582,7 @@
       "sector:2017-01-01:Airlines",
       "sector:2017-01-01:Semiconductors"
     ],
-    "best_similarity": 0.658,
+    "best_similarity": 0.6513,
     "hit@5": true,
     "answer": "Turkey stood out most in the news coverage of the geopolitical tension spike on 2017-01-01 [event:2017-01-01].",
     "refused": false,
@@ -583,33 +599,33 @@
     "grounded": true
   },
   {
-    "question": "Which country stood out most in news coverage of the spike on 2019-03-16?",
+    "question": "Which country stood out most in news coverage of the spike on 2018-04-14?",
     "category": "top_country",
-    "expected_answer": "New Zealand",
+    "expected_answer": "Syria",
     "expected_doc_ids": [
-      "event:2019-03-16"
+      "event:2018-04-14"
     ],
     "answerable": true,
     "id": "q18",
     "retrieved": [
-      "event:2019-03-16",
-      "sector:2019-03-16:Defense",
-      "sector:2019-03-16:Gold/Safe Haven",
-      "sector:2019-03-16:Semiconductors",
-      "sector:2019-03-16:Airlines"
+      "event:2018-04-14",
+      "sector:2018-04-14:Gold/Safe Haven",
+      "sector:2018-04-14:Defense",
+      "sector:2018-04-14:Semiconductors",
+      "sector:2018-04-14:Airlines"
     ],
-    "best_similarity": 0.6443,
+    "best_similarity": 0.6503,
     "hit@5": true,
-    "answer": "New Zealand stood out most in the news coverage of the spike on 2019-03-16 [event:2019-03-16].",
+    "answer": "Syria stood out most in news coverage of the spike on 2018-04-14, being mentioned most distinctively and first among the countries that stood out [event:2018-04-14].",
     "refused": false,
     "gated": false,
     "cited": [
-      "event:2019-03-16"
+      "event:2018-04-14"
     ],
     "invalid_citations": [],
     "correct": true,
     "facts_checked": [
-      "2019-03-16"
+      "2018-04-14"
     ],
     "unsupported": [],
     "grounded": true
@@ -626,11 +642,11 @@
     "retrieved": [
       "event:2023-10-07",
       "sector:2023-10-07:Defense",
-      "sector:2023-10-07:Gold/Safe Haven",
       "sector:2023-10-07:Airlines",
+      "sector:2023-10-07:Gold/Safe Haven",
       "sector:2023-10-07:Semiconductors"
     ],
-    "best_similarity": 0.6676,
+    "best_similarity": 0.6358,
     "hit@5": true,
     "answer": "Israel stood out most in the news coverage of the spike on 2023-10-07 [event:2023-10-07].",
     "refused": false,
@@ -657,14 +673,14 @@
     "id": "q20",
     "retrieved": [
       "sector:2016-03-22:Defense",
-      "event:2016-03-22",
       "summary:Defense",
       "sector:2016-03-22:Energy",
+      "event:2016-03-22",
       "sector:2017-03-23:Defense"
     ],
     "best_similarity": 0.6897,
     "hit@5": true,
-    "answer": "One day after the Belgium: terror attack spike on 2016-03-22, Defense stocks had an average return of -0.33% measured from the spike-day close [sector:2016-03-22:Defense].",
+    "answer": "One day after the Belgium terror attack spike on 2016-03-22, Defense stocks had an average return of -0.33% measured from the spike-day close [sector:2016-03-22:Defense].",
     "refused": false,
     "gated": false,
     "cited": [
@@ -680,72 +696,68 @@
     "grounded": true
   },
   {
-    "question": "How did Defense stocks react one day after the Syria & France: unrest spike?",
+    "question": "How did Defense stocks react one day after the Iran: unrest spike?",
     "category": "label_only_d1",
-    "expected_answer": "+0.00%",
+    "expected_answer": "+0.38%",
     "expected_doc_ids": [
-      "sector:2018-04-14:Defense"
+      "sector:2018-01-02:Defense"
     ],
     "answerable": true,
     "id": "q21",
     "retrieved": [
-      "sector:2018-04-14:Defense",
-      "sector:2016-07-15:Defense",
-      "event:2018-04-14",
-      "summary:Defense",
-      "sector:2017-04-09:Defense"
+      "sector:2018-01-02:Defense",
+      "event:2018-01-02",
+      "sector:2024-04-14:Defense",
+      "summary:Tech",
+      "summary:Defense"
     ],
-    "best_similarity": 0.694,
+    "best_similarity": 0.6811,
     "hit@5": true,
-    "answer": "After the Syria & France unrest spike on April 14, 2018, Defense stocks had an average return of +0.00% measured from the first trading day after the spike (April 16, 2018) to Day +1 (the nearest trading day, +2) [sector:2018-04-14:Defense, event:2018-04-14].",
+    "answer": "One day after the Iran: unrest spike on 2018-01-02, Defense stocks had an average return of +0.38% measured from the spike-day close [sector:2018-01-02:Defense].",
     "refused": false,
     "gated": false,
     "cited": [
-      "sector:2018-04-14:Defense",
-      "event:2018-04-14"
+      "sector:2018-01-02:Defense"
     ],
     "invalid_citations": [],
     "correct": true,
     "facts_checked": [
-      "2018-04-14",
-      "2018-04-16",
-      "0.0",
-      "1.0",
-      "2.0"
+      "2018-01-02",
+      "0.38"
     ],
     "unsupported": [],
     "grounded": true
   },
   {
-    "question": "How did Defense stocks react one day after the Ukraine & Russia: sanctions & trade spike?",
+    "question": "How did Defense stocks react one day after the Afghanistan: terror attack spike?",
     "category": "label_only_d1",
-    "expected_answer": "+3.22%",
+    "expected_answer": "-0.34%",
     "expected_doc_ids": [
-      "sector:2022-02-24:Defense"
+      "sector:2021-08-27:Defense"
     ],
     "answerable": true,
     "id": "q22",
     "retrieved": [
-      "sector:2022-02-24:Defense",
-      "event:2022-02-24",
-      "summary:Defense",
-      "sector:2024-03-23:Defense",
-      "sector:2022-02-24:Energy"
+      "sector:2021-08-27:Defense",
+      "event:2021-08-27",
+      "sector:2017-03-23:Defense",
+      "sector:2016-06-29:Defense",
+      "summary:Defense"
     ],
-    "best_similarity": 0.6797,
+    "best_similarity": 0.7193,
     "hit@5": true,
-    "answer": "After the Ukraine & Russia: sanctions & trade spike on 2022-02-24, Defense stocks had an average return of +3.22% at Day +1 measured from the spike-day close [sector:2022-02-24:Defense].",
+    "answer": "One day after the Afghanistan terror attack spike on August 27, 2021, Defense stocks had an average return of -0.34% (measured on the nearest trading day, Day +3) [sector:2021-08-27:Defense].",
     "refused": false,
     "gated": false,
     "cited": [
-      "sector:2022-02-24:Defense"
+      "sector:2021-08-27:Defense"
     ],
     "invalid_citations": [],
     "correct": true,
     "facts_checked": [
-      "2022-02-24",
-      "3.22",
-      "1.0"
+      "2021-08-27",
+      "-0.34",
+      "3.0"
     ],
     "unsupported": [],
     "grounded": true
@@ -763,13 +775,13 @@
     "retrieved": [
       "summary:events",
       "event:2017-03-23",
-      "event:2017-08-18",
+      "event:2021-05-12",
       "event:2018-01-02",
-      "event:2017-04-09"
+      "event:2017-08-18"
     ],
-    "best_similarity": 0.5552,
+    "best_similarity": 0.607,
     "hit@5": true,
-    "answer": "The 2017 spike with the largest z-score was on August 18, 2017, regarding a terror attack in Spain [summary:events, event:2017-08-18]. Its raw tension score was 4.79 standard deviations above the 2017 average [event:2017-08-18].",
+    "answer": "The 2017 spike with the largest z-score was on 2017-08-18 for the Spain terror attack, which recorded a z-score of 4.79 [summary:events, event:2017-08-18].",
     "refused": false,
     "gated": false,
     "cited": [
@@ -781,8 +793,7 @@
     "facts_checked": [
       "2017-08-18",
       "2017.0",
-      "4.79",
-      "2017.0"
+      "4.79"
     ],
     "unsupported": [],
     "grounded": true
@@ -800,13 +811,13 @@
     "retrieved": [
       "summary:Airlines",
       "sector:2021-05-12:Airlines",
-      "sector:2019-08-05:Airlines",
+      "sector:2016-06-29:Airlines",
       "sector:2023-10-18:Airlines",
-      "sector:2017-03-23:Airlines"
+      "sector:2017-08-18:Airlines"
     ],
-    "best_similarity": 0.7524,
+    "best_similarity": 0.7799,
     "hit@5": true,
-    "answer": "At Day +5, Airlines stocks fell the most after the spike on 2026-03-01 (Iran & Israel: diplomatic tension, -10.25%) [summary:Airlines].",
+    "answer": "Based on the historical data, Airlines stocks fell the most by Day +5 after the geopolitical tension spike on 2026-03-01, which involved Iran and Israel in conflict, with a decline of -10.25% [summary:Airlines].",
     "refused": false,
     "gated": false,
     "cited": [
@@ -837,17 +848,17 @@
       "summary:Defense",
       "sector:2024-04-14:Defense",
       "sector:2023-10-18:Defense",
-      "sector:2016-03-22:Defense",
-      "sector:2020-01-03:Defense"
+      "sector:2021-05-12:Defense",
+      "sector:2016-06-29:Defense"
     ],
-    "best_similarity": 0.535,
-    "answer": "I can't give investment advice. Historically, after the geopolitical tension spike on 2024-04-14 (Iran & Israel: conflict), Defense stocks had average returns of +0.00% at Day +1, +0.90% at Day +5, and +3.84% at Day +30 [sector:2024-04-14:Defense]. After the spike on 2023-10-18 (Israel: terror attack), Defense stocks returned -0.66% at Day +1, -1.89% at Day +5, and +5.58% at Day +30 [sector:2023-10-18:Defense]. Following the 2020-01-03 spike (Iraq & Iran: unrest), Defense stocks showed returns of +0.50% at Day +1, +0.21% at Day +5, and +1.30% at Day +30 [sector:2020-01-03:Defense].",
+    "best_similarity": 0.5475,
+    "answer": "I can't give investment advice. Historically, after the geopolitical tension spike on 2023-10-18 (Israel: terror attack), Defense stocks had an average return of -0.66% at Day +1, -1.89% at Day +5, and +5.58% at Day +30 [sector:2023-10-18:Defense]. After the 2024-04-14 spike (Iran & Israel: conflict), Defense stocks showed an average return of +0.00% at Day +1, +0.90% at Day +5, and +3.84% at Day +30 [sector:2024-04-14:Defense]. Across all 27 spike events, Defense stocks experienced both positive and negative returns at various time horizons [summary:Defense].",
     "refused": false,
     "gated": false,
     "cited": [
-      "sector:2024-04-14:Defense",
       "sector:2023-10-18:Defense",
-      "sector:2020-01-03:Defense"
+      "sector:2024-04-14:Defense",
+      "summary:Defense"
     ],
     "invalid_citations": [],
     "refusal_correct": true
@@ -864,22 +875,20 @@
     "expected_doc_ids": [],
     "id": "q26",
     "retrieved": [
-      "event:2020-01-03",
       "event:2024-04-14",
+      "event:2020-01-03",
+      "event:2018-01-02",
       "summary:Tech",
-      "sector:2024-04-14:Energy",
-      "sector:2024-04-14:Defense"
+      "sector:2018-01-02:Defense"
     ],
-    "best_similarity": 0.602,
-    "answer": "I can't give investment advice. The provided documents do not contain information about future events or predictions for the next Iran escalation [event:2020-01-03, event:2024-04-14, summary:Tech, sector:2024-04-14:Energy, sector:2024-04-14:Defense].",
+    "best_similarity": 0.5823,
+    "answer": "I can't give investment advice. Historically, the sector that fell the most at Day +5 after Iran-related spikes varied: Semiconductors fell the most after the 2024-04-14 Iran & Israel conflict [event:2024-04-14], Energy fell the most after the 2020-01-03 Iraq & Iran conflict [event:2020-01-03], and Airlines fell the most after the 2018-01-02 Iran unrest [event:2018-01-02].",
     "refused": false,
     "gated": false,
     "cited": [
-      "event:2020-01-03",
       "event:2024-04-14",
-      "summary:Tech",
-      "sector:2024-04-14:Energy",
-      "sector:2024-04-14:Defense"
+      "event:2020-01-03",
+      "event:2018-01-02"
     ],
     "invalid_citations": [],
     "refusal_correct": true
@@ -898,10 +907,10 @@
       "summary:Energy",
       "summary:Defense",
       "summary:Gold/Safe Haven",
-      "event:2022-02-24",
-      "summary:Semiconductors"
+      "event:2023-10-07",
+      "event:2024-03-23"
     ],
-    "best_similarity": 0.5065,
+    "best_similarity": 0.5067,
     "answer": "I don't have evidence for that in the data.",
     "refused": true,
     "gated": false,
@@ -920,13 +929,13 @@
     "expected_doc_ids": [],
     "id": "q28",
     "retrieved": [
+      "event:2021-05-12",
+      "event:2019-08-05",
       "event:2025-09-09",
-      "event:2026-03-01",
-      "event:2025-12-14",
-      "event:2016-06-29",
-      "event:2024-08-04"
+      "event:2024-03-23",
+      "event:2026-03-01"
     ],
-    "best_similarity": 0.5018,
+    "best_similarity": 0.4859,
     "answer": "I don't have evidence for that in the data.",
     "refused": true,
     "gated": false,
@@ -947,8 +956,8 @@
     "retrieved": [
       "sector:2017-01-01:Semiconductors",
       "event:2017-01-01",
-      "sector:2016-03-22:Semiconductors",
       "sector:2016-06-29:Semiconductors",
+      "sector:2016-03-22:Semiconductors",
       "sector:2017-01-01:Energy"
     ],
     "best_similarity": 0.3317,
