@@ -251,7 +251,7 @@ def download_prices():
     return data
 
 
-def build_reactions(closes: pd.DataFrame) -> pd.DataFrame:
+def build_reactions(closes: pd.DataFrame, dates=None) -> pd.DataFrame:
     """Same rule as event_window.py: return vs the spike-day close for every
     trading day within +-30 calendar days of the spike.
 
@@ -266,7 +266,7 @@ def build_reactions(closes: pd.DataFrame) -> pd.DataFrame:
     long["date"] = pd.to_datetime(long["date"]).dt.tz_localize(None).dt.normalize()
 
     out = []
-    for s in spike_dates():
+    for s in (dates if dates is not None else spike_dates()):
         sd = pd.Timestamp(s)
         win = long[(long["date"] - sd).dt.days.abs() <= PRICE_WINDOW].copy()
         after = win.loc[win["date"] >= sd, "date"]
