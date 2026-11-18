@@ -17,7 +17,7 @@ When geopolitical crises happen — wars, sanctions, coups, protests — markets
 This platform answers those questions by:
 
 1. Building a **Geo-Tension Index** from 10 years of GDELT news (2016–2026)
-2. Detecting **31 international tension spikes** using statistical anomaly detection
+2. Detecting **international tension spikes** automatically (uncapped score > yearly mean + 3σ, nearby days grouped into one event)
 3. Computing **sector-level stock reactions** for each spike event (±30 trading days)
 4. Displaying everything in a **Streamlit dashboard** with historical event explorer
 
@@ -80,7 +80,9 @@ gdelt-risk-platform/
 │   ├── rebuild_for_rag.py         # Rebuilds Q&A inputs for the 31 spikes on a laptop
 │   ├── bigquery_daily_index.sql   # 10-year daily index inputs, aggregated in BigQuery
 │   ├── download_prices.py         # 10 years of S&P 500 daily closes (yfinance)
-│   └── build_history.py           # Index, thresholds, spike check, reactions (pandas)
+│   ├── build_history.py           # Index + automatic spike/event detection (pandas)
+│   ├── bigquery_event_news.sql    # Template: news per detected event (filled by build_history)
+│   └── build_events.py            # Names events from data, news, stock reactions
 ├── pyspark_pipeline/
 │   ├── geo_tension_index.py       # Builds daily Geo-Tension Index
 │   ├── event_window.py            # Computes ticker reactions ±30d per spike
@@ -127,14 +129,15 @@ Using raw sentiment alone has a flaw: a single highly negative article would sco
 
 ## Spike Detection
 
-### Method
-spike = geo_tension_index > yearly_mean + 3 × yearly_std
+### Method (data-driven rebuild)
 
-This is a Z-score based statistical anomaly detection approach. The threshold is computed **per year** to account for the fact that global news volume and sentiment vary across different periods (e.g. COVID era vs pre-2020). A 3σ threshold captures statistically extreme days — roughly the top 0.1% of tension scores — ensuring only genuine geopolitical shocks are flagged, not routine news cycles.
+1. **Score before capping.** `raw = avg_negative_tone × ln(article_count + 1)` per day. Spikes are found on `raw`, not on the 0–10 index: the index is clipped at 10, so a "mean + 3σ" rule on it can need a value above 10 and never fire (this happened in 2017–2020 in the original).
+2. **Spike day** = `raw` more than 3 standard deviations above that year's mean (per year, because news volume changes over time). A partial last day is dropped.
+3. **Events, not days.** Spike days at most 3 days apart form one event, dated by its peak day; the event keeps its start/end dates and number of spike days.
 
-### Labeling
+### Labeling (automatic)
 
-Spike dates falling within known geopolitical events are manually labeled (e.g. "Russia-Ukraine War", "Israel-Hamas War"). For remaining dates, labels are auto-generated from the most frequent keywords in GDELT article titles within ±3 days of the spike.
+No event names are typed by hand. For each event, BigQuery collects the matching articles from peak ±3 days (`bigquery_event_news.sql`), and `build_events.py` names it from the data: the most-mentioned countries plus the most common article category, e.g. "Ukraine & Russia: conflict". The top GDELT themes are kept next to the name as evidence. (The original project used 31 hand-picked dates with hand-written labels; they stay in `dashboard/constants.py` only for the old outputs.)
 
 ---
 
@@ -322,7 +325,7 @@ A **chat panel on the right of the dashboard** (open or close it with the button
 
 ### Data provenance (read this first)
 
-The original pipeline outputs lived on the NYU Dataproc cluster, and access ended with the course. The Q&A therefore runs on **rebuilt** inputs made by `data_collection/rebuild_for_rag.py` for the same 31 spike dates the original pipeline detected (kept in `dashboard/constants.py`):
+The original pipeline outputs lived on the NYU Dataproc cluster, and access ended with the course. The recommended path is the data-driven rebuild below ("Rebuild the full 10-year history"). The older quick path, `data_collection/rebuild_for_rag.py`, rebuilds inputs for the original 31 hand-picked dates (kept in `dashboard/constants.py`):
 
 | | Original cluster outputs | Rebuilt for the Q&A |
 |---|---|---|
@@ -335,22 +338,23 @@ The original pipeline outputs lived on the NYU Dataproc cluster, and access ende
 
 Only the 161 days around the spikes are downloaded, so this runs on a laptop: data is filtered while it streams and only matching rows are saved (a few hundred MB), though the download itself is large (roughly tens to a hundred-plus GB, a few hours depending on connection). `--files-per-day 4` makes a quick sample instead; then no index is recomputed. The dashboard reads `GEO_DATA_DIR`, else the original cluster folder if present, else `~/dashboard_data_rebuilt`. On rebuilt data the 10-year index chart and the history-based risk level aren't available, so those spots say so; the headline score is computed live from the latest 15-minute GDELT file (same method as `collect_live.py`), and the portfolio card, spike explorer and Q&A work as before. `build_corpus.py` handles all three shapes (original, full rebuild, sample) and only writes the facts that exist.
 
-#### Optional: rebuild the full 10-year history
+#### Rebuild the full 10-year history (data-driven)
 
-Restores the 10-year chart, yearly thresholds, z-scores and the S&P 500-wide reactions without the cluster:
+Everything below is computed from data — spike dates, event names, categories and stock reactions. The BigQuery steps filter and aggregate on Google's side, so only small CSVs come back. Use a sandbox project without billing and check the "will process N GB" estimate before each run (free tier: 1 TB/month).
 
-1. **Daily index inputs via BigQuery.** Run `data_collection/bigquery_daily_index.sql` in the BigQuery console (a sandbox project without billing). GDELT's public tables are filtered and aggregated on Google's side, so only ~3,700 rows (one per day) come back instead of ~2 TB of raw files. The console shows how many GB the query will read before it runs; keep it under the free 1 TB per month. Save the result as `~/dashboard_data_rebuilt/gdelt_daily.csv`.
-2. **Prices.** `python -m data_collection.download_prices` downloads daily adjusted closes for today's S&P 500 members (2015-11 → today) in batches. Companies that left the index since 2016 are missing (survivorship bias).
-3. **Recompute.** `python -m data_collection.build_history` applies the original formulas in pandas (0–10 scaling with p1/p99, yearly mean + 3σ threshold, ±30-day returns), writes the files the dashboard reads, and saves `spike_check.csv` showing how many of the original 31 spike dates are detected again.
+1. **Daily index inputs (BigQuery).** Run `data_collection/bigquery_daily_index.sql`; save as `~/dashboard_data_rebuilt/gdelt_daily.csv` (one row per day). An article is kept when its **Themes** match a category (token-boundary regexes), at least one non-US country appears in **Locations**, and its tone is valid.
+2. **Prices.** `python -m data_collection.download_prices` — daily adjusted closes for today's S&P 500 members (survivorship bias: companies that left the index are missing).
+3. **Detect events.** `python -m data_collection.build_history` builds the index, detects spike days, groups them into events (`events.csv`) and writes a ready-to-run `event_news.sql` with those dates filled in.
+4. **News per event (BigQuery).** Run `event_news.sql` (it reads only the event days, so it is much cheaper than step 1); save as `~/dashboard_data_rebuilt/event_news.csv`.
+5. **Name events + reactions.** `python -m data_collection.build_events` names each event, saves its news and computes ±30-day returns (base = first trading day on/after the peak).
+6. Then `python -m rag.build_corpus`, `python -m rag.index`, `python -m rag.eval.make_questions`, `python -m rag.eval.run_eval`, and `streamlit run dashboard/app.py`.
 
-**What the rebuild found (run 2026-11-18, BigQuery data through 2026-11-17, 3,956 days):**
+**Problems in the original project that this fixes:**
 
-- **8 of the original 31 spike dates are detected again** with the same rule (index > yearly mean + 3σ). Most of the others are still unusually high: 22 of 31 have z ≥ 2, and only 2 have z < 1.
-- **The rule can't fire in some years.** The index is capped at 10, but in 2017–2020 the yearly threshold came out above 10 (10.13, 10.25, 11.88, 10.69), so no day in those years can count as a spike. That is a limit of the original formula, not of the data.
-- **The source differs.** The original pipeline filtered downloaded GDELT files; the rebuild uses GDELT's public BigQuery table, which yields more articles per day, so the 0–10 scaling shifts.
-- **A bug in the original filter.** `gdelt_download.sh` matches its keywords against GKG column 7, which is V2Counts (event counts such as PROTEST or KILL), not the Themes column. Military and sanction keywords almost never appear there, so the "dominant category" comes out as POLITICAL_INSTABILITY on every day. The rebuild reproduces this on purpose; fixing it means filtering on V2Themes instead.
-
-The event list therefore stays the original 31 dates (they carry the labels and news), with the rebuilt index, z-score and threshold attached.
+- **Hand-picked events.** The 31 spike dates and their names were chosen by hand; re-running the original rule on BigQuery data matched only 8 of 31. Now dates and names come from the data.
+- **Unreachable threshold.** The index is capped at 10, but in 2017–2020 the yearly mean + 3σ threshold was above 10 (10.13, 10.25, 11.88, 10.69), so those years could have no spikes. Detection now runs on the uncapped score.
+- **Wrong column.** `gdelt_download.sh` matched keywords against GKG column 7 (V2Counts), not Themes, so the "dominant category" was POLITICAL_INSTABILITY on every day. The new SQL filters on Themes and checks "international" with Locations country codes.
+- **Weekend spikes.** Returns use the first trading day on/after the spike as the base, so a weekend spike no longer borrows another day's numbers.
 
 ### Architecture
 
@@ -415,6 +419,8 @@ User:
 - **Refusal accuracy** — on unanswerable questions, did it refuse (or decline advice)? It also reports **false refusals** on answerable questions.
 
 ### Results
+
+> These numbers are from the earlier run on the 31 hand-picked events. Re-run steps 1–6 above for numbers on the automatically detected events.
 
 Run on 2026-11-17 on the full rebuild (every GKG file for the 161 days): 28 data-derived questions (23 answerable, 5 unanswerable), k = 5, embedding model `all-MiniLM-L6-v2`, LLM `gemini-3.5-flash-lite` (Gemini free tier). Numbers are copied from `rag/eval/results.md` and `results_dense_retrieval.md`, not edited.
 

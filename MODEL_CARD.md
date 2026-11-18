@@ -5,7 +5,7 @@ A question-answering feature on top of the GDELT Geopolitical Risk Platform. It 
 
 - **Retriever:** `sentence-transformers/all-MiniLM-L6-v2` embeddings + FAISS exact cosine search
 - **Generator:** Gemini via Google AI Studio by default (`gemini-3.8-flash`), or Claude via the Anthropic API (`GEO_QA_PROVIDER`, `GEO_QA_MODEL`). The model used is printed in every eval report.
-- **Knowledge source:** 31 detected geopolitical tension spikes (2016–2026) and the average returns of 6 groups of S&P 500 stocks at Day +1 / +5 / +30
+- **Knowledge source:** geopolitical tension spikes detected automatically in GDELT data (2016–2026) and the average returns of 6 groups of S&P 500 stocks at Day +1 / +5 / +30
 
 ## Intended use
 - Exploring and explaining this project's historical results ("what happened around date X, and how did sector Y move afterwards?")
@@ -17,11 +17,11 @@ A question-answering feature on top of the GDELT Geopolitical Risk Platform. It 
 - Real-time news. The live feed in the dashboard is not part of the Q&A corpus.
 
 ## Data sources
-The original cluster outputs are no longer accessible, so the knowledge base is **rebuilt** with `data_collection/rebuild_for_rag.py` for the same 31 spike dates. Spike-day Geo-Tension Index values are recomputed with the original formula; z-scores and thresholds are not available (details in the README's "Data provenance" section).
+The original cluster outputs are no longer accessible, so the knowledge base is **rebuilt** from GDELT's BigQuery tables with automatic spike detection and naming (`build_history.py` → `build_events.py`). Index values, z-scores and event windows are computed from the data (details in the README's "Data provenance" section).
 
 - [GDELT 2.0 GKG](https://www.gdeltproject.org/): news articles filtered to geopolitical themes, international coverage only
 - S&P 500 daily closing prices via [yfinance](https://github.com/ranaroussi/yfinance)
-- Event labels written by the project team (`dashboard/constants.py`); unlabeled spikes are named by their most frequent headline words
+- Event names generated from the data (most-mentioned countries + most common news category); no hand-written labels
 
 ## Evaluation
 Method: see "Evaluation method" in the README. The eval set is generated from the data (23 answerable and 5 unanswerable questions on the full rebuild).
@@ -41,9 +41,9 @@ The set is small (23 answerable questions), so treat these as indicative. "Groun
 
 ## Limitations and risks
 - Rebuilt data: index values are recomputed for spike days only and may differ slightly from the original pipeline.
-- Small corpus (31 events, ~50 stocks in 6 sectors), so coverage is narrow.
+- Small corpus (a few dozen events, ~50 stocks in 6 sectors), so coverage is narrow.
 - Headlines are reconstructed from article URLs, not full text, and can be noisy.
-- Spike labels are partly manual and partly keyword-based, and may oversimplify an event.
+- Auto-generated names (countries + category) can oversimplify an event, and several events can share a name; the date tells them apart.
 - Returns are averages over a few stocks per sector and don't control for other market news (correlation, not causation).
 - Questions that need comparing all events can fail, because the LLM only sees the top k documents.
 - Recomputed index values are capped at 10.00, so several spikes tie at the top.
