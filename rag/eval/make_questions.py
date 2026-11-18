@@ -134,36 +134,43 @@ def make(docs):
                    "category": "strongest_sector_d5", "expected_answer": best,
                    "expected_doc_ids": [e["doc_id"], f"sector:{date}:{best}"]})
 
-    # F. Questions that need comparing many events — hard for top-k RAG
-    if not has_index:
-        cells = [(d, c["5"]["return_pct"]) for (d, s), doc in sector_docs.items()
-                 if s == "Airlines" for c in [doc["returns"]] if "5" in c]
-        if cells:
-            worst_date = min(cells, key=lambda x: x[1])[0]
-            qs.append({"question": "After which spike did Airlines stocks fall the most by Day +5?",
-                       "category": "aggregate", "expected_answer": worst_date,
-                       "expected_doc_ids": [f"sector:{worst_date}:Airlines"]})
-        for q in qs:
-            q["answerable"] = True
-        return _finish(qs)
+    # F. Questions that need comparing many events — hard for top-k RAG.
+    # Only asked when the answer is unique: recomputed index values are
+    # capped at 10.00, so several spikes can tie for "highest", and a question
+    # with several right answers would be scored unfairly.
+    def add_unique_max(question, items, value):
+        items = [x for x in items if value(x) is not None]
+        if not items:
+            return False
+        best = max(value(x) for x in items)
+        winners = [x for x in items if value(x) == best]
+        if len(winners) != 1:
+            print(f"  skipped (tie for the top among {len(winners)}): {question}")
+            return False
+        qs.append({"question": question, "category": "aggregate",
+                   "expected_answer": winners[0]["date"], "expected_doc_ids": [winners[0]["doc"]]})
+        return True
 
-    top = max(events, key=lambda e: e["geo_tension_index"])
-    qs.append({"question": "Which detected spike had the highest Geo-Tension Index?",
-               "category": "aggregate", "expected_answer": top["event_date"],
-               "expected_doc_ids": [top["doc_id"]]})
+    ev_items = [{"date": e["event_date"], "doc": e["doc_id"],
+                 "index": e.get("geo_tension_index"), "z": e.get("z_score")} for e in events]
     years = Counter(e["event_date"][:4] for e in events)
     year = max(years, key=lambda y: (years[y], y))
-    in_year = [e for e in events if e["event_date"].startswith(year)]
-    if has_z:
-        top_z = max(in_year, key=lambda e: e["z_score"])
-        qs.append({"question": f"Which {year} spike had the largest z-score?",
-                   "category": "aggregate", "expected_answer": top_z["event_date"],
-                   "expected_doc_ids": [top_z["doc_id"]]})
-    else:
-        top_y = max(in_year, key=lambda e: e["geo_tension_index"])
-        qs.append({"question": f"Which {year} spike had the highest Geo-Tension Index?",
-                   "category": "aggregate", "expected_answer": top_y["event_date"],
-                   "expected_doc_ids": [top_y["doc_id"]]})
+    in_year = [x for x in ev_items if x["date"].startswith(year)]
+    added = 0
+    if has_index:
+        added += add_unique_max("Which detected spike had the highest Geo-Tension Index?",
+                                ev_items, lambda x: x["index"])
+        if has_z:
+            added += add_unique_max(f"Which {year} spike had the largest z-score?",
+                                    in_year, lambda x: x["z"])
+        else:
+            added += add_unique_max(f"Which {year} spike had the highest Geo-Tension Index?",
+                                    in_year, lambda x: x["index"])
+    if added < 2:
+        airlines = [{"date": d, "doc": f"sector:{d}:Airlines", "ret": doc["returns"]["5"]["return_pct"]}
+                    for (d, sct), doc in sector_docs.items() if sct == "Airlines" and "5" in doc["returns"]]
+        add_unique_max("After which spike did Airlines stocks fall the most by Day +5?",
+                       airlines, lambda x: -x["ret"])
 
     for q in qs:
         q["answerable"] = True
