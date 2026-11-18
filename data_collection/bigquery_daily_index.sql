@@ -22,7 +22,7 @@
 --   3. Run, then Save results -> CSV (local file). Save it as
 --      ~/dashboard_data_rebuilt/gdelt_daily.csv
 
-WITH rows AS (
+WITH raw_rows AS (
   SELECT
     PARSE_DATE('%Y%m%d', SUBSTR(CAST(DATE AS STRING), 1, 8)) AS day,
     SAFE_CAST(SPLIT(V2Tone, ',')[SAFE_OFFSET(2)] AS FLOAT64) AS neg,
@@ -47,7 +47,7 @@ WITH rows AS (
 ),
 kept AS (
   SELECT day, neg, category
-  FROM rows
+  FROM raw_rows
   WHERE category IS NOT NULL AND international AND neg BETWEEN 0 AND 50
 ),
 daily AS (
