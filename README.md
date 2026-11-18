@@ -343,6 +343,15 @@ Restores the 10-year chart, yearly thresholds, z-scores and the S&P 500-wide rea
 2. **Prices.** `python -m data_collection.download_prices` downloads daily adjusted closes for today's S&P 500 members (2015-11 → today) in batches. Companies that left the index since 2016 are missing (survivorship bias).
 3. **Recompute.** `python -m data_collection.build_history` applies the original formulas in pandas (0–10 scaling with p1/p99, yearly mean + 3σ threshold, ±30-day returns), writes the files the dashboard reads, and saves `spike_check.csv` showing how many of the original 31 spike dates are detected again.
 
+**What the rebuild found (run 2026-11-18, BigQuery data through 2026-11-17, 3,956 days):**
+
+- **8 of the original 31 spike dates are detected again** with the same rule (index > yearly mean + 3σ). Most of the others are still unusually high: 22 of 31 have z ≥ 2, and only 2 have z < 1.
+- **The rule can't fire in some years.** The index is capped at 10, but in 2017–2020 the yearly threshold came out above 10 (10.13, 10.25, 11.88, 10.69), so no day in those years can count as a spike. That is a limit of the original formula, not of the data.
+- **The source differs.** The original pipeline filtered downloaded GDELT files; the rebuild uses GDELT's public BigQuery table, which yields more articles per day, so the 0–10 scaling shifts.
+- **A bug in the original filter.** `gdelt_download.sh` matches its keywords against GKG column 7, which is V2Counts (event counts such as PROTEST or KILL), not the Themes column. Military and sanction keywords almost never appear there, so the "dominant category" comes out as POLITICAL_INSTABILITY on every day. The rebuild reproduces this on purpose; fixing it means filtering on V2Themes instead.
+
+The event list therefore stays the original 31 dates (they carry the labels and news), with the rebuilt index, z-score and threshold attached.
+
 ### Architecture
 
 ```mermaid

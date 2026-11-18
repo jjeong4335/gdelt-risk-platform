@@ -39,6 +39,14 @@ def build_index(daily: pd.DataFrame) -> pd.DataFrame:
     df = daily.copy()
     df["date"] = pd.to_datetime(df["date"]).dt.normalize()
     df = df.sort_values("date").drop_duplicates("date")
+    # The query runs mid-day, so the last day is usually incomplete (a few
+    # hundred articles instead of thousands). Drop it so "today's index"
+    # isn't artificially low.
+    recent = df["total_events"].iloc[-31:-1].median()
+    if len(df) > 31 and df["total_events"].iloc[-1] < 0.5 * recent:
+        print(f"Dropping incomplete last day {df['date'].iloc[-1].date()} "
+              f"({df['total_events'].iloc[-1]} articles vs ~{recent:.0f} usual)")
+        df = df.iloc[:-1]
     df["geo_tension_raw"] = df["avg_negative_tone"] * (df["total_events"] + 1).map(math.log)
     p1, p99 = df["geo_tension_raw"].quantile([0.01, 0.99])
     print(f"Raw tension percentiles: p1={p1:.3f}, p99={p99:.3f}")
@@ -81,6 +89,14 @@ def main():
     check.to_csv(d / "spike_check.csv", index=False)
     print(f"\nSpike check: {len(detected)} days detected now; "
           f"{len(both)}/{len(original)} of the original 31 spike dates detected again.")
+    z_orig = df[df["date"].dt.strftime("%Y-%m-%d").isin(original)]["z_score"]
+    print(f"  z-score of the original dates: >=3: {(z_orig >= 3).sum()}, >=2: {(z_orig >= 2).sum()}, "
+          f"<1: {(z_orig < 1).sum()} (of {len(z_orig)})")
+    capped = df.groupby("year")["threshold"].first()
+    capped = capped[capped > 10]
+    if len(capped):
+        print("  years where the threshold is above the 0-10 cap (no spike possible): "
+              + ", ".join(f"{y} ({t:.2f})" for y, t in capped.items()))
     if original - detected:
         print("  original dates NOT detected now:", ", ".join(sorted(original - detected)))
     if detected - original:
