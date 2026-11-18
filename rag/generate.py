@@ -70,7 +70,7 @@ def build_user_message(question, hits):
     return f"<documents>\n{format_documents(hits)}\n</documents>\n\nQuestion: {question}"
 
 
-CITATION_RE = re.compile(r"\[((?:event|sector|summary):[^\]]+)\]")
+CITATION_RE = re.compile(r"\[((?:event|sector|summary|analysis):[^\]]+)\]")
 
 
 def render_citations(text, hits):

@@ -59,6 +59,8 @@ def load_outputs(data_dir: Path) -> dict:
     for key, col in [("spike_events", "date"), ("spike_news", "spike_date"), ("reactions", "spike_date")]:
         if out[key] is not None:
             out[key][col] = _to_date_str(out[key][col])
+    a = data_dir / "analysis.json"
+    out["analysis"] = json.loads(a.read_text()) if a.exists() else None
     return out
 
 
@@ -230,7 +232,59 @@ def build_documents(data: dict) -> list:
                 "returns": {str(h): c for h, c in cells.items()},
                 "text": text,
             })
-    return docs + summary_documents(docs)
+    return docs + summary_documents(docs) + analysis_documents(data.get("analysis"))
+
+
+LAG_WINDOW_DAYS = 10  # same as data_collection/build_analysis.py
+
+
+def analysis_documents(a) -> list:
+    """Cross-event analyses from data_collection/build_analysis.py, written
+    answer-first so the embedding model (first ~256 tokens) sees the answer."""
+    if not a:
+        return []
+    docs = []
+    mk = lambda key, label, text: docs.append({
+        "doc_id": f"analysis:{key}", "type": "analysis", "event_date": "all events", "label": label,
+        "sector": None, "source_url": "", "urls": [], "text": text})
+
+    s = a["stocks"]
+    fmt = lambda rows: "; ".join(f"{r['ticker']} ({r['sector'] or 'S&P 500'}) {fmt_pct(r['avg_return_pct'])}, "
+                                 f"rose in {r['rose_in']}" for r in rows)
+    mk("stocks", "Best and worst stocks after spikes",
+       "Which stocks did best and worst after geopolitical tension spikes, on average across all detected "
+       f"events (historical, not a recommendation). Compared {s['day5']['stocks_compared']} S&P 500 stocks. "
+       f"Best average return at Day +5: {fmt(s['day5']['best'][:6])}. "
+       f"Worst average return at Day +5: {fmt(s['day5']['worst'][:6])}. "
+       f"Best average return at Day +30: {fmt(s['day30']['best'][:5])}. "
+       f"Worst average return at Day +30: {fmt(s['day30']['worst'][:5])}.")
+
+    v = a["volatile"]
+    similar = ("somewhat similar" if v["mean_jaccard"] >= 2 * v["random_jaccard"] else "mostly different")
+    mk("volatile", "Were the biggest movers similar across events",
+       f"Were the most volatile stocks similar across geopolitical events? The {v['movers_per_event']} stocks "
+       f"with the largest Day +5 moves (up or down) were {similar} from event to event: two events shared "
+       f"{v['mean_jaccard']:.1%} of their biggest movers on average (Jaccard overlap), versus "
+       f"{v['random_jaccard']:.1%} for two random sets of {v['movers_per_event']} out of {v['stocks']} stocks. "
+       "Stocks that were among the biggest movers most often: "
+       + "; ".join(f"{r['ticker']} in {r['events']} of {v['events']} events" for r in v["most_repeated"][:10]) + ".")
+
+    if "vix_lead" in a:
+        x = a["vix_lead"]
+        corr = x["corr_tension_vs_vix_change_k_days_later"]
+        best_k = max(corr, key=lambda k: abs(corr[k]))
+        who = ("the Geo-Tension score usually peaked first" if x["median_days"] > 0 else
+               "the VIX usually peaked first" if x["median_days"] < 0 else "they usually peaked on the same day")
+        mk("vix_lead", "Did the VIX or the Geo-Tension score move first",
+           f"Did the VIX or the Geo-Tension Index move first? Around the {x['events']} detected spikes, {who}: "
+           f"the VIX's highest close within {LAG_WINDOW_DAYS} days of the spike came a median of "
+           f"{x['median_days']:+.1f} days after the tension peak (positive = VIX later). Tension peaked first in "
+           f"{x['tension_first']} events, the VIX first in {x['vix_first']}, the same day in {x['same_day']}. "
+           f"Over all days, the tension score's correlation with the VIX's daily change k days later was "
+           f"strongest at k = {best_k} ({corr[best_k]:+.3f}); correlations for k = -2..+2: "
+           + ", ".join(f"k={k}: {corr[str(k)] if str(k) in corr else corr[k]:+.3f}" for k in range(-2, 3))
+           + ". Correlation, not causation.")
+    return docs
 
 
 def summary_documents(docs: list) -> list:

@@ -99,6 +99,14 @@ def main():
     if missing:
         print(f"No data for {len(missing)} tickers (delisted or renamed): {', '.join(missing[:20])}"
               + (" ..." if len(missing) > 20 else ""))
+    # VIX history, for the "did VIX or tension move first?" analysis
+    import yfinance as yf
+    vix = yf.download("^VIX", start=args.start, end=end, auto_adjust=True, progress=False)
+    if len(vix):
+        close = vix["Close"]
+        close = close.iloc[:, 0] if hasattr(close, "columns") else close
+        pd.DataFrame({"date": close.index, "vix": close.values}).to_parquet(out / "vix.parquet")
+        print(f"Wrote {out / 'vix.parquet'}: {len(vix)} days")
     print("\nNext: python -m data_collection.build_history")
 
 

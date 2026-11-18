@@ -193,6 +193,10 @@ def main():
     }).reset_index().to_parquet(d / "ticker_summary.parquet")
     print(f"\nStock reactions: {reactions['ticker'].nunique()} tickers x "
           f"{reactions['spike_date'].nunique()} events = {len(reactions):,} rows")
+    from data_collection.build_analysis import build as build_analysis
+    a = build_analysis(d)
+    print(f"Cross-event analysis -> {d / 'analysis.json'}"
+          + ("" if "vix_lead" in a else " (no vix.parquet: re-run download_prices for the VIX part)"))
     print(f"\nNext: python -m rag.build_corpus --data-dir {d}")
 
 

@@ -99,7 +99,7 @@ def _ask(question, retriever, k, start, end, sectors):
         "invalid": ans.invalid_citations,
         "model": f"{config.LLM_PROVIDER} / {config.LLM_MODEL}",
         "sources": [{"n": n, "date": by_id[c]["event_date"], "label": by_id[c]["label"],
-                     "sector": None if by_id[c]["doc_id"].startswith("summary:") else by_id[c].get("sector"),
+                     "sector": None if by_id[c]["doc_id"].startswith(("summary:", "analysis:")) else by_id[c].get("sector"),
                      "url": by_id[c].get("source_url") or ""}
                     for n, c in enumerate(order, 1)],
         "docs": [{"date": h.doc["event_date"], "label": h.doc["label"], "sector": h.doc.get("sector"),

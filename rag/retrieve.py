@@ -93,7 +93,7 @@ class Retriever:
         self.by_id = {d["doc_id"]: i for i, d in enumerate(self.docs)}
 
     def _keep(self, doc, start_date, end_date, sectors):
-        if doc["type"] in ("sector_summary", "events_summary"):  # cover all dates
+        if doc["type"] in ("sector_summary", "events_summary", "analysis"):  # cover all dates
             return not (sectors and doc["sector"] is not None and doc["sector"] not in sectors)
         if start_date and doc["event_date"] < start_date:
             return False
@@ -135,7 +135,7 @@ class Retriever:
             doc = self.docs[int(i)]
             if not self._keep(doc, start_date, end_date, sectors):
                 continue
-            if names_date and doc["type"] in ("sector_summary", "events_summary"):
+            if names_date and doc["type"] in ("sector_summary", "events_summary", "analysis"):
                 continue
             hits.append(Hit(doc=doc, score=cosine[int(i)], rank_score=float(rank_score)))
             if len(hits) == k:
