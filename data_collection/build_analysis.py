@@ -68,7 +68,23 @@ def vix_lead(events: pd.DataFrame, tension: pd.DataFrame, vix: pd.DataFrame) -> 
     # Whole-period check: correlation of tension(t) with the VIX daily % change k days later.
     both = pd.concat([t, jump], axis=1, keys=["t", "dv"], sort=True).dropna()
     corr = {k: round(float(both["t"].corr(both["dv"].shift(-k))), 3) for k in range(-5, 6)}
-    return {"per_event": lags, "window_trading_days": LAG_WINDOW,
+    # Co-movement, whichever moves first: VIX % change from the close before the
+    # news peak's trading day (day -1) to the close after it (day +1), compared
+    # with the same 2-day change on every other day, and how often random dates
+    # match the events' average (permutation test).
+    two_day = (v.shift(-1) / v.shift(1) - 1) * 100
+    ev_pos = sorted({int(days_idx.searchsorted(d)) for d in events["date"]} - {len(days_idx)})
+    ev_vals = two_day.iloc[ev_pos].dropna()
+    near = set(p for e in ev_pos for p in range(e - 3, e + 4))
+    normal = two_day.iloc[[p for p in range(len(two_day)) if p not in near]].dropna()
+    rng = np.random.default_rng(0)
+    sims = rng.choice(normal.values, size=(10000, len(ev_vals))).mean(axis=1)
+    comove = {"event_mean_pct": round(float(ev_vals.mean()), 2), "normal_mean_pct": round(float(normal.mean()), 2),
+              "event_median_pct": round(float(ev_vals.median()), 2),
+              "events_vix_up": int((ev_vals > 0).sum()), "events": int(len(ev_vals)),
+              "normal_share_up": round(float((normal > 0).mean()), 3),
+              "p_value": round(float((sims >= ev_vals.mean()).mean()), 4)}
+    return {"comove": comove, "per_event": lags, "window_trading_days": LAG_WINDOW,
             "median_days": float(np.median(days)) if days else None,
             "vix_before": sum(x < 0 for x in days), "vix_same_day": sum(x == 0 for x in days),
             "vix_after": sum(x > 0 for x in days), "events": len(days),
@@ -117,6 +133,9 @@ def main():
     print(f"  biggest movers overlap between events: {v['mean_jaccard']} (random sets: {v['random_jaccard']})")
     if "vix_lead" in out:
         x = out["vix_lead"]
+        c = x["comove"]
+        print(f"  VIX change day -1 to +1 around spikes: {c['event_mean_pct']:+.2f}% vs {c['normal_mean_pct']:+.2f}% "
+              f"on normal days; VIX rose in {c['events_vix_up']}/{c['events']} events; p = {c['p_value']}")
         print(f"  Biggest VIX jump vs news peak: median {x['median_days']:+.1f} trading days "
               f"(VIX before {x['vix_before']}, first trading day {x['vix_same_day']}, after {x['vix_after']})")
     else:

@@ -235,6 +235,19 @@ def build_documents(data: dict) -> list:
     return docs + summary_documents(docs) + analysis_documents(data.get("analysis"))
 
 
+def comove_text(c) -> str:
+    if not c:
+        return ""
+    verdict = ("clearly more than on normal days" if c["p_value"] < 0.05 else
+               "a little more than on normal days, but not clearly beyond chance" if c["event_mean_pct"] > c["normal_mean_pct"]
+               else "no more than on normal days")
+    return (f"From the trading day before the news peak to the day after, the VIX changed by "
+            f"{c['event_mean_pct']:+.2f}% on average around the {c['events']} spikes (median {c['event_median_pct']:+.2f}%), "
+            f"versus {c['normal_mean_pct']:+.2f}% for the same 2-day window on normal days, so it rose {verdict} "
+            f"(p = {c['p_value']}, random-date test). It rose in {c['events_vix_up']} of {c['events']} spikes, "
+            f"versus {c['normal_share_up']:.0%} of normal windows. ")
+
+
 def analysis_documents(a) -> list:
     """Cross-event analyses from data_collection/build_analysis.py, written
     answer-first so the embedding model (first ~256 tokens) sees the answer."""
@@ -274,7 +287,8 @@ def analysis_documents(a) -> list:
                "the VIX usually jumped before the news peaked" if x["median_days"] < 0 else
                "the VIX usually jumped on the first trading day after the news peak")
         mk("vix_lead", "Did the VIX or the Geo-Tension score move first",
-           f"Did the VIX or the Geo-Tension Index move first? Around the {x['events']} detected spikes, {who}. "
+           f"Did the VIX and the Geo-Tension Index move together? {comove_text(x.get('comove'))}"
+           f"Did one move first? Around the {x['events']} detected spikes, {who}. "
            f"The VIX's biggest daily jump within {x['window_trading_days']} trading days of the news peak came a "
            f"median of {x['median_days']:+.1f} trading days after it (day 0 = the first trading day on or after the "
            f"news peak, so weekend news isn't counted as a delay). The VIX jumped before the news peak in "
