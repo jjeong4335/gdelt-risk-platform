@@ -28,7 +28,7 @@ Method: see "Evaluation" in the README. 29 questions generated from the data (24
 
 | Metric | Result |
 |---|---|
-| Retrieval hit rate @1 / @3 / @5 (hybrid) | 79.2% / 95.8% / 100.0% (19, 23, 24 of 24) |
+| Retrieval hit rate @1 / @3 / @5 (hybrid) | 83.3% / 95.8% / 100.0% (20, 23, 24 of 24) |
 | Answer accuracy (answerable) | 100.0% (24/24) |
 | Grounded answers (numbers/dates found in retrieved docs) | 100.0% (24/24) |
 | Refusal accuracy (unanswerable) | 100.0% (5/5) |

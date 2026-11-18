@@ -133,7 +133,7 @@ Run on 2026-11-18 on data through 2026-11-17 (27 events): 29 generated questions
 
 | Metric | First run on the 27 events | Final |
 |---|---|---|
-| Retrieval hit rate @1 | 15/24 (62.5%) | 19/24 (79.2%) |
+| Retrieval hit rate @1 | 15/24 (62.5%) | 20/24 (83.3%) |
 | Retrieval hit rate @3 | 18/24 (75.0%) | 23/24 (95.8%) |
 | Retrieval hit rate @5 | 18/24 (75.0%) | 24/24 (100.0%) |
 | Answer accuracy (answerable) | 18/24 (75.0%) | 24/24 (100.0%) |
@@ -144,7 +144,7 @@ Run on 2026-11-18 on data through 2026-11-17 (27 events): 29 generated questions
 
 **What changed between the two runs, and why.** The first run's 6 misses were all retrieval misses. Five were "index on <date>" / "weakest sector on <date>" questions where the six sector documents for that date filled the top 5 and pushed out the event document; in one of them the model then answered from an incomplete set of sectors and got it wrong. The sixth needed comparing all 27 events, which top-k retrieval can't do. The fixes were date-aware retrieval (that date's documents first, event document always included) and the precomputed comparison documents. The three "most-mentioned country" questions were also rephrased to ask by date: event names are built from those countries, so asking by name gave the answer away.
 
-**Embeddings only vs hybrid** (`run_eval --retriever dense --retrieval-only`, same 24 questions): dense-only hit@1/@3/@5 = 18/24, 24/24, 24/24; hybrid = 19/24, 23/24, 24/24. Once date-aware retrieval was added, BM25 no longer makes a clear difference on this set; it is kept because it was what fixed date questions before, and it costs nothing at this corpus size.
+**Embeddings only vs hybrid** (`run_eval --retriever dense --retrieval-only`, same 24 questions): dense-only hit@1/@3/@5 = 18/24, 24/24, 24/24; hybrid = 19/24, 23/24, 24/24 (measured before the final event-naming change; the final hybrid run is 20/24, 23/24, 24/24). Once date-aware retrieval was added, BM25 no longer makes a clear difference on this set; it is kept because it was what fixed date questions before, and it costs nothing at this corpus size.
 
 **Read with care.** These fixes were made after looking at the failures, on the same kind of generated questions, so the final numbers are optimistic: they show the known failure modes are fixed, not how the system does on new kinds of questions. The set is small (24 answerable), and 100% on it does not mean the system is never wrong.
 
