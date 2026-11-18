@@ -147,7 +147,10 @@ def load_spike_events():
     if "geo_tension_index" not in df:  # quick-sample rebuild has no index values
         df["geo_tension_index"] = float("nan")
     df["date_str"] = df["date"].dt.strftime("%Y-%m-%d")
-    # Auto-label from spike_news keywords if not in SPIKE_LABELS
+    if "label" in df and df["label"].notna().all():
+        # Data-driven rebuild: events were detected and named from the data.
+        return df.sort_values("geo_tension_index", ascending=False)
+    # Original data: hand-written labels, else top headline keywords
     try:
         spike_news_df = pd.read_parquet(f"{DATA_DIR}/spike_news/")
         spike_news_df["article_date"] = pd.to_datetime(spike_news_df["article_date"]).dt.date
@@ -619,12 +622,12 @@ with tab1:
 # ══════════════════════════════════════════════════════════════════
 with tab2:
     st.markdown("<div class='section-title'>Geo-Tension Index, 2016 to today</div>"
-                "<div class='section-sub'>Daily index from GDELT news. Red dots are the 31 "
-                "geopolitical spike events.</div>", unsafe_allow_html=True)
+                f"<div class='section-sub'>Daily index from GDELT news. Red dots are the "
+                f"{len(spike_events)} spike events detected in the data.</div>", unsafe_allow_html=True)
 
     if not HAS_HISTORY:
         st.info("The 10-year daily index isn't available in the rebuilt data (it needs the full "
-                "GDELT archive). The chart shows the 31 spike days, with each day's index "
+                "GDELT archive). The chart shows the spike days, with each day's index "
                 "recomputed from every GDELT file for that day.")
     fig_hist = go.Figure()
     fig_hist.add_trace(go.Scatter(

@@ -215,7 +215,7 @@ def answer(question, retriever=None, k=config.TOP_K, start_date=None, end_date=N
 
 
 if __name__ == "__main__":
-    q = " ".join(sys.argv[1:]) or "Which sector fell the most after the Russia-Ukraine War spike?"
+    q = " ".join(sys.argv[1:]) or "Which sector fell the most 5 days after the biggest spike?"
     a = answer(q)
     print(f"[{config.LLM_PROVIDER} / {config.LLM_MODEL}]\n")
     print(a.display_text)

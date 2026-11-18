@@ -15,16 +15,29 @@ import streamlit as st
 
 from dashboard.constants import SECTOR_MAP
 
-EXAMPLES = [
-    ("Which sector fell most after the Russia-Ukraine War?",
-     "Which sector fell the most 5 days after the Russia-Ukraine War spike?"),
-    ("How did airlines do 30 days after the Israel-Hamas War?",
-     "How did Airlines stocks move 30 days after the Israel-Hamas War spike?"),
-    ("Which country dominated news of the Sudan Civil War?",
-     "Which country was mentioned most in news coverage of the Sudan Civil War spike?"),
-    ("Should I buy defense stocks now?",
-     "Should I buy defense stocks before the next crisis?"),
-]
+REFUSAL_EXAMPLE = ("Should I buy defense stocks now?",
+                   "Should I buy defense stocks before the next crisis?")
+
+
+def examples_from(docs):
+    """Example questions built from the events actually in the corpus, so they
+    always match the data (events are detected automatically)."""
+    events = sorted((d for d in docs if d["type"] == "event"),
+                    key=lambda d: -(d.get("z_score") or d.get("geo_tension_index") or 0))
+    out = []
+    if events:
+        e = events[0]
+        out.append((f"Which sector fell most after the biggest spike ({e['event_date']})?",
+                    f"Which sector fell the most 5 days after the spike on {e['event_date']} ({e['label']})?"))
+    if len(events) > 1:
+        e = events[1]
+        out.append((f"How did airlines do 30 days after the {e['event_date']} spike?",
+                    f"How did Airlines stocks move 30 days after the spike on {e['event_date']}?"))
+    if len(events) > 2:
+        e = events[2]
+        out.append((f"Which countries dominated the news on {e['event_date']}?",
+                    f"Which country was mentioned most in news coverage of the spike on {e['event_date']}?"))
+    return out + [REFUSAL_EXAMPLE]
 
 _CSS = """
 <style>
@@ -153,7 +166,7 @@ def render_chat(panel=True):
         if history and clear.button("Clear", type="tertiary", help="Clear the conversation"):
             st.session_state["qa_chat"] = []
             st.rerun()
-        st.markdown("<div class='qa-intro'>Answers come only from the 31 spike events and how "
+        st.markdown("<div class='qa-intro'>Answers come only from the detected spike events and how "
                     "S&P 500 sectors moved afterwards, with sources for every fact. Historical "
                     "data only, not investment advice.</div>", unsafe_allow_html=True)
 
@@ -167,7 +180,7 @@ def render_chat(panel=True):
         if not history:
             st.markdown("<div class='qa-hint'>Try asking</div>", unsafe_allow_html=True)
             with st.container(key="qa_examples"):
-                for label, q in EXAMPLES:
+                for label, q in examples_from(retriever.docs):
                     if st.button(label, key=f"ex_{label}", width="stretch", help=q):
                         st.session_state["qa_pending"] = q
 

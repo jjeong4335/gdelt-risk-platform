@@ -323,16 +323,20 @@ def horizon_text(cell: dict, horizon: int) -> str:
 def build_documents(data: dict) -> list:
     # Original outputs: index + z-score + threshold. Rebuilt data (all GKG
     # files): index recomputed for the spike day only, no z-score/threshold.
-    has_index = "geo_tension_index" in data["spike_events"]
-    has_z = has_index and data["geo_tension"] is not None and "threshold" in data["spike_events"]
-    z = yearly_zscores(data["geo_tension"]) if has_z else None
+    se = data["spike_events"]
+    has_index = "geo_tension_index" in se
+    # Data-driven rebuild (build_events.py): events carry their own label,
+    # z-score (on the raw score), dates and top countries/themes.
+    auto = "label" in se and "z_score" in se
+    has_z = auto or (has_index and data["geo_tension"] is not None and "threshold" in se)
+    z = yearly_zscores(data["geo_tension"]) if has_z and not auto else None
     news_all = data["spike_news"]
     docs = []
 
     for _, ev in data["spike_events"].sort_values("date").iterrows():
         date = ev["date"]
         news = news_all[news_all["spike_date"] == date]
-        label = event_label(date, news)
+        label = ev["label"] if auto and pd.notna(ev.get("label")) else event_label(date, news)
         headlines = (clean_headlines(news)
                      .assign(dist=lambda d: d["days_from_spike"].abs())
                      .sort_values("dist")
@@ -340,14 +344,25 @@ def build_documents(data: dict) -> list:
                      .head(HEADLINES_PER_EVENT))
         urls = headlines["url"].tolist()
         source_url = urls[0] if urls else ""
-        countries = top_countries(news)
-        z_score = (float(z.loc[date, "z_score"]) if has_z and date in z.index
-                   else float("nan"))
+        countries = ([c for c in str(ev["top_countries"]).split(", ") if c]
+                     if auto and pd.notna(ev.get("top_countries")) else top_countries(news))
+        if auto:
+            z_score = float(ev["z_score"])
+        else:
+            z_score = (float(z.loc[date, "z_score"]) if has_z and date in z.index else float("nan"))
         sectors, reaction_date, base_date = sector_reactions(data["reactions"], date)
 
         # ── EVENT document ──
         parts = [f"Event: {label}. Spike date: {date}."]
-        if has_z:
+        if auto:
+            start, end = str(pd.Timestamp(ev["start_date"]).date()), str(pd.Timestamp(ev["end_date"]).date())
+            if start != end:
+                parts.append(f"Tension stayed elevated from {start} to {end} "
+                             f"({int(ev['spike_days'])} spike days).")
+            parts.append(
+                f"Geo-Tension Index: {ev['geo_tension_index']:.2f} out of 10; the raw tension score was "
+                f"{z_score:.2f} standard deviations above the {date[:4]} average (spike rule: above 3).")
+        elif has_z:
             parts.append(
                 f"Geo-Tension Index: {ev['geo_tension_index']:.2f} out of 10 "
                 f"(z-score {z_score:.2f} versus the {date[:4]} daily average; "
@@ -362,9 +377,11 @@ def build_documents(data: dict) -> list:
         if pd.notna(ev.get("dominant_category")):
             parts.append(f"Dominant news category: {ev['dominant_category']}.")
         if pd.notna(ev.get("total_events")):
-            parts.append(f"International articles that day: {int(ev['total_events']):,}.")
+            parts.append(f"International articles on the peak day: {int(ev['total_events']):,}.")
         if countries:
             parts.append("Most-mentioned countries in coverage: " + ", ".join(countries) + ".")
+        if auto and pd.notna(ev.get("top_themes")) and ev["top_themes"]:
+            parts.append("Top GDELT news themes: " + ev["top_themes"].replace("_", " ").lower() + ".")
         if len(headlines):
             parts.append("Sample headlines (taken from article URLs): " + "; ".join(
                 f"\"{r.title}\" ({r.domain})"
