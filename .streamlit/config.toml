@@ -1,0 +1,11 @@
+# The dashboard's cards and charts are designed for a light theme. Without
+# this, Streamlit follows the OS dark mode and mixes white cards with a dark page.
+[theme]
+base = "light"
+primaryColor = "#2563eb"
+backgroundColor = "#f8f9fa"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#1a1a1a"
+
+[browser]
+gatherUsageStats = false

@@ -53,21 +53,27 @@ st.markdown("""
     .tag-other { background: #f1f5f9; color: #64748b; }
     .sector-row { display: flex; align-items: center; margin-bottom: 10px; }
     .sector-name { width: 120px; font-size: 13px; color: #444; }
-    .sector-bar-pos { background: #fca5a5; height: 8px; border-radius: 4px; }
-    .sector-bar-neg { background: #86efac; height: 8px; border-radius: 4px; }
-    .sector-val-pos { color: #dc2626; font-size: 13px; font-weight: 600; margin-left: 8px; }
-    .sector-val-neg { color: #16a34a; font-size: 13px; font-weight: 600; margin-left: 8px; }
+    .sector-bar-pos { background: #86efac; height: 8px; border-radius: 4px; }
+    .sector-bar-neg { background: #fca5a5; height: 8px; border-radius: 4px; }
+    .sector-val-pos { color: #16a34a; font-size: 13px; font-weight: 600; margin-left: 8px; }
+    .sector-val-neg { color: #dc2626; font-size: 13px; font-weight: 600; margin-left: 8px; }
     .port-row { display: flex; align-items: center; padding: 6px 0; font-size: 13px; }
     .port-ticker { font-weight: 700; width: 50px; }
     .port-sector { color: #888; width: 90px; }
     .port-weight { color: #444; width: 40px; }
-    .port-return-pos { color: #dc2626; font-weight: 600; margin-left: auto; }
-    .port-return-neg { color: #16a34a; font-weight: 600; margin-left: auto; }
+    .port-return-pos { color: #16a34a; font-weight: 600; margin-left: auto; }
+    .port-return-neg { color: #dc2626; font-weight: 600; margin-left: auto; }
     .summary-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-top: 1px solid #f0f0f0; }
     .summary-label { color: #666; }
     .summary-val-pos { color: #16a34a; font-weight: 600; }
     .summary-val-neg { color: #dc2626; font-weight: 600; }
     .chart-title { font-size: 13px; color: #444; font-weight: 500; margin-bottom: 8px; }
+    .block-container { padding-top: 2rem; }
+    /* bordered st.container() blocks look like the HTML cards */
+    .st-key-live_chart_card { background: white; border-radius: 12px; border: none !important;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 20px 24px !important; margin-bottom: 16px; }
+    .muted { color:#888; font-size:13px; }
+    .sector-legend { font-size:11px; color:#888; margin-top:4px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -196,9 +202,9 @@ def fetch_live_sector_returns():
                 latest_price = df["Close"].iloc[-1]
                 ret = float((latest_price - open_price) / open_price * 100)
             else:
-                ret = 0.0
+                ret = None
         except Exception:
-            ret = 0.0
+            ret = None
         rows.append({"sector": sector, "avg": ret})
     return pd.DataFrame(rows).sort_values("avg", ascending=False)
 
@@ -311,9 +317,10 @@ else:
     live_score, live_events = fetch_live_tension()
     current_score = live_score if live_score is not None else float("nan")
     delta_score = 0.0
-    risk_level, risk_class = "n/a", "risk-low"
+    risk_level, risk_class = "n/a", "metric-value"
     events_today = live_events
-    score_note = "Latest 15-min GDELT file"
+    score_note = ("Latest 15-min GDELT file" if live_score is not None
+                  else "Live GDELT feed unavailable right now")
     threshold_note = "Needs the 10-year daily history"
     events_note = "Intl. articles, latest 15 min"
 
@@ -360,11 +367,12 @@ with tab1:
     # Top 4 metric cards
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        delta_class = "metric-delta-pos" if delta_score >= 0 else "metric-delta-neg"
+        delta_class = ("metric-delta-neu" if not HAS_HISTORY
+                       else "metric-delta-pos" if delta_score >= 0 else "metric-delta-neg")
         sign = "+" if delta_score >= 0 else ""
         st.markdown(f"""<div class='card'>
             <div class='metric-label'>Geo-Tension Index</div>
-            <div class='metric-value'>{current_score:.1f}</div>
+            <div class='metric-value'>{"—" if current_score != current_score else f"{current_score:.1f}"}</div>
             <div class='{delta_class}'>{score_note}</div>
         </div>""", unsafe_allow_html=True)
 
@@ -503,14 +511,20 @@ with tab1:
                 plot_bgcolor="white", paper_bgcolor="white",
                 legend=dict(orientation="h", y=1.1, x=0)
             )
-        st.markdown(f"<div class='card'><div class='chart-title'>{chart_title}</div>", unsafe_allow_html=True)
-        st.plotly_chart(fig, width="stretch")
-        st.markdown("</div>", unsafe_allow_html=True)
+        with st.container(border=True, key="live_chart_card"):
+            st.markdown(f"<div class='chart-title'>{chart_title}</div>", unsafe_allow_html=True)
+            if len(fig.data) == 0:
+                st.markdown("<p class='muted'>No live readings yet. The tension score and VIX "
+                            "appear here once GDELT and market data load.</p>", unsafe_allow_html=True)
+            else:
+                st.plotly_chart(fig, width="stretch")
         # Sector + Portfolio
 
 
 
-        max_abs = sector_df["avg"].abs().max()
+        live_ok = sector_df["avg"].notna().any()
+        sector_df = sector_df.dropna(subset=["avg"])
+        max_abs = sector_df["avg"].abs().max() if live_ok else 0
         sector_title = "Sector reaction — live today · refreshes every 1 min" if market_open else "Sector reaction — last trading day"
         sector_html = f"<div class='card'><div class='chart-title'>{sector_title}</div>"
         for _, row in sector_df.iterrows():
@@ -524,6 +538,11 @@ with tab1:
                 <div class='{bar_cls}' style='width:{bar_w}px'></div>
                 <div class='{val_cls}'>{sign}{v:.1f}%</div>
             </div>"""
+        if not live_ok:
+            sector_html += "<p class='muted'>Live ETF prices are unavailable right now.</p>"
+        else:
+            sector_html += ("<div class='sector-legend'>Sector ETFs (JETS, SOXX, XLE, ITA, XLK, GLD), "
+                            "change since the open · green = up, red = down</div>")
         sector_html += "</div>"
         st.markdown(sector_html, unsafe_allow_html=True)
 

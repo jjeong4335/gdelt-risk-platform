@@ -454,6 +454,7 @@ python -m rag.eval.run_eval                    # full eval (~30 LLM calls, ~6 mi
 
 # 5. UI
 streamlit run dashboard/app.py        # full dashboard; Q&A is the third tab
+                                      #  (run from the repo root so .streamlit/config.toml applies the light theme)
 streamlit run rag/qa_app.py           # Q&A on its own
 ```
 
