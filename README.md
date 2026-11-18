@@ -385,7 +385,7 @@ User:
 
 ### Evaluation method
 
-`rag/eval/make_questions.py` builds the eval set **from the data** (expected answers are computed from the corpus, not typed by hand). On the full rebuild it makes 24 answerable questions: weakest sector at Day +5, one sector's Day +30 move, the index value on a date, the most-mentioned country, questions that name only the event (no date), and 2 that need comparing many events (highest index overall and within one year). It adds 5 questions the data can't answer (advice, prediction, Bitcoin, 2008, the Fed), for 29 total. If a fact isn't in the data (e.g. no index in a sample run), questions about it are swapped for other data-derived ones.
+`rag/eval/make_questions.py` builds the eval set **from the data** (expected answers are computed from the corpus, not typed by hand). On the full rebuild it made 23 answerable questions: weakest sector at Day +5, one sector's Day +30 move, the index value on a date, the most-mentioned country, questions that name only the event (no date), and questions that need comparing many events (only when the answer is unique — tied "highest index" questions are skipped). It adds 5 questions the data can't answer (advice, prediction, Bitcoin, 2008, the Fed), for 28 total. If a fact isn't in the data (e.g. no index in a sample run), questions about it are swapped for other data-derived ones.
 
 `rag/eval/run_eval.py --retriever dense|hybrid` reports (run both to compare retrieval):
 
@@ -396,15 +396,24 @@ User:
 
 ### Results
 
-> **Not run yet.** Run the steps below and paste the table from `rag/eval/results.md` here. Do not edit the numbers by hand.
+Run on 2026-11-17 on the full rebuild (every GKG file for the 161 days): 28 data-derived questions (23 answerable, 5 unanswerable), k = 5, embedding model `all-MiniLM-L6-v2`, LLM `gemini-3.5-flash-lite` (Gemini free tier). Numbers are copied from `rag/eval/results.md` and `results_dense_retrieval.md`, not edited.
 
-| Metric | Result |
-|---|---|
-| Retrieval hit rate @1 / @3 / @5 | — |
-| Answer accuracy (answerable) | — |
-| Grounded answers (auto-checkable) | — |
-| Refusal accuracy (unanswerable) | — |
-| False refusals (answerable) | — |
+| Metric | Dense only (baseline) | Hybrid (BM25 + dense, RRF) |
+|---|---|---|
+| Retrieval hit rate @1 | 9/23 (39.1%) | 13/23 (56.5%) |
+| Retrieval hit rate @3 | 12/23 (52.2%) | 20/23 (87.0%) |
+| Retrieval hit rate @5 | 13/23 (56.5%) | 20/23 (87.0%) |
+| Answer accuracy (answerable) | — | 20/23 (87.0%) |
+| Grounded answers (every number/date found in retrieved docs) | — | 21/21 (100.0%) |
+| Answers citing a document that wasn't retrieved | — | 0/21 (0.0%) |
+| Refusal accuracy (unanswerable) | — | 5/5 (100.0%) |
+| False refusals (answerable) | — | 2/23 (8.7%) |
+
+How to read this:
+- **Small eval set.** 23 answerable questions, so one question moves a rate by about 4 points.
+- **"Grounded" is narrow.** It checks that every number and date in an answer appears in the retrieved documents. It doesn't check that the answer picked the *right* document; an answer can be fully grounded and still answer a slightly different question.
+- **What fails.** All 3 misses were retrieval misses: two "What was the index on <date>?" questions (the six sector documents for the same date outrank the event document) and one question that needs comparing all 31 events. When the right document wasn't retrieved, the model refused instead of guessing in 2 of 3 cases.
+- **Development history.** Hybrid retrieval and two document-wording fixes were added after earlier eval runs on a 4-files-per-day sample, so the questions influenced the design. The final numbers come from a freshly generated question set on the full data.
 
 ### Known limitations
 
@@ -414,6 +423,8 @@ User:
 - **Headline text only:** "headlines" are rebuilt from article URLs, not full article text, so the system knows *what* was in the news only roughly.
 - **Day +N is calendar days:** when Day +N falls on a weekend or holiday, the nearest trading day is used and written in the document.
 - **Comparison questions are hard:** "Which spike was the biggest?" needs all 31 events, but the LLM only sees the top k.
+- **Index saturates at 10.00:** several spike days hit the 0–10 scale's cap, so "highest index" has no single answer; the eval skips such questions.
+- **Same-date documents compete:** each spike has 7 documents with the same date, and short sector documents can outrank the event document for "index on <date>" questions.
 - **The LLM can still be wrong:** citations and automatic checks reduce this but don't eliminate it. Always check the retrieved documents shown under the answer.
 - **Not investment advice.** Historical correlations only; see `MODEL_CARD.md`.
 
