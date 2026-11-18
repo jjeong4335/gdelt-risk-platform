@@ -97,7 +97,7 @@ themes AS (
   GROUP BY event_date
 ),
 sample AS (
-  SELECT * EXCEPT (dup, rk)
+  SELECT * EXCEPT (dup)
   FROM (
     SELECT *, ROW_NUMBER() OVER (PARTITION BY event_date ORDER BY ABS(days_from_spike), neg DESC, url) AS rk
     FROM (
@@ -109,12 +109,18 @@ sample AS (
   )
   WHERE rk <= {{ARTICLES_PER_EVENT}}
 )
+-- The per-event counts are long strings, so they are filled in on each event's
+-- first row only (keeps the CSV small enough for the console download).
 SELECT s.event_date, s.article_date, s.days_from_spike, s.domain, s.url, s.category, s.neg,
-       w.articles_in_window, z.articles_core, k.category_counts, c.top_countries, t.top_themes
+       IF(s.rk = 1, w.articles_in_window, NULL) AS articles_in_window,
+       IF(s.rk = 1, z.articles_core, NULL) AS articles_core,
+       IF(s.rk = 1, k.category_counts, NULL) AS category_counts,
+       IF(s.rk = 1, c.top_countries, NULL) AS top_countries,
+       IF(s.rk = 1, t.top_themes, NULL) AS top_themes
 FROM sample AS s
 LEFT JOIN window_size AS w USING (event_date)
 LEFT JOIN core_size AS z USING (event_date)
 LEFT JOIN cat_counts AS k USING (event_date)
 LEFT JOIN countries AS c USING (event_date)
 LEFT JOIN themes AS t USING (event_date)
-ORDER BY s.event_date, ABS(s.days_from_spike), s.neg DESC
+ORDER BY s.event_date, s.rk

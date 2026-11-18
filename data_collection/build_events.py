@@ -77,13 +77,16 @@ def pick_categories(share, lift, min_share=0.25):
     return out
 
 
-def pick_countries(share, lift, k=5):
-    """Countries mentioned at least 1/4 as often as the event's top country,
-    ranked by share x log(1 + lift): frequent AND distinctive."""
+def pick_countries(share, lift, k=5, min_lift=1.5):
+    """Countries mentioned at least 1/4 as often as the event's top country AND
+    at least 1.5x as often as around other events, ranked by
+    share x log(1 + lift): frequent and distinctive. The lift floor keeps
+    countries that are in almost all coverage (the US, the UK) out of a name
+    unless they really are more present than usual."""
     out = []
     for i in range(len(share)):
         s, l = share.iloc[i], lift.iloc[i]
-        cand = s[s >= 0.25 * s.max()] if s.max() > 0 else s.iloc[:0]
+        cand = s[(s >= 0.25 * s.max()) & (l >= min_lift)] if s.max() > 0 else s.iloc[:0]
         score = (cand * np.log1p(l[cand.index])).sort_values(ascending=False)
         out.append([(c, float(score[c])) for c in score.index[:k]])
     return out
@@ -123,7 +126,9 @@ def main():
     events = pd.read_csv(d / "events.csv", parse_dates=["date", "start_date", "end_date"])
     news = pd.read_csv(d / "event_news.csv", parse_dates=["event_date", "article_date"])
 
-    first = news.drop_duplicates("event_date").set_index("event_date").reindex(events["date"])
+    # per-event counts sit on one row per event (the others are empty)
+    first = (news.dropna(subset=["top_countries"]).drop_duplicates("event_date")
+             .set_index("event_date").reindex(events["date"]))
     core = first["articles_core"] if "articles_core" in first else first["articles_in_window"]
     totals = core.fillna(0).tolist()
     categories = pick_categories(*shares_and_lift(first["category_counts"].fillna(""), totals))
@@ -142,7 +147,8 @@ def main():
             "category_counts": first["category_counts"].get(ev.date, ""),
             "top_countries": ", ".join(FIPS_NAMES.get(c, c) for c, _ in countries[:5]),
             "top_themes": ", ".join(themes),
-            "articles_in_window": int(n["articles_in_window"].iloc[0]) if len(n) else 0,
+            "articles_in_window": int(pd.to_numeric(first["articles_in_window"].get(ev.date), errors="coerce") or 0)
+                                  if pd.notna(first["articles_in_window"].get(ev.date)) else 0,
         })
         if len(n):
             news_parts.append(pd.DataFrame({
