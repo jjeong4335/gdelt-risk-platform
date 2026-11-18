@@ -1,6 +1,46 @@
 [
   {
-    "question": "Which sector fell the most 5 days after the Iran Protests spike?",
+    "question": "Which sector fell the most 5 days after the Belgium: terror attack spike?",
+    "category": "weakest_sector_d5",
+    "expected_answer": "Energy",
+    "expected_doc_ids": [
+      "event:2016-03-22",
+      "sector:2016-03-22:Energy"
+    ],
+    "answerable": true,
+    "id": "q01",
+    "retrieved": [
+      "event:2016-03-22",
+      "sector:2016-03-22:Defense",
+      "event:2017-03-23",
+      "event:2016-07-15",
+      "summary:Defense"
+    ],
+    "best_similarity": 0.6907,
+    "hit@5": true
+  },
+  {
+    "question": "Which sector fell the most 5 days after the spike on 2017-03-23?",
+    "category": "weakest_sector_d5",
+    "expected_answer": "Gold/Safe Haven",
+    "expected_doc_ids": [
+      "event:2017-03-23",
+      "sector:2017-03-23:Gold/Safe Haven"
+    ],
+    "answerable": true,
+    "id": "q02",
+    "retrieved": [
+      "sector:2017-03-23:Semiconductors",
+      "event:2017-03-23",
+      "sector:2017-03-23:Tech",
+      "sector:2017-03-23:Defense",
+      "sector:2017-03-23:Energy"
+    ],
+    "best_similarity": 0.6807,
+    "hit@5": true
+  },
+  {
+    "question": "Which sector fell the most 5 days after the Iran & North Korea: unrest spike?",
     "category": "weakest_sector_d5",
     "expected_answer": "Airlines",
     "expected_doc_ids": [
@@ -8,439 +48,420 @@
       "sector:2018-01-02:Airlines"
     ],
     "answerable": true,
-    "id": "q01",
-    "retrieved": [
-      "event:2018-01-02",
-      "event:2025-06-11",
-      "event:2024-04-26",
-      "event:2025-06-09",
-      "event:2026-01-14"
-    ],
-    "best_similarity": 0.7294,
-    "hit@5": true
-  },
-  {
-    "question": "Which sector fell the most 5 days after the spike on 2019-10-03?",
-    "category": "weakest_sector_d5",
-    "expected_answer": "Semiconductors",
-    "expected_doc_ids": [
-      "event:2019-10-03",
-      "sector:2019-10-03:Semiconductors"
-    ],
-    "answerable": true,
-    "id": "q02",
-    "retrieved": [
-      "event:2024-08-01",
-      "event:2023-05-04",
-      "sector:2023-03-28:Semiconductors",
-      "event:2018-04-16",
-      "sector:2019-10-04:Semiconductors"
-    ],
-    "best_similarity": 0.7108,
-    "hit@5": false
-  },
-  {
-    "question": "Which sector fell the most 5 days after the Russia-Ukraine War spike?",
-    "category": "weakest_sector_d5",
-    "expected_answer": "Airlines",
-    "expected_doc_ids": [
-      "event:2022-02-25",
-      "sector:2022-02-25:Airlines"
-    ],
-    "answerable": true,
     "id": "q03",
     "retrieved": [
-      "event:2022-02-13",
-      "event:2022-02-18",
-      "event:2022-02-25",
-      "event:2022-01-06",
-      "event:2023-03-28"
+      "event:2018-01-02",
+      "event:2020-01-03",
+      "event:2024-04-14",
+      "summary:Tech",
+      "event:2026-03-01"
     ],
-    "best_similarity": 0.7529,
+    "best_similarity": 0.6843,
     "hit@5": true
   },
   {
-    "question": "Which sector fell the most 5 days after the Israel-Hamas Ceasefire spike?",
+    "question": "Which sector fell the most 5 days after the China & Mexico: unrest spike?",
     "category": "weakest_sector_d5",
-    "expected_answer": "Defense",
+    "expected_answer": "Energy",
     "expected_doc_ids": [
-      "event:2023-11-24",
-      "sector:2023-11-24:Defense"
+      "event:2019-08-05",
+      "sector:2019-08-05:Energy"
     ],
     "answerable": true,
     "id": "q04",
     "retrieved": [
-      "event:2023-11-24",
-      "event:2018-05-15",
-      "event:2023-10-18",
-      "sector:2023-11-24:Defense",
-      "sector:2023-11-24:Energy"
+      "summary:Tech",
+      "event:2019-08-05",
+      "summary:Semiconductors",
+      "sector:2019-08-05:Energy",
+      "sector:2019-08-05:Defense"
     ],
-    "best_similarity": 0.7251,
+    "best_similarity": 0.6046,
     "hit@5": true
   },
   {
-    "question": "Which sector fell the most 5 days after the spike on 2024-05-02?",
+    "question": "Which sector fell the most 5 days after the Ukraine & Russia: sanctions & trade spike?",
     "category": "weakest_sector_d5",
-    "expected_answer": "Energy",
+    "expected_answer": "Airlines",
     "expected_doc_ids": [
-      "event:2024-05-02",
-      "sector:2024-05-02:Energy"
+      "event:2022-02-24",
+      "sector:2022-02-24:Airlines"
     ],
     "answerable": true,
     "id": "q05",
     "retrieved": [
-      "sector:2023-03-28:Semiconductors",
-      "event:2023-05-04",
-      "event:2024-08-01",
-      "sector:2022-02-18:Semiconductors",
-      "event:2018-04-16"
+      "event:2022-02-24",
+      "sector:2022-02-24:Energy",
+      "sector:2022-02-24:Tech",
+      "sector:2022-02-24:Defense",
+      "summary:Energy"
     ],
-    "best_similarity": 0.6782,
-    "hit@5": false
+    "best_similarity": 0.685,
+    "hit@5": true
   },
   {
-    "question": "Which sector fell the most 5 days after the spike on 2025-06-11?",
+    "question": "Which sector fell the most 5 days after the Iran & Israel: conflict spike?",
     "category": "weakest_sector_d5",
-    "expected_answer": "Airlines",
+    "expected_answer": "Semiconductors",
     "expected_doc_ids": [
-      "event:2025-06-11",
-      "sector:2025-06-11:Airlines"
+      "event:2024-04-14",
+      "sector:2024-04-14:Semiconductors"
     ],
     "answerable": true,
     "id": "q06",
     "retrieved": [
-      "sector:2023-03-28:Semiconductors",
-      "event:2023-05-04",
-      "event:2024-08-01",
-      "event:2018-04-16",
-      "event:2023-10-18"
+      "event:2024-04-14",
+      "event:2026-03-01",
+      "event:2020-01-03",
+      "summary:Tech",
+      "sector:2024-04-14:Defense"
     ],
-    "best_similarity": 0.6736,
-    "hit@5": false
+    "best_similarity": 0.7118,
+    "hit@5": true
   },
   {
-    "question": "How did Airlines stocks move 30 days after the Syria Airstrikes spike?",
+    "question": "How did Airlines stocks move 30 days after the Turkey & United Kingdom: diplomatic tension spike?",
     "category": "sector_d30",
-    "expected_answer": "-1.69%",
+    "expected_answer": "+9.45%",
     "expected_doc_ids": [
-      "sector:2018-04-16:Airlines"
+      "sector:2016-06-29:Airlines"
     ],
     "answerable": true,
     "id": "q07",
     "retrieved": [
-      "sector:2018-04-16:Airlines",
-      "sector:2018-04-16:Defense",
-      "sector:2018-04-16:Tech",
-      "sector:2018-04-16:Energy",
-      "sector:2023-11-24:Airlines"
+      "sector:2016-06-29:Airlines",
+      "event:2016-06-29",
+      "summary:Airlines",
+      "sector:2016-07-15:Airlines",
+      "sector:2017-01-01:Airlines"
     ],
-    "best_similarity": 0.649,
+    "best_similarity": 0.5759,
     "hit@5": true
   },
   {
-    "question": "How did Defense stocks move 30 days after the spike on 2019-10-04?",
+    "question": "How did Defense stocks move 30 days after the Syria & Egypt: terror attack spike?",
     "category": "sector_d30",
-    "expected_answer": "+1.54%",
+    "expected_answer": "+2.80%",
     "expected_doc_ids": [
-      "sector:2019-10-04:Defense"
+      "sector:2017-04-09:Defense"
     ],
     "answerable": true,
     "id": "q08",
     "retrieved": [
-      "sector:2019-10-04:Defense",
-      "sector:2022-02-18:Defense",
-      "sector:2023-03-28:Defense",
-      "sector:2019-08-13:Defense",
-      "sector:2019-10-03:Defense"
+      "summary:Defense",
+      "sector:2017-04-09:Defense",
+      "sector:2017-01-01:Defense",
+      "sector:2018-04-14:Defense",
+      "sector:2023-10-07:Defense"
     ],
-    "best_similarity": 0.6215,
+    "best_similarity": 0.6683,
     "hit@5": true
   },
   {
-    "question": "How did Energy stocks move 30 days after the Sri Lanka Political Crisis spike?",
+    "question": "How did Energy stocks move 30 days after the Iran & North Korea: unrest spike?",
     "category": "sector_d30",
-    "expected_answer": "+4.52%",
+    "expected_answer": "+3.57%",
     "expected_doc_ids": [
-      "sector:2022-07-09:Energy"
+      "sector:2018-01-02:Energy"
     ],
     "answerable": true,
     "id": "q09",
     "retrieved": [
-      "event:2022-07-09",
-      "sector:2022-07-09:Energy",
-      "sector:2022-07-09:Defense",
-      "sector:2022-07-09:Tech",
-      "sector:2022-07-09:Semiconductors"
+      "summary:Energy",
+      "sector:2018-01-02:Energy",
+      "sector:2020-01-03:Energy",
+      "sector:2024-04-14:Energy",
+      "sector:2026-03-01:Energy"
     ],
-    "best_similarity": 0.6912,
+    "best_similarity": 0.6487,
     "hit@5": true
   },
   {
-    "question": "How did Gold/Safe Haven stocks move 30 days after the spike on 2024-04-26?",
+    "question": "How did Gold/Safe Haven stocks move 30 days after the Iraq & Iran: unrest spike?",
     "category": "sector_d30",
-    "expected_answer": "+0.51%",
+    "expected_answer": "+2.15%",
     "expected_doc_ids": [
-      "sector:2024-04-26:Gold/Safe Haven"
+      "sector:2020-01-03:Gold/Safe Haven"
     ],
     "answerable": true,
     "id": "q10",
     "retrieved": [
-      "sector:2023-03-28:Gold/Safe Haven",
-      "sector:2022-02-13:Gold/Safe Haven",
-      "sector:2019-10-04:Gold/Safe Haven",
-      "sector:2024-04-26:Gold/Safe Haven",
-      "sector:2024-04-29:Gold/Safe Haven"
+      "summary:Gold/Safe Haven",
+      "sector:2020-01-03:Gold/Safe Haven",
+      "sector:2026-03-01:Gold/Safe Haven",
+      "sector:2024-04-14:Gold/Safe Haven",
+      "sector:2018-04-14:Gold/Safe Haven"
     ],
-    "best_similarity": 0.6941,
+    "best_similarity": 0.7406,
     "hit@5": true
   },
   {
-    "question": "How did Semiconductors stocks move 30 days after the spike on 2024-08-01?",
+    "question": "How did Semiconductors stocks move 30 days after the Ukraine & Russia: sanctions & trade spike?",
     "category": "sector_d30",
-    "expected_answer": "+1.11%",
+    "expected_answer": "+3.36%",
     "expected_doc_ids": [
-      "sector:2024-08-01:Semiconductors"
+      "sector:2022-02-24:Semiconductors"
     ],
     "answerable": true,
     "id": "q11",
     "retrieved": [
-      "sector:2023-03-28:Semiconductors",
-      "sector:2024-04-26:Semiconductors",
-      "sector:2019-10-04:Semiconductors",
-      "sector:2022-02-18:Semiconductors",
-      "sector:2024-04-29:Semiconductors"
+      "sector:2022-02-24:Semiconductors",
+      "event:2022-02-24",
+      "summary:Semiconductors",
+      "sector:2025-09-09:Semiconductors",
+      "sector:2024-03-23:Semiconductors"
     ],
-    "best_similarity": 0.6915,
-    "hit@5": false
+    "best_similarity": 0.6557,
+    "hit@5": true
   },
   {
-    "question": "How did Tech stocks move 30 days after the spike on 2025-06-12?",
+    "question": "How did Tech stocks move 30 days after the Iran & Israel: conflict spike?",
     "category": "sector_d30",
-    "expected_answer": "+5.71%",
+    "expected_answer": "+3.78%",
     "expected_doc_ids": [
-      "sector:2025-06-12:Tech"
+      "sector:2024-04-14:Tech"
     ],
     "answerable": true,
     "id": "q12",
     "retrieved": [
-      "sector:2023-03-28:Tech",
-      "sector:2022-02-18:Tech",
-      "sector:2019-10-04:Tech",
-      "sector:2022-02-13:Tech",
-      "sector:2023-11-24:Tech"
+      "summary:Tech",
+      "sector:2026-03-01:Tech",
+      "sector:2024-04-14:Tech",
+      "sector:2024-08-04:Tech",
+      "sector:2020-01-03:Tech"
     ],
-    "best_similarity": 0.6559,
-    "hit@5": false
+    "best_similarity": 0.6905,
+    "hit@5": true
   },
   {
-    "question": "What was the Geo-Tension Index on 2018-05-15?",
+    "question": "What was the Geo-Tension Index on 2016-07-15?",
     "category": "index_value",
     "expected_answer": "10.00",
     "expected_doc_ids": [
-      "event:2018-05-15"
+      "event:2016-07-15"
     ],
     "answerable": true,
     "id": "q13",
     "retrieved": [
-      "event:2019-07-01",
-      "event:2022-01-06",
-      "event:2024-05-01",
-      "event:2025-09-09",
-      "event:2024-04-30"
+      "event:2016-07-15",
+      "sector:2016-07-15:Gold/Safe Haven",
+      "sector:2016-07-15:Tech",
+      "sector:2016-07-15:Defense",
+      "sector:2016-07-15:Airlines"
     ],
-    "best_similarity": 0.4648,
-    "hit@5": false
+    "best_similarity": 0.3914,
+    "hit@5": true
   },
   {
-    "question": "What was the Geo-Tension Index on 2022-02-18?",
+    "question": "What was the Geo-Tension Index on 2017-08-18?",
     "category": "index_value",
     "expected_answer": "10.00",
     "expected_doc_ids": [
-      "event:2022-02-18"
+      "event:2017-08-18"
     ],
     "answerable": true,
     "id": "q14",
     "retrieved": [
-      "event:2019-07-01",
-      "event:2022-01-06",
-      "event:2024-05-01",
-      "event:2025-09-09",
-      "event:2024-05-02"
+      "event:2017-08-18",
+      "sector:2017-08-18:Gold/Safe Haven",
+      "sector:2017-08-18:Tech",
+      "sector:2017-08-18:Defense",
+      "sector:2017-08-18:Semiconductors"
     ],
-    "best_similarity": 0.4439,
-    "hit@5": false
+    "best_similarity": 0.3718,
+    "hit@5": true
   },
   {
-    "question": "What was the Geo-Tension Index on 2024-04-26?",
+    "question": "What was the Geo-Tension Index on 2020-01-03?",
     "category": "index_value",
-    "expected_answer": "10.00",
+    "expected_answer": "8.58",
     "expected_doc_ids": [
-      "event:2024-04-26"
+      "event:2020-01-03"
     ],
     "answerable": true,
     "id": "q15",
     "retrieved": [
-      "event:2022-01-06",
-      "event:2019-07-01",
-      "event:2025-09-09",
-      "event:2024-05-01",
-      "event:2024-05-02"
+      "event:2020-01-03",
+      "sector:2020-01-03:Gold/Safe Haven",
+      "sector:2020-01-03:Tech",
+      "sector:2020-01-03:Defense",
+      "sector:2020-01-03:Semiconductors"
     ],
-    "best_similarity": 0.4524,
-    "hit@5": false
+    "best_similarity": 0.4026,
+    "hit@5": true
   },
   {
-    "question": "What was the Geo-Tension Index on 2025-06-09?",
+    "question": "What was the Geo-Tension Index on 2023-10-18?",
     "category": "index_value",
     "expected_answer": "10.00",
     "expected_doc_ids": [
-      "event:2025-06-09"
+      "event:2023-10-18"
     ],
     "answerable": true,
     "id": "q16",
     "retrieved": [
-      "event:2024-05-01",
-      "event:2019-07-01",
-      "event:2025-09-09",
-      "event:2022-01-06",
-      "event:2024-04-30"
+      "event:2023-10-18",
+      "sector:2023-10-18:Gold/Safe Haven",
+      "sector:2023-10-18:Tech",
+      "sector:2023-10-18:Defense",
+      "sector:2023-10-18:Semiconductors"
     ],
-    "best_similarity": 0.4861,
-    "hit@5": false
+    "best_similarity": 0.3325,
+    "hit@5": true
   },
   {
-    "question": "Which country was mentioned most in news coverage of the Iran Strait of Hormuz spike?",
+    "question": "Which country stood out most in news coverage of the spike on 2017-01-01?",
     "category": "top_country",
-    "expected_answer": "Sudan",
+    "expected_answer": "Turkey",
     "expected_doc_ids": [
-      "event:2019-07-01"
+      "event:2017-01-01"
     ],
     "answerable": true,
     "id": "q17",
     "retrieved": [
-      "event:2019-07-01",
-      "event:2025-06-11",
-      "event:2025-06-09",
-      "event:2018-01-02",
-      "event:2024-04-30"
+      "event:2017-01-01",
+      "sector:2017-01-01:Gold/Safe Haven",
+      "sector:2017-01-01:Defense",
+      "sector:2017-01-01:Energy",
+      "sector:2017-01-01:Semiconductors"
     ],
-    "best_similarity": 0.5764,
+    "best_similarity": 0.658,
     "hit@5": true
   },
   {
-    "question": "Which country was mentioned most in news coverage of the Russia-Ukraine · NATO · Israel spike?",
+    "question": "Which country stood out most in news coverage of the spike on 2019-03-16?",
     "category": "top_country",
-    "expected_answer": "Israel",
+    "expected_answer": "New Zealand",
     "expected_doc_ids": [
-      "event:2023-03-28"
+      "event:2019-03-16"
     ],
     "answerable": true,
     "id": "q18",
     "retrieved": [
-      "event:2023-03-28",
-      "event:2022-02-13",
-      "event:2022-02-25",
-      "event:2025-10-02",
-      "event:2022-02-18"
+      "event:2019-03-16",
+      "sector:2019-03-16:Defense",
+      "sector:2019-03-16:Gold/Safe Haven",
+      "sector:2019-03-16:Semiconductors",
+      "sector:2019-03-16:Energy"
     ],
-    "best_similarity": 0.5891,
+    "best_similarity": 0.6443,
     "hit@5": true
   },
   {
-    "question": "Which country was mentioned most in news coverage of the spike on 2024-08-01?",
+    "question": "Which country stood out most in news coverage of the spike on 2023-10-07?",
     "category": "top_country",
-    "expected_answer": "United Kingdom",
+    "expected_answer": "Israel",
     "expected_doc_ids": [
-      "event:2024-08-01"
+      "event:2023-10-07"
     ],
     "answerable": true,
     "id": "q19",
     "retrieved": [
-      "event:2024-08-01",
-      "event:2025-06-11",
-      "event:2023-05-04",
-      "event:2018-01-02",
-      "event:2024-08-05"
+      "event:2023-10-07",
+      "sector:2023-10-07:Gold/Safe Haven",
+      "sector:2023-10-07:Defense",
+      "sector:2023-10-07:Airlines",
+      "sector:2023-10-07:Semiconductors"
     ],
-    "best_similarity": 0.6363,
+    "best_similarity": 0.6676,
     "hit@5": true
   },
   {
-    "question": "How did Defense stocks react one day after the Iran Protests spike?",
+    "question": "How did Defense stocks react one day after the Belgium: terror attack spike?",
     "category": "label_only_d1",
-    "expected_answer": "+0.38%",
+    "expected_answer": "-0.33%",
     "expected_doc_ids": [
-      "sector:2018-01-02:Defense"
+      "sector:2016-03-22:Defense"
     ],
     "answerable": true,
     "id": "q20",
     "retrieved": [
-      "sector:2018-01-02:Defense",
-      "sector:2024-04-26:Defense",
-      "sector:2024-04-29:Defense",
-      "sector:2024-04-30:Defense",
-      "sector:2026-01-14:Defense"
+      "sector:2016-03-22:Defense",
+      "event:2016-03-22",
+      "summary:Defense",
+      "sector:2016-07-15:Defense",
+      "sector:2017-03-23:Defense"
     ],
-    "best_similarity": 0.7043,
+    "best_similarity": 0.6897,
     "hit@5": true
   },
   {
-    "question": "How did Defense stocks react one day after the Hong Kong Protests spike?",
+    "question": "How did Defense stocks react one day after the Syria & France: unrest spike?",
     "category": "label_only_d1",
-    "expected_answer": "-2.17%",
+    "expected_answer": "+0.00%",
     "expected_doc_ids": [
-      "sector:2019-08-13:Defense"
+      "sector:2018-04-14:Defense"
     ],
     "answerable": true,
     "id": "q21",
     "retrieved": [
-      "sector:2019-10-03:Defense",
-      "sector:2019-10-04:Defense",
-      "sector:2019-08-13:Defense",
-      "event:2019-10-03",
-      "event:2019-08-13"
+      "sector:2018-04-14:Defense",
+      "event:2018-04-14",
+      "summary:Defense",
+      "sector:2017-04-09:Defense",
+      "sector:2016-07-15:Defense"
     ],
-    "best_similarity": 0.7084,
+    "best_similarity": 0.694,
     "hit@5": true
   },
   {
-    "question": "How did Defense stocks react one day after the Russia-Ukraine · NATO · Israel spike?",
+    "question": "How did Defense stocks react one day after the Ukraine & Russia: sanctions & trade spike?",
     "category": "label_only_d1",
-    "expected_answer": "+1.02%",
+    "expected_answer": "+3.22%",
     "expected_doc_ids": [
-      "sector:2023-03-28:Defense"
+      "sector:2022-02-24:Defense"
     ],
     "answerable": true,
     "id": "q22",
     "retrieved": [
-      "sector:2023-03-28:Defense",
-      "sector:2022-02-18:Defense",
-      "sector:2022-02-25:Defense",
-      "sector:2022-02-13:Defense",
-      "sector:2024-08-01:Defense"
+      "sector:2022-02-24:Defense",
+      "event:2022-02-24",
+      "sector:2024-03-23:Defense",
+      "sector:2025-09-09:Defense",
+      "summary:Defense"
     ],
-    "best_similarity": 0.6577,
+    "best_similarity": 0.6797,
+    "hit@5": true
+  },
+  {
+    "question": "Which 2017 spike had the largest z-score?",
+    "category": "aggregate",
+    "expected_answer": "2017-08-18",
+    "expected_doc_ids": [
+      "event:2017-08-18",
+      "summary:events"
+    ],
+    "answerable": true,
+    "id": "q23",
+    "retrieved": [
+      "summary:events",
+      "summary:Semiconductors",
+      "event:2023-10-18",
+      "event:2024-03-23",
+      "event:2017-03-23"
+    ],
+    "best_similarity": 0.5552,
     "hit@5": true
   },
   {
     "question": "After which spike did Airlines stocks fall the most by Day +5?",
     "category": "aggregate",
-    "expected_answer": "2025-06-09",
+    "expected_answer": "2026-03-01",
     "expected_doc_ids": [
-      "sector:2025-06-09:Airlines"
+      "sector:2026-03-01:Airlines",
+      "summary:Airlines"
     ],
     "answerable": true,
-    "id": "q23",
+    "id": "q24",
     "retrieved": [
-      "sector:2023-03-28:Airlines",
-      "sector:2019-10-04:Airlines",
-      "sector:2019-08-13:Airlines",
-      "sector:2022-02-18:Airlines",
-      "sector:2019-10-03:Airlines"
+      "summary:Airlines",
+      "sector:2017-08-18:Airlines",
+      "sector:2017-05-23:Airlines",
+      "sector:2016-07-15:Airlines",
+      "sector:2016-06-29:Airlines"
     ],
-    "best_similarity": 0.7141,
-    "hit@5": false
+    "best_similarity": 0.7524,
+    "hit@5": true
   },
   {
     "question": "Should I buy defense stocks before the next geopolitical crisis?",
@@ -452,15 +473,15 @@
     "answerable": false,
     "expected_answer": null,
     "expected_doc_ids": [],
-    "id": "q24",
+    "id": "q25",
     "retrieved": [
-      "sector:2022-02-25:Defense",
-      "sector:2022-02-13:Defense",
-      "sector:2022-02-18:Defense",
-      "sector:2023-03-28:Defense",
-      "sector:2024-04-26:Defense"
+      "summary:Defense",
+      "sector:2024-03-23:Defense",
+      "sector:2023-10-07:Defense",
+      "sector:2020-01-03:Defense",
+      "sector:2017-01-01:Defense"
     ],
-    "best_similarity": 0.5007
+    "best_similarity": 0.535
   },
   {
     "question": "Which sector will fall the most after the next Iran escalation?",
@@ -472,15 +493,15 @@
     "answerable": false,
     "expected_answer": null,
     "expected_doc_ids": [],
-    "id": "q25",
+    "id": "q26",
     "retrieved": [
-      "event:2025-06-09",
-      "event:2026-01-14",
-      "event:2025-06-11",
-      "event:2024-05-01",
-      "event:2024-04-26"
+      "event:2020-01-03",
+      "event:2024-04-14",
+      "sector:2026-03-01:Energy",
+      "sector:2026-03-01:Tech",
+      "sector:2024-04-14:Energy"
     ],
-    "best_similarity": 0.6864
+    "best_similarity": 0.602
   },
   {
     "question": "How did Bitcoin react to the Russia-Ukraine War spike?",
@@ -491,15 +512,15 @@
     "answerable": false,
     "expected_answer": null,
     "expected_doc_ids": [],
-    "id": "q26",
+    "id": "q27",
     "retrieved": [
-      "event:2022-02-13",
-      "event:2022-02-25",
-      "event:2022-02-18",
-      "event:2022-01-06",
-      "event:2023-03-28"
+      "summary:Defense",
+      "summary:Energy",
+      "event:2024-03-23",
+      "summary:Tech",
+      "summary:Gold/Safe Haven"
     ],
-    "best_similarity": 0.5696
+    "best_similarity": 0.5065
   },
   {
     "question": "What was the Geo-Tension Index during the 2008 financial crisis?",
@@ -510,15 +531,15 @@
     "answerable": false,
     "expected_answer": null,
     "expected_doc_ids": [],
-    "id": "q27",
+    "id": "q28",
     "retrieved": [
+      "event:2023-10-07",
+      "event:2017-05-23",
+      "event:2019-08-05",
       "event:2025-09-09",
-      "event:2022-01-06",
-      "event:2024-08-05",
-      "event:2024-04-30",
-      "event:2022-02-13"
+      "event:2025-12-14"
     ],
-    "best_similarity": 0.5259
+    "best_similarity": 0.5487
   },
   {
     "question": "What interest rate decision did the Federal Reserve make in March 2023?",
@@ -529,14 +550,14 @@
     "answerable": false,
     "expected_answer": null,
     "expected_doc_ids": [],
-    "id": "q28",
+    "id": "q29",
     "retrieved": [
-      "sector:2024-04-29:Semiconductors",
-      "sector:2024-04-26:Semiconductors",
-      "sector:2024-04-30:Semiconductors",
-      "sector:2022-02-13:Semiconductors",
-      "sector:2024-05-01:Semiconductors"
+      "sector:2026-03-01:Semiconductors",
+      "event:2026-03-01",
+      "sector:2024-08-04:Semiconductors",
+      "sector:2024-04-14:Semiconductors",
+      "sector:2023-10-07:Semiconductors"
     ],
-    "best_similarity": 0.3368
+    "best_similarity": 0.3621
   }
 ]
