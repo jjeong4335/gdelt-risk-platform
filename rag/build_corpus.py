@@ -440,7 +440,50 @@ def build_documents(data: dict) -> list:
                 "returns": {str(h): c for h, c in cells.items()},
                 "text": text,
             })
-    return docs
+    return docs + summary_documents(docs)
+
+
+def summary_documents(docs: list) -> list:
+    """Comparison documents for questions that span ALL events ("after which
+    spike did Airlines fall the most?"). Top-k retrieval can't compare 27
+    event documents, so the comparison is precomputed here, from the same
+    numbers, with the answer sentences first (the embedding model reads only
+    the first ~256 tokens)."""
+    out = []
+    events = [d for d in docs if d["type"] == "event"]
+    label = {d["event_date"]: d["label"] for d in events}
+    sector_docs = [d for d in docs if d["type"] == "event_sector"]
+
+    for sector in sorted({d["sector"] for d in sector_docs}):
+        rows = [(d["event_date"], d["returns"]) for d in sector_docs if d["sector"] == sector]
+        parts = [f"Comparison across all {len(rows)} spike events: {sector} stocks."]
+        for h in (5, 30, 1):
+            vals = sorted((r[str(h)]["return_pct"], date) for date, r in rows if str(h) in r)
+            if not vals:
+                continue
+            (lo, lo_d), (hi, hi_d) = vals[0], vals[-1]
+            parts.append(f"At Day +{h}, {sector} fell the most after the spike on {lo_d} "
+                         f"({label[lo_d]}, {fmt_pct(lo)}) and rose the most after the spike on "
+                         f"{hi_d} ({label[hi_d]}, {fmt_pct(hi)}).")
+        out.append({"doc_id": f"summary:{sector}", "type": "sector_summary", "event_date": "all events",
+                    "label": f"{sector} across all spikes", "sector": sector, "source_url": "",
+                    "urls": [], "text": " ".join(parts)})
+
+    if events and all(e.get("z_score") is not None for e in events):
+        parts = [f"Overview of all {len(events)} detected spike events."]
+        top = max(events, key=lambda e: e["z_score"])
+        parts.append(f"Largest z-score overall: {top['event_date']} ({top['label']}, z-score {top['z_score']:.2f}).")
+        by_year = {}
+        for e in events:
+            y = e["event_date"][:4]
+            if y not in by_year or e["z_score"] > by_year[y]["z_score"]:
+                by_year[y] = e
+        parts.append("Largest z-score in each year: " + "; ".join(
+            f"{y}: {e['event_date']} ({e['label']}, {e['z_score']:.2f})" for y, e in sorted(by_year.items())) + ".")
+        out.append({"doc_id": "summary:events", "type": "events_summary", "event_date": "all events",
+                    "label": "All detected spikes", "sector": None, "source_url": "", "urls": [],
+                    "text": " ".join(parts)})
+    return out
 
 
 def main():
@@ -457,9 +500,9 @@ def main():
     with open(args.out, "w") as f:
         for d in docs:
             f.write(json.dumps(d, ensure_ascii=False) + "\n")
-    n_events = sum(d["type"] == "event" for d in docs)
-    print(f"Wrote {len(docs)} documents ({n_events} events, "
-          f"{len(docs) - n_events} event-sector) to {args.out}")
+    n = lambda t: sum(d["type"] == t for d in docs)
+    print(f"Wrote {len(docs)} documents ({n('event')} events, {n('event_sector')} event-sector, "
+          f"{n('sector_summary') + n('events_summary')} comparison summaries) to {args.out}")
 
 
 if __name__ == "__main__":

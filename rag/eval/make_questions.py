@@ -138,7 +138,8 @@ def make(docs):
     # Only asked when the answer is unique: recomputed index values are
     # capped at 10.00, so several spikes can tie for "highest", and a question
     # with several right answers would be scored unfairly.
-    def add_unique_max(question, items, value):
+    def add_unique_max(question, items, value, summary_ids=()):
+        summary_ids = list(summary_ids)
         items = [x for x in items if value(x) is not None]
         if not items:
             return False
@@ -148,7 +149,8 @@ def make(docs):
             print(f"  skipped (tie for the top among {len(winners)}): {question}")
             return False
         qs.append({"question": question, "category": "aggregate",
-                   "expected_answer": winners[0]["date"], "expected_doc_ids": [winners[0]["doc"]]})
+                   "expected_answer": winners[0]["date"],
+                   "expected_doc_ids": [winners[0]["doc"]] + summary_ids})
         return True
 
     ev_items = [{"date": e["event_date"], "doc": e["doc_id"],
@@ -162,7 +164,7 @@ def make(docs):
                                 ev_items, lambda x: x["index"])
         if has_z:
             added += add_unique_max(f"Which {year} spike had the largest z-score?",
-                                    in_year, lambda x: x["z"])
+                                    in_year, lambda x: x["z"], ["summary:events"])
         else:
             added += add_unique_max(f"Which {year} spike had the highest Geo-Tension Index?",
                                     in_year, lambda x: x["index"])
@@ -170,7 +172,7 @@ def make(docs):
         airlines = [{"date": d, "doc": f"sector:{d}:Airlines", "ret": doc["returns"]["5"]["return_pct"]}
                     for (d, sct), doc in sector_docs.items() if sct == "Airlines" and "5" in doc["returns"]]
         add_unique_max("After which spike did Airlines stocks fall the most by Day +5?",
-                       airlines, lambda x: -x["ret"])
+                       airlines, lambda x: -x["ret"], ["summary:Airlines"])
 
     for q in qs:
         q["answerable"] = True

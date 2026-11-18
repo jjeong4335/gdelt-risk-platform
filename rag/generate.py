@@ -37,7 +37,7 @@ Rules — follow all of them:
 1. Use ONLY the facts in the <documents> provided. Do not use outside knowledge, \
 even if you know it. Do not guess or estimate numbers that are not written in a document.
 2. After every sentence that states a fact, cite the document(s) it came from using \
-their id in square brackets, e.g. [event:2022-02-25] or [sector:2022-02-25:Airlines].
+their id in square brackets, e.g. [event:2022-02-25], [sector:2022-02-25:Airlines] or [summary:Airlines].
 3. If the documents do not contain the answer, reply with exactly this sentence and nothing else:
 {config.REFUSAL_TEXT}
 4. Never give investment advice (no buy/sell/hold suggestions, no predictions of future prices). \
@@ -70,7 +70,7 @@ def build_user_message(question, hits):
     return f"<documents>\n{format_documents(hits)}\n</documents>\n\nQuestion: {question}"
 
 
-CITATION_RE = re.compile(r"\[((?:event|sector):[^\]]+)\]")
+CITATION_RE = re.compile(r"\[((?:event|sector|summary):[^\]]+)\]")
 
 
 def render_citations(text, hits):
