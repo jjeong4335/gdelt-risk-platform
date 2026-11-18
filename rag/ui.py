@@ -43,6 +43,15 @@ _CSS = """
 .qa-src { font-size: 12px; color:#4b5563; margin-top: 6px; line-height: 1.5; }
 .qa-src b { color:#1d4ed8; }
 .qa-meta { font-size: 11px; color:#9ca3af; margin-top: 4px; }
+.bubble-row { display: flex; margin: 6px 0; }
+.bubble-row.me { justify-content: flex-end; }
+.bubble { max-width: 86%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; }
+.bubble.me { background: #1d4ed8; color: white; border-bottom-right-radius: 4px; }
+.bubble.bot { background: #f1f5f9; color: #0f172a; border-bottom-left-radius: 4px; }
+.bubble.bot .qa-answer { font-size: 14px; }
+.bubble.bot .qa-src { border-top: 1px solid #e2e8f0; margin-top: 8px; padding-top: 6px; }
+.bubble.note { background: #fff7ed; color: #9a3412; }
+.st-key-chat_panel [data-testid="stExpander"] { margin: 0 0 6px 0; max-width: 86%; }
 </style>
 """
 
@@ -84,7 +93,8 @@ def _ask(question, retriever, k, start, end, sectors):
             text = ("The model is busy or today's free quota is used up. "
                     "Please try again in a minute (or tomorrow if the daily quota ran out).")
         elif "API_KEY" in msg:
-            text = "No API key found. Set GEMINI_API_KEY in the terminal, then restart the app."
+            text = ("I'm not connected to the AI model yet. To turn me on, set GEMINI_API_KEY "
+                    "in the terminal and start the app again.")
         else:
             text = f"Something went wrong: {msg[:300]}"
         return {"role": "assistant", "error": text}
@@ -108,36 +118,34 @@ def _ask(question, retriever, k, start, end, sectors):
 
 
 def _show(msg):
+    """Messenger-style bubbles: the user's on the right, the assistant's on the left."""
     if msg["role"] == "user":
-        with st.chat_message("user", avatar=":material/person:"):
-            st.markdown(msg["text"])
+        st.markdown(f"<div class='bubble-row me'><div class='bubble me'>{html.escape(msg['text'])}</div></div>",
+                    unsafe_allow_html=True)
         return
-    with st.chat_message("assistant", avatar=":material/insights:"):
-        if "error" in msg:
-            st.warning(msg["error"])
-            return
-        cls = "qa-answer refused" if msg["refused"] else "qa-answer"
-        st.markdown(f"<div class='{cls}'>{msg['html']}</div>", unsafe_allow_html=True)
-        if msg["sources"]:
-            lines = []
-            for s in msg["sources"]:
-                what = f"{s['sector']} after {s['label']}" if s["sector"] else s["label"]
-                link = (f" · <a href='{html.escape(s['url'])}' target='_blank'>{_domain(s['url'])}</a>"
-                        if s["url"] else "")
-                lines.append(f"<b>[{s['n']}]</b> {s['date']} · {html.escape(what)}{link}")
-            st.markdown("<div class='qa-src'>" + "<br>".join(lines) + "</div>", unsafe_allow_html=True)
-        meta = ("No event matched closely enough, so the model wasn't asked."
-                if msg["gated"] else f"{msg['model']} · {len(msg['docs'])} documents searched")
-        st.markdown(f"<div class='qa-meta'>{meta}</div>", unsafe_allow_html=True)
-        if msg["invalid"]:
-            st.warning("Cited documents that weren't retrieved: " + ", ".join(msg["invalid"]))
-        if msg["docs"]:
-            with st.expander("Documents the model was given"):
-                for d in msg["docs"]:
-                    st.markdown(f"**{d['date']} · {d['label']}" + (f" · {d['sector']}" if d["sector"] else "")
-                                + f"**  \n<span class='qa-meta'>relevance {d['score']:.2f} · `{d['id']}`</span>",
-                                unsafe_allow_html=True)
-                    st.caption(d["text"])
+    if "error" in msg:
+        st.markdown(f"<div class='bubble-row'><div class='bubble bot note'>{html.escape(msg['error'])}</div></div>",
+                    unsafe_allow_html=True)
+        return
+    body = f"<div class='{'qa-answer refused' if msg['refused'] else 'qa-answer'}'>{msg['html']}</div>"
+    if msg["sources"]:
+        lines = []
+        for s in msg["sources"]:
+            what = f"{s['sector']} after {s['label']}" if s["sector"] else s["label"]
+            link = (f" · <a href='{html.escape(s['url'])}' target='_blank'>{_domain(s['url'])}</a>"
+                    if s["url"] else "")
+            lines.append(f"<b>[{s['n']}]</b> {s['date']} · {html.escape(what)}{link}")
+        body += "<div class='qa-src'>" + "<br>".join(lines) + "</div>"
+    if msg["invalid"]:
+        body += "<div class='qa-meta'>Cited documents that weren't retrieved: " + ", ".join(msg["invalid"]) + "</div>"
+    st.markdown(f"<div class='bubble-row'><div class='bubble bot'>{body}</div></div>", unsafe_allow_html=True)
+    if msg["docs"]:
+        with st.expander("Documents used", icon=":material/description:"):
+            for d in msg["docs"]:
+                st.markdown(f"**{d['date']} · {d['label']}" + (f" · {d['sector']}" if d["sector"] else "")
+                            + f"**  \n<span class='qa-meta'>relevance {d['score']:.2f} · `{d['id']}`</span>",
+                            unsafe_allow_html=True)
+                st.caption(d["text"])
 
 
 def render_chat(panel=True):
@@ -173,7 +181,7 @@ def render_chat(panel=True):
             st.markdown("<div class='qa-hint'>Try asking</div>", unsafe_allow_html=True)
             with st.container(key="qa_examples"):
                 for label, q in examples_from(retriever.docs):
-                    if st.button(label, key=f"ex_{label}", width="stretch", help=q):
+                    if st.button(label, key=f"ex_{label}", width="stretch"):
                         st.session_state["qa_pending"] = q
 
         for msg in history:
@@ -182,10 +190,17 @@ def render_chat(panel=True):
         typed = st.chat_input("Ask about a spike event or sector…")
         question = typed or st.session_state.pop("qa_pending", None)
         if question:
+            # show the question first, then answer on the next run
             history.append({"role": "user", "text": question})
-            _show(history[-1])
-            with st.spinner("Searching the events and asking the model…"):
-                history.append(_ask(question, retriever, config.TOP_K, None, None, None))
+            st.session_state["qa_answering"] = question
+            st.rerun()
+        if st.session_state.get("qa_answering"):
+            # while the model works, the send arrow spins (no extra spinner text)
+            st.markdown("<style>.st-key-chat_panel [data-testid='stChatInputSubmitButton'] svg "
+                        "{animation: qa-spin 0.9s linear infinite;} "
+                        "@keyframes qa-spin {to {transform: rotate(360deg);}}</style>", unsafe_allow_html=True)
+            q = st.session_state.pop("qa_answering")
+            history.append(_ask(q, retriever, config.TOP_K, None, None, None))
             st.rerun()
 
 
