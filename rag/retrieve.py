@@ -73,6 +73,8 @@ class Hit:
     rank_score: float = 0.0  # what the ranking used (RRF in hybrid mode)
 
 
+DATE_IN_Q = re.compile(r"\b(19|20)\d\d-\d\d-\d\d\b")
+
 class Retriever:
     def __init__(self, mode=None):
         import faiss
@@ -88,8 +90,11 @@ class Retriever:
         self.docs = meta["docs"]
         self.mode = mode or config.RETRIEVER
         self.bm25 = BM25([d["text"] for d in self.docs])
+        self.by_id = {d["doc_id"]: i for i, d in enumerate(self.docs)}
 
     def _keep(self, doc, start_date, end_date, sectors):
+        if doc["type"] in ("sector_summary", "events_summary"):  # cover all dates
+            return not (sectors and doc["sector"] is not None and doc["sector"] not in sectors)
         if start_date and doc["event_date"] < start_date:
             return False
         if end_date and doc["event_date"] > end_date:
@@ -116,12 +121,39 @@ class Retriever:
             rrf = {i: 1 / (RRF_K + dense_rank[i]) + 1 / (RRF_K + bm_rank[i]) for i in range(n)}
             ranked = sorted(rrf.items(), key=lambda x: -x[1])
 
+        # A question that names a date is about that event; the all-events
+        # comparison documents mention many dates and would only crowd it out.
+        q_dates = {m.group(0) for m in DATE_IN_Q.finditer(question)}
+        names_date = bool(q_dates)
+        if q_dates & {d["event_date"] for d in self.docs}:
+            # Self-query step: the question names an event date we have, so
+            # documents for that date go first (still in RRF order).
+            ranked = ([x for x in ranked if self.docs[int(x[0])]["event_date"] in q_dates]
+                      + [x for x in ranked if self.docs[int(x[0])]["event_date"] not in q_dates])
         hits = []
         for i, rank_score in ranked:
             doc = self.docs[int(i)]
             if not self._keep(doc, start_date, end_date, sectors):
                 continue
+            if names_date and doc["type"] in ("sector_summary", "events_summary"):
+                continue
             hits.append(Hit(doc=doc, score=cosine[int(i)], rank_score=float(rank_score)))
             if len(hits) == k:
                 break
-        return hits
+        return self._add_parent_event(hits, cosine, start_date, end_date, sectors)
+
+    def _add_parent_event(self, hits, cosine, start_date, end_date, sectors):
+        """Parent-document step: if the best hit is a sector document, make sure
+        its event document (index, z-score, countries, all-sector ranking) is
+        in the results too. Otherwise six near-identical sector documents for
+        the same date can push the event document out of the top k."""
+        if not hits or hits[0].doc["type"] != "event_sector":
+            return hits
+        pid = f"event:{hits[0].doc['event_date']}"
+        if pid not in self.by_id or any(h.doc["doc_id"] == pid for h in hits):
+            return hits
+        i = self.by_id[pid]
+        if not self._keep(self.docs[i], start_date, end_date, sectors):
+            return hits
+        parent = Hit(doc=self.docs[i], score=cosine[i], rank_score=hits[0].rank_score)
+        return [hits[0], parent] + hits[1:-1] if len(hits) > 1 else [hits[0], parent]
