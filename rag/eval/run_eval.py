@@ -27,6 +27,7 @@ the suffix shows the mode, e.g. results_dense_retrieval.md.
 """
 import argparse
 import datetime as dt
+import hashlib
 import json
 import re
 import time
@@ -191,8 +192,11 @@ def main():
         status = {}
 
         def cached_llm(question, hits):
+            # Key includes a hash of the document TEXT, not just the ids, so a
+            # rebuilt corpus (same ids, new numbers) never reuses old answers.
+            docs_hash = hashlib.sha1("\n".join(h.doc["text"] for h in hits).encode()).hexdigest()[:16]
             key = "|".join([config.LLM_PROVIDER, config.LLM_MODEL, args.retriever,
-                            ",".join(h.doc["doc_id"] for h in hits), question])
+                            ",".join(h.doc["doc_id"] for h in hits), docs_hash, question])
             if key in cache:
                 status["how"] = "saved earlier"
             else:
