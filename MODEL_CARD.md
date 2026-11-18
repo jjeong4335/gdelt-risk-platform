@@ -23,6 +23,8 @@ Rebuilt from GDELT's public BigQuery tables after the original cluster outputs b
 - S&P 500 daily closing prices (today's constituents) via [yfinance](https://github.com/ranaroussi/yfinance)
 - Event names: the most distinctive countries + category for each event, scored by lift against the other events (no LLM)
 
+Cross-event analyses (`data_collection/build_analysis.py` → `analysis.json`) add 5 documents: sector excess returns by event type with random-date tests, day-by-day timing around war events, VIX co-movement, top stocks and repeat movers. They are computed from the same data; the model only restates them.
+
 ## Evaluation
 Method: see "Evaluation" in the README. 29 questions generated from the data (24 answerable, 5 unanswerable). Run 2026-11-18, 27 events, LLM `gemini-3.5-flash-lite`, k = 5.
 

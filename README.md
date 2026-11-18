@@ -92,6 +92,7 @@ From `data_collection/build_analysis.py`; correlation, not causation.
 
 `streamlit run dashboard/app.py`
 
+- **Diagnosis (top of Overview):** is today's market fear geopolitical? The VIX (vs its past year) and the tension score (vs this year) side by side, read together as *Geopolitical shock*, *Market fear, not geopolitical*, *Geopolitical tension, market calm* or *Calm* (threshold +2σ), with what happened after past war/conflict spikes.
 - **Live:** today's tension in σ and as a past-year percentile ("higher than X% of days"), the risk level (z-score of the latest day vs this year, same rule as spike detection), latest geopolitical headlines from GDELT's 15-minute feed, live sector ETF moves, and the historical average reaction of a sample portfolio.
 - **History:** 10 years of daily tension in standard deviations from each year's average (the same number spike detection uses, so every event sits above the +3σ line), (double-click to zoom into a year, drag to move, double-click again for all 10 years), plus a table of all events; an event explorer with the index and VIX around the event, sector returns at Day +5, and the event's news.
 - **Ask the data:** a round chat button in the bottom-right corner that opens a floating chat window.
@@ -108,7 +109,7 @@ Ask *"Which sector fell most 5 days after the spike on 2019-04-21?"* and get a s
 
 | Choice | What | Why |
 |---|---|---|
-| Documents | 1 per event (index, z-score, window, countries, themes, headlines, sector ranking) + 1 per event × sector (Day +1/+5/+30 returns) + 7 comparison summaries (per sector across all events, and all events by z-score) + 3 cross-event analyses (`build_analysis.py`: stocks that moved most after spikes, whether the VIX or the tension score peaked first, whether the biggest movers repeat across events) | Matches the questions people ask: "what happened on X?", "how did sector Y react?", "after which event did Y fall most?" Event and sector docs stay under the embedding model's 256-token limit. |
+| Documents | 1 per event (index, z-score, window, countries, themes, headlines, sector ranking) + 1 per event × sector (Day +1/+5/+30 returns) + 7 comparison summaries (per sector across all events, and all events by z-score) + 5 cross-event analyses (`build_analysis.py`: sector excess returns by event type, day-by-day timing of tension/VIX/defense/airlines, VIX co-movement and lead/lag, stocks that moved most, whether the biggest movers repeat) | Matches the questions people ask: "what happened on X?", "how did sector Y react?", "after which event did Y fall most?" Event and sector docs stay under the embedding model's 256-token limit. |
 | Embeddings | `sentence-transformers/all-MiniLM-L6-v2`, FAISS exact cosine search | Small, free, runs on a laptop CPU; a corpus of ~200 short docs doesn't need approximate search. |
 | Hybrid retrieval | Embedding rank + BM25 keyword rank, merged with Reciprocal Rank Fusion `1/(60+rank)` | Added when embeddings alone missed questions that name a date (on the earlier 31-event data, hit@5 went from 56.5% to 87.0%). RRF only uses ranks, so the two scores don't need calibrating. With date-aware retrieval now in place, BM25 adds little on the current eval (see Results); `GEO_QA_RETRIEVER=dense` turns it off. |
 | Date-aware retrieval | If the question names an event date, that date's documents rank first, and the event document is always included | Each date has 7 near-identical documents; without this, six sector docs could push out the event doc that holds the index and the full sector ranking. |
@@ -190,10 +191,11 @@ Run on 2026-11-18 on data through 2026-11-17 (27 events): 29 generated questions
 ```
 data_collection/
   bigquery_daily_index.sql   step 1: daily inputs (BigQuery)
-  download_prices.py         S&P 500 daily closes (yfinance)
+  download_prices.py         S&P 500 daily closes and VIX (yfinance)
   build_history.py           step 2: index, spike detection, events; writes event_news.sql
   bigquery_event_news.sql    template for step 3 (filled in by build_history.py)
-  build_events.py            step 4: name events, news, stock reactions
+  build_events.py            step 4: name events, news, stock reactions (then runs build_analysis)
+  build_analysis.py          cross-event analyses -> analysis.json (Findings above)
   common.py                  shared helpers
 dashboard/
   app.py, collect_live.py    Streamlit dashboard and live GDELT feed
@@ -219,7 +221,7 @@ pip install -r requirements.txt
 2. `python -m data_collection.download_prices`
 3. `python -m data_collection.build_history` (writes `events.csv` and `event_news.sql`)
 4. Run `event_news.sql` in BigQuery; save the result as `event_news.csv`.
-5. `python -m data_collection.build_events`
+5. `python -m data_collection.build_events` (also writes `analysis.json`; re-run just that part with `python -m data_collection.build_analysis`)
 
 **Q&A and dashboard**
 
