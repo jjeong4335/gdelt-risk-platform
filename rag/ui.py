@@ -154,10 +154,14 @@ def render_chat(panel=True):
 
     with area:
         st.markdown(_CSS, unsafe_allow_html=True)
-        head, clear = st.columns([3, 1], vertical_alignment="center")
+        head, clear, close = st.columns([4, 1.2, 0.6], vertical_alignment="center")
         head.markdown("<div class='qa-title'>Ask the data</div>", unsafe_allow_html=True)
         if history and clear.button("Clear", type="tertiary", help="Clear the conversation"):
             st.session_state["qa_chat"] = []
+            st.rerun()
+        if panel and close.button("", icon=":material/close:", type="tertiary", key="chat_close",
+                                  help="Close the assistant"):
+            st.session_state.chat_open = False
             st.rerun()
         st.markdown("<div class='qa-intro'>Answers come only from the detected spike events and how "
                     "S&P 500 sectors moved afterwards, with sources for every fact. Historical "

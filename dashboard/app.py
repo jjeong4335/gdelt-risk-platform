@@ -150,9 +150,12 @@ st.markdown("""
         background: #f97316; border: none; box-shadow: 0 8px 22px rgba(249,115,22,0.45); }
     .st-key-chat_fab button:hover { background: #ea580c; }
     .st-key-chat_fab button [data-testid="stIconMaterial"] { color: white; font-size: 28px; }
-    .st-key-chat_panel { position: fixed; right: 28px; top: 16px; bottom: 102px; z-index: 1000; width: 420px !important;
+    .st-key-chat_panel { position: fixed; right: 20px; top: 16px; bottom: 16px; z-index: 1000; width: 420px !important;
+        animation: chat-slide-in 0.28s ease-out;
         overflow-y: auto; background: white; border-radius: 18px;
         border: 1px solid #e2e8f0; border-top: 4px solid #f97316; box-shadow: 0 18px 48px rgba(15,23,42,0.22); padding: 16px 18px 8px; }
+    @keyframes chat-slide-in { from { transform: translateX(110%); opacity: 0.4; } to { transform: none; opacity: 1; } }
+    .st-key-chat_close button [data-testid="stIconMaterial"] { font-size: 22px; color: #64748b; }
     /* keep the message box at the bottom of the chat window */
     .st-key-chat_panel > div:has([data-testid="stChatInput"]) { margin-top: auto; position: sticky; bottom: 0;
         background: white; padding-top: 8px; }
@@ -424,7 +427,6 @@ def zoom_chart(fig, height, window_days=365):
     because st.plotly_chart can't change what a double-click does:
     double-click = zoom to a one-year window around that spot (again = back
     to the full range), drag = move left/right."""
-    import streamlit.components.v1 as components
     post = """
     var gd = document.getElementById('{plot_id}');
     var zoomed = false, half = %d * 86400000 / 2, last = null;
@@ -457,8 +459,9 @@ def zoom_chart(fig, height, window_days=365):
                        default_height=f"{height}px", default_width="100%",
                        config={"displayModeBar": False, "doubleClick": False,
                                "scrollZoom": False, "responsive": True})
-    components.html("<style>body{margin:0;font-family:Arial,Helvetica,sans-serif}</style>" + html,
-                    height=height + 12)
+    # our own HTML (generated from the data above), not user input
+    st.iframe("<style>body{margin:0;font-family:Arial,Helvetica,sans-serif}</style>" + html,
+              height=height + 12)
 
 
 def html_card(key, height, body):
@@ -497,15 +500,14 @@ st.markdown(
     "<span class='hero-pill'>No hand-picked events</span></div></div>", unsafe_allow_html=True)
 tab_live, tab_hist, tab_how = st.tabs(["Overview", "Event history", "How it works"])
 
-with st.container(key="chat_fab"):
-    open_now = st.session_state.chat_open
-    if st.button("", icon=":material/close:" if open_now else ":material/chat:",
-                 help="Close the assistant" if open_now else "Ask the data"):
-        st.session_state.chat_open = not open_now
-        st.rerun()
 if st.session_state.chat_open:
     from rag.ui import render_chat
-    render_chat()
+    render_chat()  # floating window with its own close (X) button
+else:
+    with st.container(key="chat_fab"):
+        if st.button("", icon=":material/chat:", help="Ask the data"):
+            st.session_state.chat_open = True
+            st.rerun()
 
 # ══════════════════════════════════════════════════════════════════
 # OVERVIEW
