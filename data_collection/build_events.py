@@ -20,6 +20,7 @@ Run (from the repo root):
 import argparse
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from data_collection.rebuild_for_rag import build_reactions, url_to_title
@@ -33,11 +34,13 @@ CATEGORY_WORDS = {
     "DEESCALATION": "ceasefire",
     "INTELLIGENCE_CYBER": "espionage & cyber",
     "SPECIAL": "nuclear & blockade",
+    "TERRORISM": "terror attack",
 }
 # Generic GDELT theme families that say little about what happened.
 GENERIC_THEME_PREFIXES = ("TAX_FNCACT", "TAX_ETHNICITY", "TAX_WORLDLANGUAGES", "TAX_POLITICAL_PARTY",
                           "CRISISLEX", "WB_", "EPU_", "UNGP_", "SOC_", "USPEC_", "GENERAL_", "MEDIA_",
-                          "LEADER", "GOV", "MANMADE", "ECON_", "TAX_ECON", "EDUCATION", "TAX_DISEASE")
+                          "LEADER", "GOV", "MANMADE", "ECON_", "TAX_ECON", "EDUCATION", "TAX_DISEASE",
+                          "TAX_WORLDMAMMALS", "TAX_WORLDBIRDS", "AFFECT", "MEDICAL")
 
 
 def parse_counts(s):
@@ -50,24 +53,52 @@ def parse_counts(s):
     return out
 
 
-def pick_categories(events_counts, totals):
-    """Category per event = the one most OVER-represented compared with the
-    other events (lift = share in this event / average share over all events).
-    Military themes appear in almost every article, so "most common category"
-    would say CONFLICT every time; lift shows what makes this event different.
-    A category needs at least 10% of the event's articles to be picked."""
-    shares = pd.DataFrame([{c: n for c, n in cc} for cc in events_counts]).fillna(0)
-    shares = shares.div(pd.Series(totals, dtype=float).clip(lower=1).values, axis=0)  # share of the event's articles
-    lift = shares / shares.mean().where(lambda x: x > 0, 1)
+def shares_and_lift(count_strings, totals):
+    """Rows = events, columns = items (countries / categories / themes).
+    share = fraction of the event's articles that mention the item;
+    lift  = share / the item's average share over all events.
+    Lift is what makes an event different: the UK, Russia, CONFLICT and
+    ARMEDCONFLICT appear around almost every event, so raw counts would put
+    them on every name."""
+    counts = pd.DataFrame([dict(parse_counts(c)) for c in count_strings]).fillna(0)
+    share = counts.div(pd.Series(totals, dtype=float).clip(lower=1).values, axis=0)
+    lift = share / share.mean().where(lambda x: x > 0, 1)
+    return share, lift
+
+
+def pick_categories(share, lift, min_share=0.10):
+    """Most over-represented category with at least 10% of the articles."""
     out = []
-    for i in range(len(shares)):
-        ok = shares.iloc[i] >= 0.10
+    for i in range(len(share)):
+        ok = share.iloc[i] >= min_share
         out.append(lift.iloc[i][ok].idxmax() if ok.any() else "CONFLICT")
     return out
 
 
+def pick_countries(share, lift, k=5):
+    """Countries mentioned at least 1/4 as often as the event's top country,
+    ranked by share x log(1 + lift): frequent AND distinctive."""
+    out = []
+    for i in range(len(share)):
+        s, l = share.iloc[i], lift.iloc[i]
+        cand = s[s >= 0.25 * s.max()] if s.max() > 0 else s.iloc[:0]
+        score = (cand * np.log1p(l[cand.index])).sort_values(ascending=False)
+        out.append([(c, float(score[c])) for c in score.index[:k]])
+    return out
+
+
+def pick_themes(share, lift, k=6, min_share=0.05):
+    out = []
+    for i in range(len(share)):
+        s, l = share.iloc[i], lift.iloc[i]
+        cand = [t for t in s[(s >= min_share) & (l >= 1.2)].index  # more common than usual
+                if not t.startswith(GENERIC_THEME_PREFIXES)]
+        out.append(list(l[cand].sort_values(ascending=False).index[:k]))
+    return out
+
+
 def name_event(countries, category):
-    """Top country, plus the second one if it is mentioned at least 40% as often."""
+    """Top country, plus the second one if it scores at least 40% as high."""
     names = [FIPS_NAMES.get(c, c) for c, _ in countries]
     if not names:
         main = "International"
@@ -90,17 +121,16 @@ def main():
     events = pd.read_csv(d / "events.csv", parse_dates=["date", "start_date", "end_date"])
     news = pd.read_csv(d / "event_news.csv", parse_dates=["event_date", "article_date"])
 
-    first = news.drop_duplicates("event_date").set_index("event_date")
-    counts = [parse_counts(first["category_counts"].get(ev.date, "")) for ev in events.itertuples()]
-    totals = [first["articles_in_window"].get(ev.date, 0) for ev in events.itertuples()]
-    categories = pick_categories(counts, totals)
+    first = news.drop_duplicates("event_date").set_index("event_date").reindex(events["date"])
+    core = first["articles_core"] if "articles_core" in first else first["articles_in_window"]
+    totals = core.fillna(0).tolist()
+    categories = pick_categories(*shares_and_lift(first["category_counts"].fillna(""), totals))
+    countries_all = pick_countries(*shares_and_lift(first["top_countries"].fillna(""), totals))
+    themes_all = pick_themes(*shares_and_lift(first["top_themes"].fillna(""), totals))
 
     rows, news_parts = [], []
-    for ev, category in zip(events.itertuples(), categories):
+    for ev, category, countries, themes in zip(events.itertuples(), categories, countries_all, themes_all):
         n = news[news["event_date"] == ev.date]
-        countries = parse_counts(n["top_countries"].iloc[0]) if len(n) else []
-        themes = [t for t, _ in parse_counts(n["top_themes"].iloc[0])] if len(n) else []
-        themes = [t for t in themes if not t.startswith(GENERIC_THEME_PREFIXES)][:6]
         rows.append({
             "date": ev.date.date(), "start_date": ev.start_date.date(), "end_date": ev.end_date.date(),
             "spike_days": ev.spike_days, "geo_tension_index": ev.geo_tension_index, "z_score": ev.z_score,
