@@ -18,7 +18,6 @@ Run (from the repo root):
     python -m data_collection.build_events
 """
 import argparse
-from collections import Counter
 from pathlib import Path
 
 import pandas as pd
@@ -51,6 +50,22 @@ def parse_counts(s):
     return out
 
 
+def pick_categories(events_counts, totals):
+    """Category per event = the one most OVER-represented compared with the
+    other events (lift = share in this event / average share over all events).
+    Military themes appear in almost every article, so "most common category"
+    would say CONFLICT every time; lift shows what makes this event different.
+    A category needs at least 10% of the event's articles to be picked."""
+    shares = pd.DataFrame([{c: n for c, n in cc} for cc in events_counts]).fillna(0)
+    shares = shares.div(pd.Series(totals, dtype=float).clip(lower=1).values, axis=0)  # share of the event's articles
+    lift = shares / shares.mean().where(lambda x: x > 0, 1)
+    out = []
+    for i in range(len(shares)):
+        ok = shares.iloc[i] >= 0.10
+        out.append(lift.iloc[i][ok].idxmax() if ok.any() else "CONFLICT")
+    return out
+
+
 def name_event(countries, category):
     """Top country, plus the second one if it is mentioned at least 40% as often."""
     names = [FIPS_NAMES.get(c, c) for c, _ in countries]
@@ -75,19 +90,24 @@ def main():
     events = pd.read_csv(d / "events.csv", parse_dates=["date", "start_date", "end_date"])
     news = pd.read_csv(d / "event_news.csv", parse_dates=["event_date", "article_date"])
 
+    first = news.drop_duplicates("event_date").set_index("event_date")
+    counts = [parse_counts(first["category_counts"].get(ev.date, "")) for ev in events.itertuples()]
+    totals = [first["articles_in_window"].get(ev.date, 0) for ev in events.itertuples()]
+    categories = pick_categories(counts, totals)
+
     rows, news_parts = [], []
-    for ev in events.itertuples():
+    for ev, category in zip(events.itertuples(), categories):
         n = news[news["event_date"] == ev.date]
         countries = parse_counts(n["top_countries"].iloc[0]) if len(n) else []
         themes = [t for t, _ in parse_counts(n["top_themes"].iloc[0])] if len(n) else []
         themes = [t for t in themes if not t.startswith(GENERIC_THEME_PREFIXES)][:6]
-        category = Counter(n["category"]).most_common(1)[0][0] if len(n) else ev.dominant_category
         rows.append({
             "date": ev.date.date(), "start_date": ev.start_date.date(), "end_date": ev.end_date.date(),
             "spike_days": ev.spike_days, "geo_tension_index": ev.geo_tension_index, "z_score": ev.z_score,
             "total_events": ev.total_events, "is_spike": True,
             "dominant_category": category,
             "label": name_event(countries[:2], category),
+            "category_counts": first["category_counts"].get(ev.date, ""),
             "top_countries": ", ".join(FIPS_NAMES.get(c, c) for c, _ in countries[:5]),
             "top_themes": ", ".join(themes),
             "articles_in_window": int(n["articles_in_window"].iloc[0]) if len(n) else 0,

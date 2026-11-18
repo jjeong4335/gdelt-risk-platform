@@ -3,6 +3,7 @@
 -- windows and writes the ready-to-run query to ~/dashboard_data_rebuilt/event_news.sql.
 --
 -- For every event (peak day +- 3 days) it returns, computed in BigQuery:
+--   * how many articles touch each category (an article can have several)
 --   * up to {{ARTICLES_PER_EVENT}} matching articles (closest to the peak first) with domain and URL
 --   * the most-mentioned countries and themes across ALL matching articles
 -- Same article filter as bigquery_daily_index.sql (theme keywords, international, tone 0..50).
@@ -22,15 +23,16 @@ arts AS (
     Themes AS themes,
     Locations AS locations,
     SAFE_CAST(SPLIT(V2Tone, ',')[SAFE_OFFSET(2)] AS FLOAT64) AS neg,
-    CASE
-      WHEN REGEXP_CONTAINS(Themes, r'(^|[;_])(MILITARY|ARMEDCONFLICT|WAR|WEAPONS?|MISSILES?|INVASION|AIRSTRIKES?)([;_,]|$)') THEN 'CONFLICT'
-      WHEN REGEXP_CONTAINS(Themes, r'(^|[;_])(SANCTIONS?|EMBARGO|TARIFFS?|EXPORT_CONTROLS?)([;_,]|$)') THEN 'ECONOMIC_PRESSURE'
-      WHEN REGEXP_CONTAINS(Themes, r'(^|[;_])(COUP|PROTESTS?|RIOTS?)([;_,]|$)') THEN 'POLITICAL_INSTABILITY'
-      WHEN REGEXP_CONTAINS(Themes, r'(^|[;_])(DIPLOMATIC|DIPLOMACY|EXPULSION)([;_,]|$)') THEN 'DIPLOMATIC_TENSION'
-      WHEN REGEXP_CONTAINS(Themes, r'(^|[;_])(CEASEFIRE)([;_,]|$)') THEN 'DEESCALATION'
-      WHEN REGEXP_CONTAINS(Themes, r'(^|[;_])(ESPIONAGE|CYBERATTACK|CYBER_ATTACK)([;_,]|$)') THEN 'INTELLIGENCE_CYBER'
-      WHEN REGEXP_CONTAINS(Themes, r'(^|[;_])(NUCLEAR|BLOCKADE|ANNEXATION)([;_,]|$)') THEN 'SPECIAL'
-    END AS category
+    -- An article can belong to several categories (multi-label).
+    ARRAY(SELECT c FROM UNNEST([
+      IF(REGEXP_CONTAINS(Themes, r'(^|[;_])(MILITARY|ARMEDCONFLICT|WAR|WEAPONS?|MISSILES?|INVASION|AIRSTRIKES?)([;_,]|$)'), 'CONFLICT', NULL),
+      IF(REGEXP_CONTAINS(Themes, r'(^|[;_])(SANCTIONS?|EMBARGO|TARIFFS?|EXPORT_CONTROLS?)([;_,]|$)'), 'ECONOMIC_PRESSURE', NULL),
+      IF(REGEXP_CONTAINS(Themes, r'(^|[;_])(COUP|PROTESTS?|RIOTS?)([;_,]|$)'), 'POLITICAL_INSTABILITY', NULL),
+      IF(REGEXP_CONTAINS(Themes, r'(^|[;_])(DIPLOMATIC|DIPLOMACY|EXPULSION)([;_,]|$)'), 'DIPLOMATIC_TENSION', NULL),
+      IF(REGEXP_CONTAINS(Themes, r'(^|[;_])(CEASEFIRE)([;_,]|$)'), 'DEESCALATION', NULL),
+      IF(REGEXP_CONTAINS(Themes, r'(^|[;_])(ESPIONAGE|CYBERATTACK|CYBER_ATTACK)([;_,]|$)'), 'INTELLIGENCE_CYBER', NULL),
+      IF(REGEXP_CONTAINS(Themes, r'(^|[;_])(NUCLEAR|BLOCKADE|ANNEXATION)([;_,]|$)'), 'SPECIAL', NULL)
+    ]) AS c WHERE c IS NOT NULL) AS cats
   FROM `gdelt-bq.gdeltv2.gkg_partitioned`
   WHERE _PARTITIONTIME IN (
     {{PARTITIONS}}
@@ -40,13 +42,19 @@ matched AS (
   SELECT e.event_date, a.*, DATE_DIFF(a.article_date, e.event_date, DAY) AS days_from_spike
   FROM arts AS a
   JOIN events AS e ON a.article_date BETWEEN e.start_day AND e.end_day
-  WHERE a.category IS NOT NULL
+  WHERE ARRAY_LENGTH(a.cats) > 0
     AND a.neg BETWEEN 0 AND 50
     AND EXISTS(SELECT 1 FROM UNNEST(SPLIT(a.locations, ';')) AS loc
                WHERE SPLIT(loc, '#')[SAFE_OFFSET(2)] NOT IN ('', 'US'))
 ),
 window_size AS (
   SELECT event_date, COUNT(*) AS articles_in_window FROM matched GROUP BY event_date
+),
+cat_counts AS (
+  -- how many of the event's articles touch each category
+  SELECT event_date, STRING_AGG(CONCAT(c, ':', CAST(n AS STRING)), '|' ORDER BY n DESC) AS category_counts
+  FROM (SELECT event_date, c, COUNT(*) AS n FROM matched, UNNEST(cats) AS c GROUP BY event_date, c)
+  GROUP BY event_date
 ),
 countries AS (
   SELECT event_date,
@@ -83,7 +91,7 @@ sample AS (
   FROM (
     SELECT *, ROW_NUMBER() OVER (PARTITION BY event_date ORDER BY ABS(days_from_spike), neg DESC, url) AS rk
     FROM (
-      SELECT event_date, article_date, days_from_spike, domain, url, category, neg,
+      SELECT event_date, article_date, days_from_spike, domain, url, ARRAY_TO_STRING(cats, ',') AS category, neg,
              ROW_NUMBER() OVER (PARTITION BY event_date, url ORDER BY ABS(days_from_spike)) AS dup
       FROM matched
     )
@@ -92,9 +100,10 @@ sample AS (
   WHERE rk <= {{ARTICLES_PER_EVENT}}
 )
 SELECT s.event_date, s.article_date, s.days_from_spike, s.domain, s.url, s.category, s.neg,
-       w.articles_in_window, c.top_countries, t.top_themes
+       w.articles_in_window, k.category_counts, c.top_countries, t.top_themes
 FROM sample AS s
 LEFT JOIN window_size AS w USING (event_date)
+LEFT JOIN cat_counts AS k USING (event_date)
 LEFT JOIN countries AS c USING (event_date)
 LEFT JOIN themes AS t USING (event_date)
 ORDER BY s.event_date, ABS(s.days_from_spike), s.neg DESC
