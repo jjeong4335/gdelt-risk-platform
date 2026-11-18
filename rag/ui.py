@@ -41,20 +41,21 @@ def examples_from(docs):
 
 _CSS = """
 <style>
-.qa-title { font-size: 17px; font-weight: 700; color: #0f172a; }
+.qa-title { font-size: 18px; font-weight: 800; color: #1e1b4b; }
 .qa-intro { font-size: 12.5px; color: #64748b; line-height: 1.5; margin: 4px 0 12px; }
 .qa-hint { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase;
            letter-spacing: 0.5px; margin: 6px 0 6px; }
-.st-key-qa_examples button { justify-content: flex-start; text-align: left; border-radius: 10px;
-                             padding: 8px 12px; }
+.st-key-qa_examples button { justify-content: flex-start; text-align: left; border-radius: 12px;
+                             padding: 8px 12px; background: #f5f3ff; border: 1px solid #ede9fe; }
+.st-key-qa_examples button:hover { background: #ede9fe; border-color: #c4b5fd; }
 .st-key-qa_examples button div, .st-key-qa_examples button p { justify-content: flex-start;
                              text-align: left; font-size: 13px; width: 100%; }
 .qa-answer { font-size: 15px; line-height: 1.55; color: #111827; }
 .qa-answer.refused { color: #6b7280; font-style: italic; }
-.qa-cite { display:inline-block; background:#eff6ff; color:#1d4ed8; border-radius:6px;
+.qa-cite { display:inline-block; background:#ede9fe; color:#6d28d9; border-radius:6px;
            font-size:11px; font-weight:600; padding:0 5px; margin:0 1px; vertical-align:2px; }
 .qa-src { font-size: 12px; color:#4b5563; margin-top: 6px; line-height: 1.5; }
-.qa-src b { color:#1d4ed8; }
+.qa-src b { color:#6d28d9; }
 .qa-meta { font-size: 11px; color:#9ca3af; margin-top: 4px; }
 </style>
 """
@@ -162,10 +163,13 @@ def render_chat(panel=True):
 
     with area:
         st.markdown(_CSS, unsafe_allow_html=True)
-        head, clear = st.columns([3, 1], vertical_alignment="center")
+        head, clear, close = st.columns([4, 1.3, 0.7], vertical_alignment="center")
         head.markdown("<div class='qa-title'>Ask the data</div>", unsafe_allow_html=True)
         if history and clear.button("Clear", type="tertiary", help="Clear the conversation"):
             st.session_state["qa_chat"] = []
+            st.rerun()
+        if panel and close.button("", icon=":material/close:", type="tertiary", help="Close the assistant"):
+            st.session_state.chat_open = False
             st.rerun()
         st.markdown("<div class='qa-intro'>Answers come only from the detected spike events and how "
                     "S&P 500 sectors moved afterwards, with sources for every fact. Historical "

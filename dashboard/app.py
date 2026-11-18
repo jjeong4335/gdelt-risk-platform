@@ -26,98 +26,141 @@ st.markdown('<meta http-equiv="refresh" content="900">', unsafe_allow_html=True)
 # ── Custom CSS ────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    html, body, [class*="css"], .stApp { font-family: 'Inter', system-ui, sans-serif; }
-    .stApp { background: #f6f7f9; }
-    .block-container { padding-top: 1.2rem; max-width: 1500px; }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    html, body, .stApp, .stApp p, .stApp div, .stApp input, .stApp label, .stApp li, .stApp td, .stApp th {
+        font-family: 'Plus Jakarta Sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .stApp { background: #f4f5fb; }
+    .block-container { padding-top: 1rem; max-width: 1560px; }
     .stAppDeployButton, [data-testid="stToolbar"], [data-testid="stDecoration"],
     [data-testid="stSidebarCollapsedControl"] { display: none !important; }
     header[data-testid="stHeader"] { height: 0; background: transparent; }
 
-    /* header */
-    .brand { font-size: 22px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px; display: flex; align-items: center; gap: 10px; }
-    .brand-dot { width: 12px; height: 12px; border-radius: 50%; background: #2563eb; box-shadow: 0 0 0 4px #dbeafe; }
-    .brand-sub { font-size: 14px; color: #64748b; margin: 4px 0 2px 22px; }
+    /* hero banner */
+    .hero { background: linear-gradient(120deg, #1e1b4b 0%, #3730a3 45%, #7c3aed 80%, #db2777 120%);
+            border-radius: 22px; padding: 28px 32px 26px; color: white; position: relative; overflow: hidden;
+            box-shadow: 0 12px 30px rgba(67,56,202,0.25); }
+    .hero:after { content: ""; position: absolute; right: -80px; top: -80px; width: 320px; height: 320px;
+                  border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.18), transparent 65%); }
+    .hero-kicker { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #c7d2fe; }
+    .hero-title { font-size: 32px; font-weight: 800; letter-spacing: -0.8px; margin: 6px 0 6px; }
+    .hero-sub { font-size: 15px; color: #e0e7ff; max-width: 760px; line-height: 1.5; }
+    .hero-pills { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .hero-pill { background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22); color: white;
+                 border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 600; }
+    .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4ade80;
+                box-shadow: 0 0 0 3px rgba(74,222,128,0.3); margin-right: 6px; }
 
-    /* tabs look like a site nav */
-    .stTabs [data-baseweb="tab-list"] { gap: 6px; border-bottom: 1px solid #e2e8f0; margin-top: 6px; }
-    .stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: 600; padding: 10px 14px; color: #64748b; }
-    .stTabs [aria-selected="true"] { color: #0f172a; }
-    .stTabs [data-baseweb="tab-highlight"] { background: #2563eb; height: 3px; }
+    /* tabs as pills */
+    .stTabs [role="tablist"] { gap: 6px; border-bottom: none !important; margin: 18px 0 4px; background: white;
+        padding: 6px; border-radius: 14px; width: fit-content; box-shadow: 0 1px 3px rgba(30,27,75,0.08); }
+    .stTabs [role="tab"] { padding: 8px 18px !important; border-radius: 10px; height: auto; border: none; }
+    .stTabs [role="tab"] p { font-size: 14.5px !important; font-weight: 700; color: #64748b; }
+    .stTabs [role="tab"][aria-selected="true"] { background: linear-gradient(120deg, #4f46e5, #7c3aed); }
+    .stTabs [role="tab"][aria-selected="true"] p { color: white !important; }
+    .stTabs [role="tab"] { cursor: pointer; } .stTabs [role="tab"]:hover p { color: #4f46e5; }
+    .stTabs .react-aria-SelectionIndicator { display: none !important; }
+    [data-testid="stIconMaterial"] { font-family: 'Material Symbols Rounded' !important; }
 
     /* sections */
     .sec { margin: 30px 0 14px; }
-    .sec-eyebrow { font-size: 12px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 0.8px; }
-    .sec-title { font-size: 21px; font-weight: 700; color: #0f172a; margin-top: 2px; letter-spacing: -0.2px; }
-    .sec-what { font-size: 14px; color: #64748b; margin-top: 4px; max-width: 900px; line-height: 1.5; }
+    .sec-eyebrow { display: inline-block; font-size: 11.5px; font-weight: 800; text-transform: uppercase;
+        letter-spacing: 0.9px; padding: 4px 10px; border-radius: 999px; }
+    .c-indigo { background: #e0e7ff; color: #4338ca; } .c-pink { background: #fce7f3; color: #be185d; }
+    .c-teal { background: #ccfbf1; color: #0f766e; } .c-orange { background: #ffedd5; color: #c2410c; }
+    .c-violet { background: #ede9fe; color: #6d28d9; }
+    .sec-title { font-size: 23px; font-weight: 800; color: #1e1b4b; margin-top: 8px; letter-spacing: -0.4px; }
+    .sec-what { font-size: 14.5px; color: #64748b; margin-top: 4px; max-width: 920px; line-height: 1.55; }
 
     /* cards */
-    .card, .kpi, .event-card, .step { background: white; border: 1px solid #e8ebf0; border-radius: 14px;
-        padding: 18px 20px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); margin-bottom: 14px; }
-    div[class*="st-key-card_"] { background: white; border: 1px solid #e8ebf0 !important; border-radius: 14px;
-        padding: 18px 20px 8px !important; box-shadow: 0 1px 2px rgba(15,23,42,0.04); margin-bottom: 14px; }
-    .card-h { font-size: 15px; font-weight: 600; color: #0f172a; }
+    .card, .event-card, .step { background: white; border-radius: 18px; padding: 20px 22px;
+        box-shadow: 0 1px 3px rgba(30,27,75,0.06), 0 8px 24px rgba(30,27,75,0.05); margin-bottom: 16px; border: none; }
+    div[class*="st-key-card_"] { background: white; border: none !important; border-radius: 18px;
+        padding: 20px 22px 8px !important; box-shadow: 0 1px 3px rgba(30,27,75,0.06), 0 8px 24px rgba(30,27,75,0.05);
+        margin-bottom: 16px; }
+    .card-h { font-size: 16px; font-weight: 700; color: #1e1b4b; }
     .card-sub { font-size: 12.5px; color: #94a3b8; margin: 2px 0 12px; }
-    .muted { color: #94a3b8; font-size: 13px; }
-    .pos { color: #16a34a; } .neg { color: #dc2626; }
+    .muted { color: #94a3b8; font-size: 13.5px; }
+    .pos { color: #059669; } .neg { color: #e11d48; }
 
-    /* KPIs */
-    .kpi { min-height: 196px; }
-    .kpi-label { font-size: 13px; color: #64748b; font-weight: 500; }
-    .kpi-value { font-size: 32px; font-weight: 700; color: #0f172a; margin: 6px 0 2px; letter-spacing: -0.5px; }
-    .kpi-unit { font-size: 16px; color: #94a3b8; font-weight: 500; margin-left: 2px; }
-    .kpi-note { font-size: 13px; color: #334155; }
-    .kpi-help { font-size: 12px; color: #94a3b8; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; line-height: 1.45; }
-    .risk-high { color: #dc2626; } .risk-medium { color: #d97706; } .risk-low { color: #16a34a; }
+    /* KPI cards, each with its own colour */
+    .kpi { border-radius: 18px; padding: 18px 20px; min-height: 200px; margin-bottom: 14px; color: #1e1b4b;
+           position: relative; overflow: hidden; box-shadow: 0 8px 24px rgba(30,27,75,0.06); }
+    .kpi:before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 5px; }
+    .k-indigo { background: linear-gradient(160deg, #eef2ff, #ffffff 60%); } .k-indigo:before { background: linear-gradient(90deg,#4f46e5,#818cf8); }
+    .k-risk { background: linear-gradient(160deg, #fdf2f8, #ffffff 60%); } .k-risk:before { background: linear-gradient(90deg,#db2777,#f472b6); }
+    .k-teal { background: linear-gradient(160deg, #f0fdfa, #ffffff 60%); } .k-teal:before { background: linear-gradient(90deg,#0d9488,#2dd4bf); }
+    .k-orange { background: linear-gradient(160deg, #fff7ed, #ffffff 60%); } .k-orange:before { background: linear-gradient(90deg,#ea580c,#fb923c); }
+    .kpi-label { font-size: 13px; color: #475569; font-weight: 700; }
+    .kpi-value { font-size: 36px; font-weight: 800; color: #1e1b4b; margin: 8px 0 2px; letter-spacing: -1px; }
+    .kpi-unit { font-size: 16px; color: #94a3b8; font-weight: 600; margin-left: 2px; }
+    .kpi-note { font-size: 13px; color: #334155; font-weight: 500; }
+    .kpi-help { font-size: 12px; color: #64748b; margin-top: 12px; padding-top: 10px; border-top: 1px dashed #e2e8f0; line-height: 1.45; }
+    .risk-pill { display: inline-block; font-size: 22px; font-weight: 800; padding: 4px 16px; border-radius: 999px; margin: 6px 0 4px; }
+    .risk-high { background: #ffe4e6; color: #e11d48; } .risk-medium { background: #fef3c7; color: #d97706; }
+    .risk-low { background: #d1fae5; color: #059669; }
 
     /* news */
-    .news { padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #0f172a; line-height: 1.4; }
+    .news { padding: 11px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; line-height: 1.45; font-weight: 500; }
     .news:last-child { border-bottom: none; }
-    .news a { color: #0f172a; text-decoration: none; } .news a:hover { color: #2563eb; text-decoration: underline; }
-    .news-meta { font-size: 12px; color: #94a3b8; margin-bottom: 3px; }
-    .dayb { margin-left: 8px; background: #f1f5f9; color: #475569; border-radius: 999px; padding: 1px 8px; font-size: 11px; }
-    .tag { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-right: 8px; }
-    .tag-red { background: #fee2e2; color: #b91c1c; } .tag-amber { background: #fef3c7; color: #b45309; }
-    .tag-blue { background: #dbeafe; color: #1d4ed8; } .tag-purple { background: #ede9fe; color: #6d28d9; }
+    .news a { color: #1e293b; text-decoration: none; } .news a:hover { color: #4f46e5; }
+    .news-meta { font-size: 12px; color: #94a3b8; margin-bottom: 3px; font-weight: 500; }
+    .dayb { margin-left: 8px; background: #ede9fe; color: #6d28d9; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
+    .tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; margin-right: 8px; }
+    .tag-red { background: #ffe4e6; color: #e11d48; } .tag-amber { background: #fef3c7; color: #b45309; }
+    .tag-blue { background: #e0e7ff; color: #4338ca; } .tag-purple { background: #f3e8ff; color: #7e22ce; }
     .tag-orange { background: #ffedd5; color: #c2410c; } .tag-grey { background: #f1f5f9; color: #475569; }
 
     /* sector bars */
-    .bar-row { display: grid; grid-template-columns: 130px 1fr 64px; align-items: center; gap: 10px; margin: 9px 0; font-size: 14px; }
-    .bar-name { color: #334155; } .bar-track { background: #f1f5f9; border-radius: 999px; height: 8px; }
-    .bar { height: 8px; border-radius: 999px; } .bar-pos { background: #22c55e; } .bar-neg { background: #ef4444; }
-    .bar-val { text-align: right; font-weight: 600; }
+    .bar-row { display: grid; grid-template-columns: 130px 1fr 64px; align-items: center; gap: 10px; margin: 10px 0; font-size: 14px; }
+    .bar-name { color: #334155; font-weight: 600; } .bar-track { background: #f1f5f9; border-radius: 999px; height: 10px; }
+    .bar { height: 10px; border-radius: 999px; } .bar-pos { background: linear-gradient(90deg,#34d399,#059669); }
+    .bar-neg { background: linear-gradient(90deg,#fb7185,#e11d48); } .bar-val { text-align: right; font-weight: 700; }
 
     /* tables */
-    .tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
-    .tbl th { text-align: left; font-size: 12px; color: #94a3b8; font-weight: 500; padding: 6px 4px; border-bottom: 1px solid #f1f5f9; }
-    .tbl td { padding: 8px 4px; border-bottom: 1px solid #f8fafc; color: #334155; }
-    .summary { display: flex; justify-content: space-between; font-size: 14px; color: #64748b; padding: 8px 4px 0; }
-    .summary b { color: #0f172a; }
+    .tbl { width: 100%; border-collapse: collapse; font-size: 14px; border: none; }
+    .tbl th { text-align: left; font-size: 12px; color: #94a3b8; font-weight: 700; padding: 6px 6px; border: none; border-bottom: 2px solid #f1f5f9; }
+    .tbl td { padding: 9px 6px; border: none; border-bottom: 1px solid #f8fafc; color: #334155; }
+    .summary { display: flex; justify-content: space-between; font-size: 14px; color: #64748b; padding: 9px 6px 0; }
+    .summary b { color: #1e1b4b; }
 
-    /* history stats */
-    .stat { background: white; border: 1px solid #e8ebf0; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; }
-    .stat-v { font-size: 22px; font-weight: 700; color: #0f172a; } .stat-l { font-size: 12.5px; color: #64748b; }
+    /* history stat tiles */
+    .stat { border-radius: 16px; padding: 14px 18px; margin-bottom: 14px; color: white; }
+    .s1 { background: linear-gradient(135deg,#4f46e5,#7c3aed); } .s2 { background: linear-gradient(135deg,#db2777,#f43f5e); }
+    .s3 { background: linear-gradient(135deg,#ea580c,#f59e0b); } .s4 { background: linear-gradient(135deg,#0d9488,#06b6d4); }
+    .stat-v { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; } .stat-l { font-size: 12.5px; opacity: 0.9; font-weight: 600; }
 
     /* event card */
-    .event-name { font-size: 22px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px; }
-    .badge { font-size: 13px; font-weight: 600; color: #1d4ed8; background: #eff6ff; border-radius: 999px; padding: 3px 10px; margin-left: 10px; vertical-align: middle; }
-    .event-facts { display: flex; gap: 34px; margin: 14px 0 12px; flex-wrap: wrap; }
-    .event-facts span { display: block; font-size: 12px; color: #94a3b8; } .event-facts b { font-size: 16px; color: #0f172a; }
-    .event-row { margin-top: 8px; font-size: 13px; } .event-k { color: #64748b; margin-right: 10px; }
-    .chip { display: inline-block; background: #f1f5f9; color: #334155; border-radius: 999px; padding: 3px 10px; margin: 3px 6px 3px 0; font-size: 12.5px; }
-    .chip-blue { background: #eff6ff; color: #1d4ed8; }
+    .event-card { padding: 0; overflow: hidden; }
+    .event-top { background: linear-gradient(120deg, #1e1b4b, #4338ca 60%, #7c3aed); color: white; padding: 18px 22px; }
+    .event-name { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+    .badge { font-size: 12.5px; font-weight: 700; color: #1e1b4b; background: #fde68a; border-radius: 999px; padding: 3px 10px; margin-left: 10px; vertical-align: middle; }
+    .event-facts { display: flex; gap: 36px; margin-top: 12px; flex-wrap: wrap; }
+    .event-facts span { display: block; font-size: 12px; color: #c7d2fe; font-weight: 600; } .event-facts b { font-size: 17px; color: white; }
+    .event-body { padding: 14px 22px 16px; }
+    .event-row { margin-top: 6px; font-size: 13px; } .event-k { color: #64748b; margin-right: 10px; font-weight: 600; }
+    .chip { display: inline-block; background: #f3e8ff; color: #7e22ce; border-radius: 999px; padding: 3px 11px; margin: 3px 6px 3px 0; font-size: 12.5px; font-weight: 600; }
+    .chip-blue { background: #e0f2fe; color: #0369a1; }
 
     /* how it works */
-    .step { min-height: 290px; } .step-n { width: 28px; height: 28px; border-radius: 50%; background: #eff6ff; color: #2563eb;
-        font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-    .step-t { font-size: 15px; font-weight: 600; color: #0f172a; margin: 10px 0 6px; } .step-b { font-size: 13px; color: #64748b; line-height: 1.55; }
-    .limits { font-size: 13.5px; color: #475569; line-height: 1.7; margin: 6px 0 0; }
-    .footer { text-align: center; font-size: 12px; color: #94a3b8; margin: 40px 0 10px; }
+    .step { min-height: 300px; } .step-n { width: 36px; height: 36px; border-radius: 12px; color: white;
+        font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .n1 { background: linear-gradient(135deg,#4f46e5,#818cf8); } .n2 { background: linear-gradient(135deg,#db2777,#f472b6); }
+    .n3 { background: linear-gradient(135deg,#7c3aed,#a78bfa); } .n4 { background: linear-gradient(135deg,#0d9488,#2dd4bf); }
+    .n5 { background: linear-gradient(135deg,#ea580c,#fb923c); }
+    .step-t { font-size: 16px; font-weight: 800; color: #1e1b4b; margin: 12px 0 6px; } .step-b { font-size: 13.5px; color: #64748b; line-height: 1.6; }
+    .limits { font-size: 14px; color: #475569; line-height: 1.75; margin: 6px 0 0; }
+    .footer { text-align: center; font-size: 12.5px; color: #94a3b8; margin: 40px 0 10px; }
 
     /* chat panel on the right: stays in view while the page scrolls */
     div[data-testid="stColumn"]:has(.st-key-chat_panel) { position: sticky; top: 1rem; align-self: flex-start; }
-    .st-key-chat_panel { background: white; border: 1px solid #e8ebf0; border-radius: 16px; box-shadow: 0 4px 16px rgba(15,23,42,0.06);
-                         padding: 18px 18px 8px; max-height: calc(100vh - 2rem); overflow-y: auto; }
+    .st-key-chat_panel { background: white; border-radius: 20px; box-shadow: 0 12px 32px rgba(30,27,75,0.12);
+                         padding: 18px 18px 8px; max-height: calc(100vh - 2rem); overflow-y: auto;
+                         border-top: 5px solid #7c3aed; }
+    /* floating "Ask the data" button when the panel is closed */
+    .st-key-chat_fab { position: fixed; right: 28px; bottom: 28px; z-index: 1000; width: auto; }
+    .st-key-chat_fab button { background: linear-gradient(120deg,#4f46e5,#7c3aed,#db2777); color: white; border: none;
+        border-radius: 999px; padding: 12px 22px; font-weight: 700; box-shadow: 0 10px 24px rgba(124,58,237,0.4); }
+    .st-key-chat_fab button p { color: white; font-weight: 700; font-size: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -348,12 +391,12 @@ import datetime as _dt
 import pytz
 import html as _html
 
-BLUE, AMBER, RED, GREEN, GREY = "#2563eb", "#f59e0b", "#dc2626", "#16a34a", "#94a3b8"
+BLUE, AMBER, RED, GREEN, GREY = "#4f46e5", "#f59e0b", "#db2777", "#059669", "#94a3b8"
 
 
-def section(eyebrow, title, what):
-    """Section header: small label, title, and one line saying what it shows."""
-    st.markdown(f"<div class='sec'><div class='sec-eyebrow'>{eyebrow}</div>"
+def section(eyebrow, title, what, color="indigo"):
+    """Section header: coloured label, title, and one line saying what it shows."""
+    st.markdown(f"<div class='sec'><div class='sec-eyebrow c-{color}'>{eyebrow}</div>"
                 f"<div class='sec-title'>{title}</div><div class='sec-what'>{what}</div></div>",
                 unsafe_allow_html=True)
 
@@ -361,7 +404,7 @@ def section(eyebrow, title, what):
 def style_fig(fig, height, ytitle=None, y2title=None):
     fig.update_layout(
         height=height, margin=dict(l=8, r=8, t=8, b=8), plot_bgcolor="white", paper_bgcolor="white",
-        font=dict(family="Inter, system-ui, sans-serif", size=12, color="#334155"),
+        font=dict(family="Plus Jakarta Sans, Segoe UI, Roboto, sans-serif", size=12, color="#334155"),
         legend=dict(orientation="h", y=1.08, x=0, font=dict(size=12)), hovermode="x unified",
         xaxis=dict(showgrid=False, linecolor="#e2e8f0"),
         yaxis=dict(showgrid=True, gridcolor="#f1f5f9", zeroline=False, title=ytitle))
@@ -392,19 +435,23 @@ else:
     main_col, chat_col = st.container(), None
 
 with main_col:
-    nav_l, nav_r = st.columns([5, 1], vertical_alignment="center")
-    nav_l.markdown(
-        "<div class='brand'><span class='brand-dot'></span>Geopolitical Risk Monitor</div>"
-        "<div class='brand-sub'>How tense is the world right now, which past events looked like this, "
-        "and how did markets move afterwards.</div>", unsafe_allow_html=True)
-    if st.session_state.chat_open:
-        toggle = nav_r.button("Hide assistant", icon=":material/right_panel_close:", width="stretch")
-    else:
-        toggle = nav_r.button("Ask the data", icon=":material/forum:", type="primary", width="stretch")
-    if toggle:
-        st.session_state.chat_open = not st.session_state.chat_open
-        st.rerun()
+    st.markdown(
+        "<div class='hero'><div class='hero-kicker'>Geopolitical Risk Monitor</div>"
+        "<div class='hero-title'>When the world gets tense, how do markets move?</div>"
+        "<div class='hero-sub'>A daily tension score from 10 years of global news, every spike found "
+        "automatically, and how S&amp;P 500 sectors moved after each one.</div>"
+        "<div class='hero-pills'>"
+        f"<span class='hero-pill'><span class='live-dot'></span>Data through {latest_day}</span>"
+        f"<span class='hero-pill'>{n_events} events detected</span>"
+        "<span class='hero-pill'>GDELT news · S&amp;P 500 prices</span>"
+        "<span class='hero-pill'>No hand-picked events</span></div></div>", unsafe_allow_html=True)
     tab_live, tab_hist, tab_how = st.tabs(["Overview", "Event history", "How it works"])
+
+if chat_col is None:
+    with st.container(key="chat_fab"):
+        if st.button("Ask the data", icon=":material/forum:"):
+            st.session_state.chat_open = True
+            st.rerun()
 
 if chat_col is not None:
     from rag.ui import render_chat
@@ -419,26 +466,27 @@ with tab_live:
             "Today's level of international tension in the news, measured the same way as the "
             "10-year history, and what past spikes meant for a sample portfolio.")
 
-    def kpi(col, label, value, note, value_cls="kpi-value", help_text=""):
-        col.markdown(f"<div class='kpi'><div class='kpi-label'>{label}</div>"
+    def kpi(col, label, value, note, value_cls="kpi-value", help_text="", color="indigo"):
+        col.markdown(f"<div class='kpi k-{color}'><div class='kpi-label'>{label}</div>"
                      f"<div class='{value_cls}'>{value}</div><div class='kpi-note'>{note}</div>"
                      f"<div class='kpi-help'>{help_text}</div></div>", unsafe_allow_html=True)
 
     c1, c2, c3, c4 = st.columns(4)
     kpi(c1, "Geo-Tension Index", "—" if current_score != current_score else f"{current_score:.1f}<span class='kpi-unit'>/10</span>",
-        score_note, help_text="Negative tone × volume of international geopolitical news, scaled 0–10.")
-    kpi(c2, "Risk level", risk_level, threshold_note, value_cls=f"kpi-value {risk_class}",
-        help_text="High = more than 3 standard deviations above this year's average (a spike).")
+        score_note, help_text="Negative tone × volume of international geopolitical news, scaled 0–10.", color="indigo")
+    kpi(c2, "Risk level", f"<span class='risk-pill {risk_class}'>{risk_level}</span>", threshold_note,
+        value_cls="", help_text="High = more than 3 standard deviations above this year's average (a spike).",
+        color="risk")
     kpi(c3, "Geopolitical articles", f"{events_today:,}", events_note,
-        help_text="International articles on conflict, sanctions, unrest, diplomacy and more.")
+        help_text="International articles on conflict, sanctions, unrest, diplomacy and more.", color="teal")
     exp_cls = "pos" if weighted_5d >= 0 else "neg"
     kpi(c4, "Sample portfolio after a spike", f"<span class='{exp_cls}'>{'+' if weighted_5d >= 0 else ''}{weighted_5d:.1f}%</span>",
         "average 5 days after past spikes",
-        help_text="30% AAPL, 50% XOM, 20% LMT, averaged over all detected events.")
+        help_text="30% AAPL, 50% XOM, 20% LMT, averaged over all detected events.", color="orange")
 
     section("Today", "Live news and market fear",
             "The tension score from GDELT's 15-minute feed next to the VIX, and the latest "
-            "geopolitical headlines. Refreshes every 15 minutes.")
+            "geopolitical headlines. Refreshes every 15 minutes.", "pink")
     col_chart, col_news = st.columns([1.15, 1], gap="medium")
 
     with col_chart:
@@ -502,7 +550,7 @@ with tab_live:
 
     section("Markets", "How sectors are trading",
             "Live moves of the six sector groups this project tracks, and the sample portfolio's "
-            "history after past spikes.")
+            "history after past spikes.", "teal")
     col_sec, col_port = st.columns([1.15, 1], gap="medium")
     with col_sec:
         sd = sector_df.dropna(subset=["avg"])
@@ -540,14 +588,14 @@ with tab_live:
 with tab_hist:
     years = spike_events["date"].dt.year
     section("10 years", "Geopolitical tension since 2016",
-            f"Each point is one day of international news. Red dots are the {n_events} spike events "
-            f"detected automatically ({years.min()}–{years.max()}); hover a dot for its name.")
+            f"Each point is one day of international news. Pink dots are the {n_events} spike events "
+            f"detected automatically ({years.min()}–{years.max()}); hover a dot for its name.", "violet")
     s1, s2, s3, s4 = st.columns(4)
-    for col, label, val in [(s1, "Days analysed", f"{len(geo_tension):,}" if HAS_HISTORY else "—"),
+    for k, (col, label, val) in enumerate([(s1, "Days analysed", f"{len(geo_tension):,}" if HAS_HISTORY else "—"),
                             (s2, "Spike events", f"{n_events}"),
                             (s3, "Largest spike (z-score)", f"{spike_events['z_score'].max():.1f}"),
-                            (s4, "Years covered", f"{years.min()}–{years.max()}")]:
-        col.markdown(f"<div class='stat'><div class='stat-v'>{val}</div><div class='stat-l'>{label}</div></div>",
+                            (s4, "Years covered", f"{years.min()}–{years.max()}")], 1):
+        col.markdown(f"<div class='stat s{k}'><div class='stat-v'>{val}</div><div class='stat-l'>{label}</div></div>",
                      unsafe_allow_html=True)
 
     fig_hist = go.Figure()
@@ -567,7 +615,7 @@ with tab_hist:
     section("All events", "Detected events",
             "Every spike found in the data, newest first. Names are generated from the countries and "
             "news themes that stood out, not written by hand. z-score = how far above that year's "
-            "average the day was (spike rule: above 3).")
+            "average the day was (spike rule: above 3).", "pink")
     table = spike_events.sort_values("date", ascending=False).assign(
         Date=lambda d: d["date"].dt.date, Event=lambda d: d["label"],
         **{"z-score": lambda d: d["z_score"], "Index": lambda d: d["geo_tension_index"],
@@ -581,7 +629,7 @@ with tab_hist:
 
     section("Deep dive", "What happened, and how markets moved",
             "Pick an event to see its tension around the peak, how each sector moved afterwards, "
-            "and the news coverage it came from.")
+            "and the news coverage it came from.", "orange")
     opts = spike_events.sort_values("date", ascending=False)
     labels = [f"{r.date_str} · {r.label}" for r in opts.itertuples()]
     choice = st.selectbox("Event", labels, label_visibility="collapsed")
@@ -594,16 +642,16 @@ with tab_hist:
     themes = [humanize_theme(t) for t in str(ev.get("top_themes") or "").split(", ") if t][:6]
     countries = [c for c in str(ev.get("top_countries") or "").split(", ") if c]
     st.markdown(
-        f"<div class='event-card'><div class='event-name'>{_html.escape(ev['label'])}"
+        f"<div class='event-card'><div class='event-top'><div class='event-name'>{_html.escape(ev['label'])}"
         f"<span class='badge'>{sel_date}</span></div>"
         f"<div class='event-facts'>"
         f"<div><span>z-score</span><b>{ev['z_score']:.1f}</b></div>"
         f"<div><span>Index</span><b>{ev['geo_tension_index']:.1f}/10</b></div>"
         f"<div><span>Elevated</span><b>{window}</b></div>"
-        f"<div><span>Spike days</span><b>{int(ev.get('spike_days', 1))}</b></div></div>"
+        f"<div><span>Spike days</span><b>{int(ev.get('spike_days', 1))}</b></div></div></div><div class='event-body'>"
         f"<div class='event-row'><span class='event-k'>Countries that stood out</span>{chips(countries, 'chip chip-blue')}</div>"
         f"<div class='event-row'><span class='event-k'>Distinctive news themes</span>{chips(themes)}</div>"
-        f"</div>", unsafe_allow_html=True)
+        f"</div></div>", unsafe_allow_html=True)
 
     col_l, col_r = st.columns([1, 1], gap="medium")
     with col_l:
@@ -634,7 +682,7 @@ with tab_hist:
         base_note = ""
         if len(sp):
             days = sorted(d for d in sp["days_from_spike"].unique() if d > 0)
-            colors = {1: "#93c5fd", 5: BLUE, 30: "#1e3a8a"}
+            colors = {1: "#38bdf8", 5: "#6366f1", 30: "#db2777"}
             for h in (1, 5, 30):
                 if not days:
                     break
@@ -698,7 +746,7 @@ with tab_how:
     ]
     cols = st.columns(len(steps))
     for col, (n, title, body) in zip(cols, steps):
-        col.markdown(f"<div class='step'><div class='step-n'>{n}</div><div class='step-t'>{title}</div>"
+        col.markdown(f"<div class='step'><div class='step-n n{n}'>{n}</div><div class='step-t'>{title}</div>"
                      f"<div class='step-b'>{body}</div></div>", unsafe_allow_html=True)
     st.markdown("<div class='card' style='margin-top:18px'><div class='card-h'>Limits worth knowing</div>"
                 "<ul class='limits'><li>Returns are averages that include all other market news in the window: "

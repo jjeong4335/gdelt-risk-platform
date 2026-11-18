@@ -2,7 +2,7 @@
 # this, Streamlit follows the OS dark mode and mixes white cards with a dark page.
 [theme]
 base = "light"
-primaryColor = "#2563eb"
+primaryColor = "#7c3aed"
 backgroundColor = "#f8f9fa"
 secondaryBackgroundColor = "#ffffff"
 textColor = "#1a1a1a"
