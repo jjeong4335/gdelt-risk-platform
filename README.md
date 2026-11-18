@@ -224,7 +224,8 @@ pip install -r requirements.txt
 ```bash
 python -m rag.build_corpus            # -> rag/data/corpus.jsonl
 python -m rag.index                   # embeddings + FAISS (downloads the model the first time)
-export GEMINI_API_KEY=...             # free key from aistudio.google.com; never commit it
+# put GEMINI_API_KEY=... (free key from aistudio.google.com) in a .env file in the repo root;
+# it's git-ignored and loaded automatically (an exported variable also works)
 python -m rag.eval.make_questions
 python -m rag.eval.run_eval --retrieval-only   # no API calls
 python -m rag.eval.run_eval                    # full eval; re-run to resume after a quota stop

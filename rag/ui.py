@@ -98,8 +98,8 @@ def _ask(question, retriever, k, start, end, sectors):
             text = ("The model is busy or today's free quota is used up. "
                     "Please try again in a minute (or tomorrow if the daily quota ran out).")
         elif "API_KEY" in msg:
-            text = ("I'm not connected to the AI model yet. To turn me on, set GEMINI_API_KEY "
-                    "in the terminal and start the app again.")
+            text = ("I'm not connected to the AI model yet. Add GEMINI_API_KEY=your-key to the .env file "
+                    "in the project folder, then start the app again.")
         else:
             text = f"Something went wrong: {msg[:300]}"
         return {"role": "assistant", "error": text}

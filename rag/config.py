@@ -9,6 +9,24 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RAG_DIR = REPO_ROOT / "rag"
 
+
+def _load_dotenv(path: Path) -> None:
+    """Read KEY=value lines from the repo's .env (git-ignored), so the API key
+    doesn't have to be exported in every new terminal. Variables already set
+    in the terminal win."""
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, val = line.split("=", 1)
+        key = key.strip().removeprefix("export ").strip()
+        os.environ.setdefault(key, val.strip().strip('"').strip("'"))
+
+
+_load_dotenv(REPO_ROOT / ".env")
+
 # Where the existing pipeline outputs live (same folder the dashboard reads).
 # GEO_DATA_DIR wins; otherwise the rebuilt folder (data-driven pipeline) if it
 # exists, else the original cluster folder.
