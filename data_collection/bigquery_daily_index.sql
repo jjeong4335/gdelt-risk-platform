@@ -1,48 +1,42 @@
--- Daily Geo-Tension inputs for 2016 → today, computed INSIDE BigQuery.
--- Only ~3,700 rows (one per day) come back, instead of downloading ~2 TB of
--- raw GDELT files and filtering them on a laptop.
+-- STEP 1 of the data-driven rebuild: daily Geo-Tension inputs, 2016 -> today,
+-- computed inside BigQuery so only ~3,900 rows (one per day) come back.
 --
--- Same rules as the original pipeline:
---   data_collection/gdelt_download.sh  : keyword filter + category, applied to
---                                        GKG column 7 (V2Counts), which the
---                                        original awk script used as "themes"
---   pyspark_pipeline/geo_tension_index.py :
---     * international only  = at least one non-US 2-letter country code (#RS#)
---     * negative tone       = 3rd value of V2Tone, kept if 0..50
---     * per day: article count, average negative tone, most common category
--- The 0-10 scaling, yearly thresholds and spike detection are done afterwards
--- in Python (data_collection/build_history.py), exactly as the Spark job did.
+-- Fixes vs the original course pipeline (data_collection/gdelt_download.sh):
+--   * Keywords are matched against the article's THEMES (GKG "Themes" column).
+--     The original awk script matched column 7, which is V2Counts (event
+--     counts such as PROTEST or KILL), so military and sanction keywords
+--     almost never matched and every day's category came out the same.
+--   * Keywords are matched as whole theme tokens (MILITARY, TAX_WEAPONS_...),
+--     so WAR no longer matches AWARD, SOFTWARE or WARNING.
+--   * "International" is decided from the article's LOCATIONS (at least one
+--     non-US country code), which is where GDELT stores country codes.
+--   * V1 Themes/Locations are used instead of the V2 versions: same values
+--     without character offsets, so the query reads far fewer bytes.
+-- Unchanged: negative tone = 3rd value of V2Tone, kept if 0..50.
 --
--- HOW TO RUN (no billing needed):
---   1. console.cloud.google.com/bigquery, in a project WITHOUT billing
---      (BigQuery sandbox: 1 TB of query processing free per month).
---   2. Paste this whole file into the editor. Before running, the top-right
---      corner shows "This query will process N GB when run". That is the cost
---      check: stay well under 1,000 GB (1 TB).
---   3. Run, then Save results -> CSV (local file). Save it as
---      ~/dashboard_data_rebuilt/gdelt_daily.csv
+-- HOW TO RUN: paste into the BigQuery console. Before clicking Run, read
+-- "This query will process N GB" in the top-right corner (free up to 1 TB a
+-- month). Save the result as CSV -> ~/dashboard_data_rebuilt/gdelt_daily.csv
 
 WITH raw_rows AS (
   SELECT
     PARSE_DATE('%Y%m%d', SUBSTR(CAST(DATE AS STRING), 1, 8)) AS day,
     SAFE_CAST(SPLIT(V2Tone, ',')[SAFE_OFFSET(2)] AS FLOAT64) AS neg,
     CASE
-      WHEN REGEXP_CONTAINS(V2Counts, r'MILITARY|WAR|WEAPON|MISSILE|INVASION|AIRSTRIKE') THEN 'CONFLICT'
-      WHEN REGEXP_CONTAINS(V2Counts, r'SANCTION|EMBARGO|TARIFF|EXPORT_CONTROL') THEN 'ECONOMIC_PRESSURE'
-      WHEN REGEXP_CONTAINS(V2Counts, r'COUP|PROTEST|RIOT') THEN 'POLITICAL_INSTABILITY'
-      WHEN REGEXP_CONTAINS(V2Counts, r'DIPLOMATIC|EXPULSION') THEN 'DIPLOMATIC_TENSION'
-      WHEN REGEXP_CONTAINS(V2Counts, r'CEASEFIRE') THEN 'DEESCALATION'
-      WHEN REGEXP_CONTAINS(V2Counts, r'ESPIONAGE|CYBERATTACK') THEN 'INTELLIGENCE_CYBER'
-      WHEN REGEXP_CONTAINS(V2Counts, r'NUCLEAR|BLOCKADE|ANNEXATION') THEN 'SPECIAL'
+      WHEN REGEXP_CONTAINS(Themes, r'(^|[;_])(MILITARY|ARMEDCONFLICT|WAR|WEAPONS?|MISSILES?|INVASION|AIRSTRIKES?)([;_,]|$)') THEN 'CONFLICT'
+      WHEN REGEXP_CONTAINS(Themes, r'(^|[;_])(SANCTIONS?|EMBARGO|TARIFFS?|EXPORT_CONTROLS?)([;_,]|$)') THEN 'ECONOMIC_PRESSURE'
+      WHEN REGEXP_CONTAINS(Themes, r'(^|[;_])(COUP|PROTESTS?|RIOTS?)([;_,]|$)') THEN 'POLITICAL_INSTABILITY'
+      WHEN REGEXP_CONTAINS(Themes, r'(^|[;_])(DIPLOMATIC|DIPLOMACY|EXPULSION)([;_,]|$)') THEN 'DIPLOMATIC_TENSION'
+      WHEN REGEXP_CONTAINS(Themes, r'(^|[;_])(CEASEFIRE)([;_,]|$)') THEN 'DEESCALATION'
+      WHEN REGEXP_CONTAINS(Themes, r'(^|[;_])(ESPIONAGE|CYBERATTACK|CYBER_ATTACK)([;_,]|$)') THEN 'INTELLIGENCE_CYBER'
+      WHEN REGEXP_CONTAINS(Themes, r'(^|[;_])(NUCLEAR|BLOCKADE|ANNEXATION)([;_,]|$)') THEN 'SPECIAL'
     END AS category,
-    -- BigQuery regex has no look-ahead, so "#(?!US)[A-Z]{2}#" becomes:
-    -- extract every 2-letter code and check that one of them isn't US.
+    -- Locations entries look like "1#Russia#RS#RS#55.75#37.61#-1;" (field 3 = country code).
     EXISTS(
-      SELECT 1 FROM UNNEST(REGEXP_EXTRACT_ALL(V2Counts, r'#([A-Z]{2})#')) AS code
-      WHERE code != 'US'
+      SELECT 1 FROM UNNEST(SPLIT(Locations, ';')) AS loc
+      WHERE SPLIT(loc, '#')[SAFE_OFFSET(2)] NOT IN ('', 'US')
     ) AS international
   FROM `gdelt-bq.gdeltv2.gkg_partitioned`
-  -- Partition filter: BigQuery only reads these days (this is what keeps the cost down).
   WHERE _PARTITIONTIME >= TIMESTAMP('2016-01-01')
 ),
 kept AS (
