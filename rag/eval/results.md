@@ -16,6 +16,6 @@
 | Refusal accuracy (unanswerable) | 5/5 (100.0%) |
 | False refusals (answerable) | 0/24 (0.0%) |
 
-Best cosine similarity in top 5 — answerable: min 0.346, mean 0.619; unanswerable: max 0.582, mean 0.491
+Best cosine similarity in top 5 — answerable: min 0.346, mean 0.619; unanswerable: max 0.582, mean 0.496
 
 ## Failed or unchecked questions

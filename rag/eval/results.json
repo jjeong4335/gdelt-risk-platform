@@ -304,12 +304,12 @@
       "sector:2018-01-02:Energy",
       "summary:Tech",
       "summary:Energy",
-      "sector:2024-04-14:Energy",
-      "event:2018-01-02"
+      "event:2018-01-02",
+      "event:2024-04-14"
     ],
     "best_similarity": 0.6348,
     "hit@5": true,
-    "answer": "After the Iran: unrest spike on 2018-01-02, Energy stocks had an average return of +3.57% at Day +30 (measured from the spike-day close) [sector:2018-01-02:Energy].",
+    "answer": "Energy stocks rose by 3.57% at Day +30 after the Iran: unrest spike on January 2, 2018 [sector:2018-01-02:Energy].",
     "refused": false,
     "gated": false,
     "cited": [
@@ -776,17 +776,16 @@
       "summary:events",
       "event:2017-03-23",
       "event:2021-05-12",
-      "event:2018-01-02",
-      "event:2017-08-18"
+      "event:2017-08-18",
+      "event:2018-01-02"
     ],
     "best_similarity": 0.607,
     "hit@5": true,
-    "answer": "The 2017 spike with the largest z-score was on 2017-08-18 for the Spain terror attack, which recorded a z-score of 4.79 [summary:events, event:2017-08-18].",
+    "answer": "The 2017 spike with the largest z-score was on 2017-08-18 (Spain: terror attack) with a z-score of 4.79 [summary:events].",
     "refused": false,
     "gated": false,
     "cited": [
-      "summary:events",
-      "event:2017-08-18"
+      "summary:events"
     ],
     "invalid_citations": [],
     "correct": true,
@@ -929,13 +928,13 @@
     "expected_doc_ids": [],
     "id": "q28",
     "retrieved": [
+      "analysis:vix_lead",
       "event:2021-05-12",
       "event:2019-08-05",
       "event:2025-09-09",
-      "event:2024-03-23",
-      "event:2026-03-01"
+      "event:2024-03-23"
     ],
-    "best_similarity": 0.4859,
+    "best_similarity": 0.5128,
     "answer": "I don't have evidence for that in the data.",
     "refused": true,
     "gated": false,
