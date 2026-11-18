@@ -78,8 +78,7 @@ st.markdown("""
     .bar-val.neg { color: #ea580c; }
 
     /* KPI cards */
-    .kpi { padding: 18px 20px; min-height: 190px; height: 100%; margin-bottom: 14px; border-top: 4px solid #1d4ed8; }
-    .k-risk { border-top-color: #f97316; } .k-teal { border-top-color: #0ea5e9; } .k-orange { border-top-color: #f59e0b; }
+    .kpi { padding: 18px 20px; min-height: 190px; height: 100%; margin-bottom: 14px; border-top: 3px solid #1d4ed8; }
     /* boxes in one row stretch to the tallest one, so text never spills out */
     [data-testid="stHorizontalBlock"]:has(.kpi), [data-testid="stHorizontalBlock"]:has(.step),
     [data-testid="stHorizontalBlock"]:has(.stat) { align-items: stretch; }
@@ -120,7 +119,6 @@ st.markdown("""
 
     /* history stat tiles */
     .stat { padding: 14px 18px; margin-bottom: 14px; min-height: 84px; height: 100%; border-left: 4px solid #1d4ed8; }
-    .s2, .s4 { border-left-color: #f97316; }
     .stat-v { font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.4px; } .stat-l { font-size: 12.5px; color: #64748b; font-weight: 600; }
 
     /* event card */
@@ -137,10 +135,9 @@ st.markdown("""
     .chip-warm { background: #fef3c7; color: #92400e; }
 
     /* how it works */
-    .step { padding: 18px 20px; height: 100%; margin-bottom: 14px; } .step-n { width: 34px; height: 34px; border-radius: 10px; color: white; background: #1d4ed8;
+    .step { padding: 18px 20px; height: 100%; margin-bottom: 14px; border-top: 3px solid #1d4ed8; } .step-n { width: 34px; height: 34px; border-radius: 10px; color: white; background: #1d4ed8;
         font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 15px; }
-    .n2, .n4 { background: #f97316; }
-    .step-t { font-size: 16px; font-weight: 800; color: #0f172a; margin: 12px 0 6px; } .step-b { font-size: 13.5px; color: #64748b; line-height: 1.6; }
+    .step-t { font-size: 16px; font-weight: 800; color: #0f172a; margin: 0 0 6px; } .step-b { font-size: 13.5px; color: #64748b; line-height: 1.6; }
     .limits { font-size: 14px; color: #475569; line-height: 1.75; margin: 6px 0 0; }
     .footer { text-align: center; font-size: 12.5px; color: #94a3b8; margin: 40px 0 70px; }
 
@@ -817,7 +814,7 @@ with tab_how:
     ]
     cols = st.columns(len(steps))
     for col, (n, title, body) in zip(cols, steps):
-        col.markdown(f"<div class='step'><div class='step-n n{n}'>{n}</div><div class='step-t'>{title}</div>"
+        col.markdown(f"<div class='step'><div class='step-t'>{title}</div>"
                      f"<div class='step-b'>{body}</div></div>", unsafe_allow_html=True)
     st.markdown("<div class='card' style='margin-top:18px'><div class='card-h'>Limits worth knowing</div>"
                 "<ul class='limits'><li>Returns are averages that include all other market news in the window: "
